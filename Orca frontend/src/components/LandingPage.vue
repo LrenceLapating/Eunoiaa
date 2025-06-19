@@ -22,6 +22,14 @@
 
     <!-- Hero Section -->
     <section class="hero">
+        <div class="animated-background">
+            <div class="shape shape1"></div>
+            <div class="shape shape2"></div>
+            <div class="shape shape3"></div>
+            <div class="shape shape4"></div>
+            <div class="shape shape5"></div>
+            <div class="shape shape6"></div>
+        </div>
         <div class="container hero-content">
             <div class="hero-text fade-in">
                 <h2>Optimized <span class="text-primary">Ryff-scale</span> Computation & Analysis</h2>
@@ -31,17 +39,8 @@
                     <a href="#features" class="cta-button-outline">Explore Features</a>
                 </div>
                 <div class="hero-stats">
-                    <div class="stat-item">
-                        <div class="stat-number counter" data-target="25">0</div>
-                        <div class="stat-label">Universities</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number counter" data-target="5000">0</div>
-                        <div class="stat-label">Students</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number counter" data-target="98">0</div>
-                        <div class="stat-label">% Satisfaction</div>
+                    <div class="stat-item wide-stat">
+                        <p class="stat-highlight">Out of <span class="counter" data-target="5000">0</span> institutions across the Philippines, <span class="counter" data-target="4000">0</span> have used the Ryff Scale as a tool to assess the well-being of both learners and staff.</p>
                     </div>
                 </div>
             </div>
@@ -87,29 +86,7 @@
                         <div class="dimension-center">
                             <div class="dimension-center-text">Ryff Scale</div>
                         </div>
-                    </div>
-                    <div class="dimension-stats">
-                        <div class="stat-bar">
-                            <div class="stat-label">Self-Acceptance</div>
-                            <div class="stat-track">
-                                <div class="stat-fill stat-fill-1"></div>
-                            </div>
-                            <div class="stat-value">78%</div>
-                        </div>
-                        <div class="stat-bar">
-                            <div class="stat-label">Positive Relations</div>
-                            <div class="stat-track">
-                                <div class="stat-fill stat-fill-2"></div>
-                            </div>
-                            <div class="stat-value">65%</div>
-                        </div>
-                        <div class="stat-bar">
-                            <div class="stat-label">Autonomy</div>
-                            <div class="stat-track">
-                                <div class="stat-fill stat-fill-3"></div>
-                            </div>
-                            <div class="stat-value">82%</div>
-                        </div>
+                        <div class="pulse-circle"></div>
                     </div>
                 </div>
             </div>
@@ -166,54 +143,59 @@
 
     <!-- Features Section -->
     <section class="features" id="features">
+        <div class="features-bg">
+            <div class="bg-shape bg-shape1"></div>
+            <div class="bg-shape bg-shape2"></div>
+            <div class="bg-shape bg-shape3"></div>
+        </div>
         <div class="container">
             <div class="section-title">
-                <h3>Key Features</h3>
-                <p>ORCA transforms psychological well-being assessment through automation and AI-powered analysis</p>
+                <h3 class="reveal-text">Key Features</h3>
+                <p class="reveal-text">ORCA transforms psychological well-being assessment through automation and AI-powered analysis</p>
             </div>
             <div class="features-grid">
-                <div class="feature-card fade-in">
-                    <div class="feature-icon">
+                <div class="feature-card tilt-card fade-in">
+                    <div class="feature-icon pulse-animation">
                         <i class="fas fa-clipboard-check"></i>
                     </div>
                     <h4>Ryff Scale Assessment</h4>
                     <p>Validated psychological well-being evaluation using the Ryff Scale with multiple versions (42, 54, or 84 items) to suit different needs.</p>
                     <p class="feature-detail">Measures six dimensions of psychological well-being with scientific validity</p>
                 </div>
-                <div class="feature-card fade-in">
-                    <div class="feature-icon">
+                <div class="feature-card tilt-card fade-in">
+                    <div class="feature-icon pulse-animation">
                         <i class="fas fa-calculator"></i>
                     </div>
                     <h4>Automated Scoring</h4>
                     <p>Instant calculation of results across all six Ryff dimensions, eliminating manual scoring errors and saving valuable time.</p>
                     <p class="feature-detail">Reduces assessment processing time from hours to seconds</p>
                 </div>
-                <div class="feature-card fade-in">
-                    <div class="feature-icon">
+                <div class="feature-card tilt-card fade-in">
+                    <div class="feature-icon pulse-animation">
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <h4>Comprehensive Dashboards</h4>
                     <p>Visual representation of well-being data for individuals and groups, with filtering options by demographics and time periods.</p>
                     <p class="feature-detail">Intuitive visualization of complex psychological data patterns</p>
                 </div>
-                <div class="feature-card fade-in">
-                    <div class="feature-icon">
+                <div class="feature-card tilt-card fade-in">
+                    <div class="feature-icon pulse-animation">
                         <i class="fas fa-user-shield"></i>
                     </div>
                     <h4>Privacy Controls</h4>
                     <p>Role-based access system ensuring that sensitive psychological data is only accessible to authorized personnel.</p>
                     <p class="feature-detail">Protects confidential information with secure authentication</p>
                 </div>
-                <div class="feature-card fade-in">
-                    <div class="feature-icon">
+                <div class="feature-card tilt-card fade-in">
+                    <div class="feature-icon pulse-animation">
                         <i class="fas fa-brain"></i>
                     </div>
                     <h4>Personalized Insights</h4>
                     <p>Tailored feedback and recommendations based on individual assessment results to support psychological well-being improvement.</p>
                     <p class="feature-detail">Actionable guidance for each dimension of well-being</p>
                 </div>
-                <div class="feature-card fade-in">
-                    <div class="feature-icon">
+                <div class="feature-card tilt-card fade-in">
+                    <div class="feature-icon pulse-animation">
                         <i class="fas fa-file-export"></i>
                     </div>
                     <h4>Data Export</h4>
@@ -407,34 +389,72 @@
                     </div>
                 </div>
                 <div class="research-image slide-in-right">
-                    <div class="ryff-wheel">
-                        <div class="ryff-center">
-                            <span>Psychological Well-being</span>
-                        </div>
-                        <div class="ryff-dimensions">
-                            <div class="ryff-dimension" style="--angle: 0deg">
-                                <div class="dimension-icon"><i class="fas fa-user"></i></div>
-                                <div class="dimension-name">Self-Acceptance</div>
+                    <div class="ryff-wheel-container">
+                        <div class="ryff-wheel">
+                            <div class="ryff-center">
+                                <div class="center-content">
+                                    <span>Ryff Scale</span>
+                                    <div class="center-glow"></div>
+                                </div>
                             </div>
-                            <div class="ryff-dimension" style="--angle: 60deg">
-                                <div class="dimension-icon"><i class="fas fa-users"></i></div>
-                                <div class="dimension-name">Positive Relations</div>
+                            <div class="ryff-orbit"></div>
+                            <div class="ryff-dimensions">
+                                <div class="ryff-dimension ryff-dimension-1" style="--angle: 0deg; --color: #00b3b0;">
+                                    <div class="dimension-bubble">
+                                        <div class="dimension-icon">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div class="dimension-name">Self-Acceptance</div>
+                                    </div>
+                                </div>
+                                <div class="ryff-dimension ryff-dimension-2" style="--angle: 60deg; --color: #3498db;">
+                                    <div class="dimension-bubble">
+                                        <div class="dimension-icon">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                        <div class="dimension-name">Positive Relations</div>
+                                    </div>
+                                </div>
+                                <div class="ryff-dimension ryff-dimension-3" style="--angle: 120deg; --color: #9b59b6;">
+                                    <div class="dimension-bubble">
+                                        <div class="dimension-icon">
+                                            <i class="fas fa-brain"></i>
+                                        </div>
+                                        <div class="dimension-name">Autonomy</div>
+                                    </div>
+                                </div>
+                                <div class="ryff-dimension ryff-dimension-4" style="--angle: 180deg; --color: #f1c40f;">
+                                    <div class="dimension-bubble">
+                                        <div class="dimension-icon">
+                                            <i class="fas fa-globe"></i>
+                                        </div>
+                                        <div class="dimension-name">Environmental Mastery</div>
+                                    </div>
+                                </div>
+                                <div class="ryff-dimension ryff-dimension-5" style="--angle: 240deg; --color: #e74c3c;">
+                                    <div class="dimension-bubble">
+                                        <div class="dimension-icon">
+                                            <i class="fas fa-bullseye"></i>
+                                        </div>
+                                        <div class="dimension-name">Purpose in Life</div>
+                                    </div>
+                                </div>
+                                <div class="ryff-dimension ryff-dimension-6" style="--angle: 300deg; --color: #2ecc71;">
+                                    <div class="dimension-bubble">
+                                        <div class="dimension-icon">
+                                            <i class="fas fa-seedling"></i>
+                                        </div>
+                                        <div class="dimension-name">Personal Growth</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="ryff-dimension" style="--angle: 120deg">
-                                <div class="dimension-icon"><i class="fas fa-brain"></i></div>
-                                <div class="dimension-name">Autonomy</div>
-                            </div>
-                            <div class="ryff-dimension" style="--angle: 180deg">
-                                <div class="dimension-icon"><i class="fas fa-globe"></i></div>
-                                <div class="dimension-name">Environmental Mastery</div>
-                            </div>
-                            <div class="ryff-dimension" style="--angle: 240deg">
-                                <div class="dimension-icon"><i class="fas fa-bullseye"></i></div>
-                                <div class="dimension-name">Purpose in Life</div>
-                            </div>
-                            <div class="ryff-dimension" style="--angle: 300deg">
-                                <div class="dimension-icon"><i class="fas fa-seedling"></i></div>
-                                <div class="dimension-name">Personal Growth</div>
+                            <div class="connecting-lines">
+                                <div class="line line-1"></div>
+                                <div class="line line-2"></div>
+                                <div class="line line-3"></div>
+                                <div class="line line-4"></div>
+                                <div class="line line-5"></div>
+                                <div class="line line-6"></div>
                             </div>
                         </div>
                     </div>
@@ -592,11 +612,21 @@
 
     <!-- CTA Section -->
     <section class="cta">
+        <div class="cta-particles">
+            <div class="particle particle1"></div>
+            <div class="particle particle2"></div>
+            <div class="particle particle3"></div>
+            <div class="particle particle4"></div>
+            <div class="particle particle5"></div>
+            <div class="particle particle6"></div>
+            <div class="particle particle7"></div>
+            <div class="particle particle8"></div>
+        </div>
         <div class="container">
-            <h3>Ready to Transform Psychological Well-being Assessment?</h3>
+            <h3 class="glowing-text">Ready to Transform Psychological Well-being Assessment?</h3>
             <p>Join educational institutions already using ORCA to support student and employee psychological well-being with data-driven insights.</p>
             <div class="cta-buttons">
-                <a href="login.html" class="cta-button-white">Start Assessment</a>
+                <a href="login.html" class="cta-button-white animated-button">Start Assessment</a>
             </div>
         </div>
     </section>
@@ -711,6 +741,11 @@
 <script>
 export default {
   name: 'LandingPage',
+  data() {
+    return {
+      parallaxElements: []
+    };
+  },
   mounted() {
     // Header scroll effect
     window.addEventListener('scroll', this.handleScroll);
@@ -732,9 +767,19 @@ export default {
     
     // Initialize training tabs
     this.initTrainingTabs();
+    
+    // Initialize tilt effect
+    this.initTiltEffect();
+    
+    // Initialize parallax effect
+    this.initParallaxEffect();
+    
+    // Initialize particle animation
+    this.initParticles();
   },
   beforeUnmount() {
     window.removeEventListener('scroll', this.handleScroll);
+    window.removeEventListener('mousemove', this.handleMouseMove);
   },
   methods: {
     handleScroll() {
@@ -746,6 +791,7 @@ export default {
       }
       
       this.checkVisibility();
+      this.updateParallax();
     },
     checkVisibility() {
       const fadeElements = document.querySelectorAll('.fade-in');
@@ -954,6 +1000,73 @@ export default {
           }
         });
       });
+    },
+    initTiltEffect() {
+      const tiltCards = document.querySelectorAll('.tilt-card');
+      
+      tiltCards.forEach(card => {
+        card.addEventListener('mousemove', e => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          
+          const rotateX = (y - centerY) / 20;
+          const rotateY = (centerX - x) / 20;
+          
+          card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-5px)`;
+        });
+        
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0)';
+        });
+      });
+    },
+    initParallaxEffect() {
+      this.parallaxElements = document.querySelectorAll('.shape, .bg-shape, .particle');
+      window.addEventListener('mousemove', this.handleMouseMove);
+      this.updateParallax();
+    },
+    handleMouseMove(e) {
+      const mouseX = e.clientX / window.innerWidth;
+      const mouseY = e.clientY / window.innerHeight;
+      
+      this.parallaxElements.forEach(element => {
+        const speed = element.classList.contains('shape') ? 20 : 10;
+        const x = (0.5 - mouseX) * speed;
+        const y = (0.5 - mouseY) * speed;
+        
+        element.style.transform = `translate(${x}px, ${y}px)`;
+      });
+    },
+    updateParallax() {
+      const scrollY = window.scrollY;
+      
+      this.parallaxElements.forEach(element => {
+        const speed = element.classList.contains('shape') ? 0.05 : 0.02;
+        const yOffset = scrollY * speed;
+        
+        const currentTransform = element.style.transform || '';
+        if (currentTransform.includes('translate')) {
+          element.style.transform = currentTransform.replace(/translateY\([^)]+\)/, `translateY(${yOffset}px)`);
+        } else {
+          element.style.transform += ` translateY(${yOffset}px)`;
+        }
+      });
+    },
+    initParticles() {
+      const particles = document.querySelectorAll('.particle');
+      
+      particles.forEach((particle, index) => {
+        const delay = index * 2;
+        particle.style.animationDelay = `${delay}s`;
+        
+        // Randomize starting positions
+        const randomX = Math.random() * 100;
+        particle.style.left = `${randomX}%`;
+      });
     }
   }
 }
@@ -1073,6 +1186,30 @@ export default {
 
 .stat-item {
     text-align: center;
+}
+
+.wide-stat {
+    width: 100%;
+    max-width: 600px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    padding: 15px 20px;
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    text-align: left;
+}
+
+.stat-highlight {
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--dark);
+    font-weight: 500;
+}
+
+.stat-highlight .counter {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 22px;
 }
 
 .stat-number {
@@ -1725,18 +1862,38 @@ export default {
     align-items: center;
 }
 
-.ryff-wheel {
+.ryff-wheel-container {
     position: relative;
     width: 400px;
     height: 400px;
     margin: 0 auto;
+    perspective: 1000px;
+}
+
+.ryff-wheel {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    transform-style: preserve-3d;
+    animation: wheel-rotate 60s linear infinite;
+}
+
+@keyframes wheel-rotate {
+    0% {
+        transform: rotateY(0deg);
+    }
+    100% {
+        transform: rotateY(360deg);
+    }
 }
 
 .ryff-center {
     position: absolute;
     width: 120px;
     height: 120px;
-    background-color: var(--primary);
+    background: linear-gradient(135deg, #00b3b0 0%, #008b89 100%);
     border-radius: 50%;
     top: 50%;
     left: 50%;
@@ -1750,6 +1907,19 @@ export default {
     padding: 10px;
     box-shadow: 0 5px 15px rgba(0, 179, 176, 0.3);
     z-index: 10;
+    border: 3px solid rgba(255, 255, 255, 0.8);
+}
+
+.ryff-orbit {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 2px dashed rgba(0, 179, 176, 0.3);
+    animation: spin 60s linear infinite;
 }
 
 .ryff-dimensions {
@@ -1771,22 +1941,52 @@ export default {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: white;
-    border-radius: 50%;
-    box-shadow: var(--shadow);
     z-index: 5;
     transition: all 0.3s ease;
 }
 
 .ryff-dimension:hover {
     transform: translate(-50%, -50%) rotate(var(--angle)) translateX(150px) rotate(calc(-1 * var(--angle))) scale(1.1);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.dimension-bubble {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 3px solid var(--color);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.dimension-bubble::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: radial-gradient(circle at center, var(--color) 0%, transparent 70%);
+    opacity: 0.1;
+    z-index: -1;
+}
+
+.dimension-bubble:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 0 10px var(--color);
+    transform: scale(1.05);
 }
 
 .dimension-icon {
     font-size: 24px;
     margin-bottom: 5px;
-    color: var(--primary);
+    color: var(--color);
+    transition: all 0.3s ease;
 }
 
 .dimension-name {
@@ -1795,99 +1995,186 @@ export default {
     text-align: center;
     color: var(--dark);
     max-width: 90%;
+    transition: all 0.3s ease;
+}
+
+.ryff-dimension:hover .dimension-icon {
+    transform: scale(1.2);
+}
+
+.connecting-lines {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.line {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150px;
+    height: 1px;
+    background-color: rgba(0, 179, 176, 0.2);
+    transform-origin: 0 0;
+}
+
+.line-1 {
+    transform: rotate(0deg);
+}
+
+.line-2 {
+    transform: rotate(60deg);
+}
+
+.line-3 {
+    transform: rotate(120deg);
+}
+
+.line-4 {
+    transform: rotate(180deg);
+}
+
+.line-5 {
+    transform: rotate(240deg);
+}
+
+.line-6 {
+    transform: rotate(300deg);
+}
+
+.center-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.center-content span {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    position: relative;
+    z-index: 3;
+}
+
+.center-glow {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 70%);
+    animation: pulse-glow 2s infinite alternate;
+    z-index: 1;
+}
+
+@keyframes pulse-glow {
+    0% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
 }
 
 @media (max-width: 992px) {
-    .dimension-circle {
-        transform: scale(0.9);
-    }
-    
-    .hero-stats {
-        justify-content: center;
-    }
-    
-    .step-icon {
-        display: none;
-    }
-    
-    .research-content {
-        flex-direction: column;
-    }
-    
-    .ryff-wheel {
+    .ryff-wheel-container {
         width: 350px;
         height: 350px;
         margin: 40px auto 0;
-        position: relative;
-        overflow: visible;
     }
     
     .ryff-dimension {
-        width: 80px;
-        height: 80px;
-        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(140px) rotate(calc(-1 * var(--angle)));
-    }
-}
-
-@media (max-width: 768px) {
-    .dimension-circle {
-        width: 300px;
-        height: 300px;
-        transform: scale(0.8);
+        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(130px) rotate(calc(-1 * var(--angle)));
     }
     
-    .dimension {
+    .ryff-dimension:hover {
+        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(130px) rotate(calc(-1 * var(--angle))) scale(1.1);
+    }
+    
+    .dimension-bubble {
         width: 70px;
         height: 70px;
     }
     
     .dimension-icon {
-        font-size: 18px;
+        font-size: 20px;
     }
     
-    .dimension-label {
-        font-size: 8px;
+    .dimension-name {
+        font-size: 9px;
     }
     
-    .dashboard-tab {
-        padding: 10px 15px;
-        font-size: 14px;
+    .ryff-orbit {
+        width: 260px;
+        height: 260px;
     }
     
-    .dashboard-content {
-        height: 350px;
+    .line {
+        width: 130px;
     }
-    
-    .hero-buttons {
-        flex-direction: column;
-    }
-    
-    .ryff-wheel {
+}
+
+@media (max-width: 768px) {
+    .ryff-wheel-container {
         width: 300px;
         height: 300px;
         margin: 20px auto 0;
     }
     
     .ryff-dimension {
-        width: 70px;
-        height: 70px;
-        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(120px) rotate(calc(-1 * var(--angle)));
-        font-size: 90%;
+        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(110px) rotate(calc(-1 * var(--angle)));
+    }
+    
+    .ryff-dimension:hover {
+        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(110px) rotate(calc(-1 * var(--angle))) scale(1.1);
+    }
+    
+    .dimension-bubble {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .dimension-icon {
+        font-size: 18px;
     }
     
     .dimension-name {
         font-size: 8px;
     }
+    
+    .ryff-center {
+        width: 90px;
+        height: 90px;
+    }
+    
+    .center-content span {
+        font-size: 16px;
+    }
+    
+    .ryff-orbit {
+        width: 220px;
+        height: 220px;
+    }
+    
+    .line {
+        width: 110px;
+    }
 }
 
 @media (max-width: 480px) {
-    .dimension-circle {
-        transform: scale(0.7);
-    }
-    
-    .hero-stats {
-        flex-direction: column;
-        gap: 15px;
+    .ryff-wheel-container {
+        transform: scale(0.8);
+        margin: 0 auto;
     }
 }
 
@@ -2115,7 +2402,133 @@ export default {
     background-color: var(--light);
     overflow: hidden;
     z-index: 1;
-    background: linear-gradient(to bottom right, #f7f9fa, #e6f7f7);
+    background: linear-gradient(135deg, #f7f9fa 0%, #e6f7f7 50%, #d9f2f2 100%);
+}
+
+.animated-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.shape {
+    position: absolute;
+    opacity: 0.4;
+    z-index: 0;
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    filter: blur(2px);
+}
+
+.shape1 {
+    top: 10%;
+    left: 5%;
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(45deg, var(--primary), #4ecdc4);
+    animation: float-slow 15s ease-in-out infinite alternate, spin 25s linear infinite;
+}
+
+.shape2 {
+    top: 60%;
+    left: 10%;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(45deg, var(--secondary), #f8e9a1);
+    animation: float-slow 20s ease-in-out infinite alternate-reverse, spin 30s linear infinite reverse;
+}
+
+.shape3 {
+    top: 20%;
+    right: 10%;
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(45deg, var(--dim-3), #bb8fce);
+    animation: float-slow 18s ease-in-out infinite alternate, spin 35s linear infinite;
+}
+
+.shape4 {
+    bottom: 15%;
+    right: 5%;
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(45deg, var(--dim-4), #f9e79f);
+    animation: float-slow 22s ease-in-out infinite alternate-reverse, spin 28s linear infinite reverse;
+}
+
+.shape5 {
+    top: 40%;
+    left: 30%;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(45deg, var(--dim-5), #f1948a);
+    animation: float-slow 25s ease-in-out infinite alternate, spin 40s linear infinite;
+}
+
+.shape6 {
+    bottom: 30%;
+    right: 30%;
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(45deg, var(--dim-6), #7dcea0);
+    animation: float-slow 17s ease-in-out infinite alternate-reverse, spin 32s linear infinite reverse;
+}
+
+@keyframes float-slow {
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(20px, -20px);
+    }
+}
+
+@keyframes spin {
+    0% {
+        border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    }
+    25% {
+        border-radius: 70% 30% 30% 70% / 70% 70% 30% 30%;
+    }
+    50% {
+        border-radius: 30% 70% 70% 30% / 70% 70% 30% 30%;
+    }
+    75% {
+        border-radius: 70% 30% 30% 70% / 30% 30% 70% 70%;
+    }
+    100% {
+        border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    }
+}
+
+.pulse-circle {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 179, 176, 0.2) 0%, rgba(0, 179, 176, 0) 70%);
+    z-index: 1;
+    animation: pulse 2s infinite ease-out;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
 }
 
 /* Contact Section */
@@ -2266,4 +2679,317 @@ export default {
         padding: 25px;
     }
 }
-</style> 
+
+.features-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.bg-shape {
+    position: absolute;
+    opacity: 0.4;
+    z-index: 0;
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    filter: blur(2px);
+}
+
+.bg-shape1 {
+    top: 10%;
+    left: 5%;
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(45deg, var(--primary), #4ecdc4);
+    animation: float-slow 15s ease-in-out infinite alternate, spin 25s linear infinite;
+}
+
+.bg-shape2 {
+    top: 60%;
+    left: 10%;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(45deg, var(--secondary), #f8e9a1);
+    animation: float-slow 20s ease-in-out infinite alternate-reverse, spin 30s linear infinite reverse;
+}
+
+.bg-shape3 {
+    top: 20%;
+    right: 10%;
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(45deg, var(--dim-3), #bb8fce);
+    animation: float-slow 18s ease-in-out infinite alternate, spin 35s linear infinite;
+}
+
+.features {
+    padding: 100px 0;
+    background-color: var(--light);
+    position: relative;
+    overflow: hidden;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 50px;
+}
+
+.feature-card {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 30px;
+    box-shadow: var(--shadow);
+    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(0, 179, 176, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+    z-index: -1;
+    transform: translateY(100%);
+    transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.feature-card:hover::before {
+    transform: translateY(0);
+}
+
+.tilt-card {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.tilt-card:hover {
+    transform: translateY(-10px) rotateX(5deg) rotateY(5deg);
+}
+
+.feature-icon {
+    width: 70px;
+    height: 70px;
+    background-color: rgba(0, 179, 176, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-icon i {
+    font-size: 30px;
+    color: var(--primary);
+    position: relative;
+    z-index: 2;
+}
+
+.pulse-animation::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(0, 179, 176, 0.3) 0%, rgba(0, 179, 176, 0) 70%);
+    border-radius: 50%;
+    z-index: 1;
+    animation: pulse-icon 2s infinite;
+}
+
+@keyframes pulse-icon {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+}
+
+.reveal-text {
+    position: relative;
+    overflow: hidden;
+}
+
+.reveal-text::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--light);
+    animation: text-reveal 1.5s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+
+@keyframes text-reveal {
+    0% {
+        width: 100%;
+    }
+    100% {
+        width: 0;
+    }
+}
+
+.cta {
+    padding: 100px 0;
+    background: linear-gradient(135deg, #00b3b0 0%, #008b89 100%);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.particle {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.particle1 {
+    width: 15px;
+    height: 15px;
+    top: 20%;
+    left: 10%;
+    animation: float-particle 20s infinite linear;
+}
+
+.particle2 {
+    width: 10px;
+    height: 10px;
+    top: 40%;
+    left: 25%;
+    animation: float-particle 15s infinite linear;
+}
+
+.particle3 {
+    width: 20px;
+    height: 20px;
+    top: 70%;
+    left: 15%;
+    animation: float-particle 25s infinite linear;
+}
+
+.particle4 {
+    width: 8px;
+    height: 8px;
+    top: 30%;
+    left: 80%;
+    animation: float-particle 18s infinite linear;
+}
+
+.particle5 {
+    width: 12px;
+    height: 12px;
+    top: 60%;
+    left: 70%;
+    animation: float-particle 22s infinite linear;
+}
+
+.particle6 {
+    width: 18px;
+    height: 18px;
+    top: 80%;
+    left: 85%;
+    animation: float-particle 24s infinite linear;
+}
+
+.particle7 {
+    width: 6px;
+    height: 6px;
+    top: 15%;
+    left: 50%;
+    animation: float-particle 16s infinite linear;
+}
+
+.particle8 {
+    width: 14px;
+    height: 14px;
+    top: 85%;
+    left: 40%;
+    animation: float-particle 21s infinite linear;
+}
+
+@keyframes float-particle {
+    0% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-500px) translateX(100px);
+        opacity: 0;
+    }
+}
+
+.glowing-text {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    }
+    to {
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    }
+}
+
+.animated-button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.animated-button:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: all 0.5s;
+}
+
+.animated-button:hover:before {
+    left: 100%;
+}
+</style>
