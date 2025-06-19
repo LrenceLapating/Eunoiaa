@@ -1,0 +1,2259 @@
+<template>
+  <div>
+    <!-- Header -->
+    <header id="header">
+        <div class="container header-container">
+            <div class="logo">
+                <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=O" alt="ORCA Logo">
+                <h1>ORCA</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#training">Training</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+            <a href="login.html" class="cta-button">Login</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-content">
+            <div class="hero-text fade-in">
+                <h2>Optimized <span class="text-primary">Ryff-scale</span> Computation & Analysis</h2>
+                <p>ORCA streamlines psychological well-being evaluation using the validated Ryff Scale, providing real-time insights and personalized feedback for educational institutions.</p>
+                <div class="hero-buttons">
+                    <a href="#assessment" class="cta-button">Start Assessment</a>
+                    <a href="#features" class="cta-button-outline">Explore Features</a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-number counter" data-target="25">0</div>
+                        <div class="stat-label">Universities</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number counter" data-target="5000">0</div>
+                        <div class="stat-label">Students</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number counter" data-target="98">0</div>
+                        <div class="stat-label">% Satisfaction</div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-graphic fade-in">
+                <div class="dimensions-container">
+                    <div class="dimension-circle">
+                        <div class="dimension dimension-1">
+                            <div class="dimension-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="dimension-label">Self-Acceptance</div>
+                        </div>
+                        <div class="dimension dimension-2">
+                            <div class="dimension-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="dimension-label">Positive Relations</div>
+                        </div>
+                        <div class="dimension dimension-3">
+                            <div class="dimension-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="dimension-label">Autonomy</div>
+                        </div>
+                        <div class="dimension dimension-4">
+                            <div class="dimension-icon">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                            <div class="dimension-label">Environmental Mastery</div>
+                        </div>
+                        <div class="dimension dimension-5">
+                            <div class="dimension-icon">
+                                <i class="fas fa-bullseye"></i>
+                            </div>
+                            <div class="dimension-label">Purpose in Life</div>
+                        </div>
+                        <div class="dimension dimension-6">
+                            <div class="dimension-icon">
+                                <i class="fas fa-seedling"></i>
+                            </div>
+                            <div class="dimension-label">Personal Growth</div>
+                        </div>
+                        <div class="dimension-center">
+                            <div class="dimension-center-text">Ryff Scale</div>
+                        </div>
+                    </div>
+                    <div class="dimension-stats">
+                        <div class="stat-bar">
+                            <div class="stat-label">Self-Acceptance</div>
+                            <div class="stat-track">
+                                <div class="stat-fill stat-fill-1"></div>
+                            </div>
+                            <div class="stat-value">78%</div>
+                        </div>
+                        <div class="stat-bar">
+                            <div class="stat-label">Positive Relations</div>
+                            <div class="stat-track">
+                                <div class="stat-fill stat-fill-2"></div>
+                            </div>
+                            <div class="stat-value">65%</div>
+                        </div>
+                        <div class="stat-bar">
+                            <div class="stat-label">Autonomy</div>
+                            <div class="stat-track">
+                                <div class="stat-fill stat-fill-3"></div>
+                            </div>
+                            <div class="stat-value">82%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Assessment Types Section -->
+    <section id="assessment" class="assessment-section">
+        <div class="container">
+            <div class="section-title">
+                <h3>Choose Your Assessment</h3>
+                <p>ORCA offers multiple versions of the validated Ryff Scale to meet different needs</p>
+            </div>
+            <div class="assessment-cards">
+                <div class="assessment-card fade-in">
+                    <div class="assessment-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h4>42-Item Assessment</h4>
+                    <p>Standard version with 7 items per dimension. Balances depth and completion time.</p>
+                    <div class="assessment-meta">
+                        <div class="meta-item"><i class="fas fa-clock"></i> 15-20 min</div>
+                        <div class="meta-item"><i class="fas fa-chart-bar"></i> Detailed Results</div>
+                    </div>
+                    <a href="login.html" class="cta-button">Start Assessment</a>
+                </div>
+                <div class="assessment-card fade-in">
+                    <div class="assessment-icon">
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                    <h4>54-Item Assessment</h4>
+                    <p>Extended version with 9 items per dimension. Provides more nuanced insights.</p>
+                    <div class="assessment-meta">
+                        <div class="meta-item"><i class="fas fa-clock"></i> 20-25 min</div>
+                        <div class="meta-item"><i class="fas fa-chart-bar"></i> Comprehensive</div>
+                    </div>
+                    <a href="login.html" class="cta-button">Start Assessment</a>
+                </div>
+                <div class="assessment-card fade-in">
+                    <div class="assessment-icon">
+                        <i class="fas fa-microscope"></i>
+                    </div>
+                    <h4>84-Item Assessment</h4>
+                    <p>Complete version with 14 items per dimension. Highest reliability and detail.</p>
+                    <div class="assessment-meta">
+                        <div class="meta-item"><i class="fas fa-clock"></i> 30-40 min</div>
+                        <div class="meta-item"><i class="fas fa-chart-bar"></i> In-Depth Analysis</div>
+                    </div>
+                    <a href="login.html" class="cta-button">Start Assessment</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-title">
+                <h3>Key Features</h3>
+                <p>ORCA transforms psychological well-being assessment through automation and AI-powered analysis</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <h4>Ryff Scale Assessment</h4>
+                    <p>Validated psychological well-being evaluation using the Ryff Scale with multiple versions (42, 54, or 84 items) to suit different needs.</p>
+                    <p class="feature-detail">Measures six dimensions of psychological well-being with scientific validity</p>
+                </div>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <h4>Automated Scoring</h4>
+                    <p>Instant calculation of results across all six Ryff dimensions, eliminating manual scoring errors and saving valuable time.</p>
+                    <p class="feature-detail">Reduces assessment processing time from hours to seconds</p>
+                </div>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h4>Comprehensive Dashboards</h4>
+                    <p>Visual representation of well-being data for individuals and groups, with filtering options by demographics and time periods.</p>
+                    <p class="feature-detail">Intuitive visualization of complex psychological data patterns</p>
+                </div>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <h4>Privacy Controls</h4>
+                    <p>Role-based access system ensuring that sensitive psychological data is only accessible to authorized personnel.</p>
+                    <p class="feature-detail">Protects confidential information with secure authentication</p>
+                </div>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h4>Personalized Insights</h4>
+                    <p>Tailored feedback and recommendations based on individual assessment results to support psychological well-being improvement.</p>
+                    <p class="feature-detail">Actionable guidance for each dimension of well-being</p>
+                </div>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-export"></i>
+                    </div>
+                    <h4>Data Export</h4>
+                    <p>Export assessment results and reports in multiple formats for integration with other systems or for offline analysis.</p>
+                    <p class="feature-detail">Compatible with common data formats for research and reporting</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- User Roles Section -->
+    <section class="user-roles-section">
+        <div class="container">
+            <div class="section-title">
+                <h3>Tailored for Every User</h3>
+                <p>ORCA provides specialized experiences for different roles in your institution</p>
+            </div>
+            <div class="roles-container">
+                <div class="role-card slide-in-left">
+                    <div class="role-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h4>For Students</h4>
+                    <ul class="role-features">
+                        <li><i class="fas fa-check"></i> Adaptive questionnaires to reduce fatigue</li>
+                        <li><i class="fas fa-check"></i> Personalized well-being insights</li>
+                        <li><i class="fas fa-check"></i> Progress tracking over time</li>
+                        <li><i class="fas fa-check"></i> Actionable recommendations</li>
+                    </ul>
+                    <a href="login.html" class="cta-button">Student Login</a>
+                </div>
+                <div class="role-card">
+                    <div class="role-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <h4>For Employees</h4>
+                    <ul class="role-features">
+                        <li><i class="fas fa-check"></i> Confidential well-being assessment</li>
+                        <li><i class="fas fa-check"></i> Stress management insights</li>
+                        <li><i class="fas fa-check"></i> Work-life balance guidance</li>
+                        <li><i class="fas fa-check"></i> Professional development support</li>
+                    </ul>
+                    <a href="login.html" class="cta-button">Employee Login</a>
+                </div>
+                <div class="role-card slide-in-right">
+                    <div class="role-icon">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <h4>For Counselors</h4>
+                    <ul class="role-features">
+                        <li><i class="fas fa-check"></i> Automated scoring and analysis</li>
+                        <li><i class="fas fa-check"></i> Risk detection alerts</li>
+                        <li><i class="fas fa-check"></i> Demographic trend analysis</li>
+                        <li><i class="fas fa-check"></i> Intervention planning tools</li>
+                    </ul>
+                    <a href="login.html" class="cta-button">Counselor Login</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Data Visualization Section -->
+    <section class="data-visualization">
+        <div class="container">
+            <div class="section-title">
+                <h3>Data-Driven Insights</h3>
+                <p>Powerful visualization tools to understand psychological well-being patterns</p>
+            </div>
+            <div class="dashboard-preview">
+                <div class="dashboard-tabs">
+                    <div class="dashboard-tab active" data-tab="individual">Individual</div>
+                    <div class="dashboard-tab" data-tab="group">Group</div>
+                    <div class="dashboard-tab" data-tab="trends">Trends</div>
+                </div>
+                <div class="dashboard-content">
+                    <div class="dashboard-panel active" id="individual-panel">
+                        <div class="dashboard-image">
+                            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Individual Dashboard">
+                            <div class="overlay-text">
+                                <h4>Individual Assessment Dashboard</h4>
+                                <p>Detailed breakdown of each Ryff dimension with personalized recommendations</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-panel" id="group-panel">
+                        <div class="dashboard-image">
+                            <img src="https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Group Dashboard">
+                            <div class="overlay-text">
+                                <h4>Group Analysis Dashboard</h4>
+                                <p>Compare cohorts and identify trends across demographics using CoDA</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-panel" id="trends-panel">
+                        <div class="dashboard-image">
+                            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Trends Dashboard">
+                            <div class="overlay-text">
+                                <h4>Longitudinal Trends Dashboard</h4>
+                                <p>Track well-being changes over time with predictive analytics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <div class="section-title">
+                <h3>How ORCA Works</h3>
+                <p>A simple process that transforms psychological assessment in your institution</p>
+            </div>
+            <div class="steps-container">
+                <div class="step fade-in">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Assessment Initiation</h4>
+                        <p>Counselors or HR personnel initiate assessments for individuals or groups, selecting the appropriate Ryff Scale version (42, 54, or 84 items).</p>
+                        <div class="step-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="step fade-in">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Adaptive Questionnaire</h4>
+                        <p>Participants complete the digital assessment with progress tracking and adaptive features that minimize survey fatigue while maintaining validity.</p>
+                        <div class="step-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="step fade-in">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Automated Analysis</h4>
+                        <p>ORCA processes responses using advanced algorithms and Compositional Data Analysis (CoDA) to generate nuanced well-being profiles.</p>
+                        <div class="step-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="step fade-in">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Professional Review</h4>
+                        <p>Counselors review AI-generated insights and recommendations before they're shared with participants, ensuring professional oversight.</p>
+                        <div class="step-icon">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="step fade-in">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>Personalized Feedback</h4>
+                        <p>Participants receive tailored feedback on their psychological well-being across all six Ryff dimensions with actionable recommendations.</p>
+                        <div class="step-icon">
+                            <i class="fas fa-comment-dots"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Research Section -->
+    <section class="research-section">
+        <div class="container">
+            <div class="section-title">
+                <h3>Research-Based Approach</h3>
+                <p>ORCA is built on Carol Ryff's validated six-dimensional model of psychological well-being</p>
+            </div>
+            <div class="research-content">
+                <div class="research-text slide-in-left">
+                    <h4>The Ryff Scale</h4>
+                    <p>The Ryff Scales of Psychological Well-Being is a theoretically grounded instrument that specifically focuses on measuring multiple facets of psychological well-being. These facets include the six distinct dimensions of autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance.</p>
+                    <p>ORCA transforms traditional assessment methods through automation, AI-powered interpretation, and user-centered design while maintaining the psychometric integrity of the original scale.</p>
+                    <div class="research-stats">
+                        <div class="research-stat">
+                            <div class="stat-number">0.86-0.93</div>
+                            <div class="stat-label">Internal Consistency (Cronbach's α)</div>
+                        </div>
+                        <div class="research-stat">
+                            <div class="stat-number">6</div>
+                            <div class="stat-label">Well-being Dimensions</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="research-image slide-in-right">
+                    <div class="research-diagram">
+                        <div class="diagram-center">
+                            <span>Psychological Well-being</span>
+                        </div>
+                        <div class="diagram-items">
+                            <div class="diagram-item" style="--angle: 0deg">
+                                <div class="diagram-icon"><i class="fas fa-user"></i></div>
+                                <div class="diagram-text">Self-Acceptance</div>
+                            </div>
+                            <div class="diagram-item" style="--angle: 60deg">
+                                <div class="diagram-icon"><i class="fas fa-users"></i></div>
+                                <div class="diagram-text">Positive Relations</div>
+                            </div>
+                            <div class="diagram-item" style="--angle: 120deg">
+                                <div class="diagram-icon"><i class="fas fa-brain"></i></div>
+                                <div class="diagram-text">Autonomy</div>
+                            </div>
+                            <div class="diagram-item" style="--angle: 180deg">
+                                <div class="diagram-icon"><i class="fas fa-globe"></i></div>
+                                <div class="diagram-text">Environmental Mastery</div>
+                            </div>
+                            <div class="diagram-item" style="--angle: 240deg">
+                                <div class="diagram-icon"><i class="fas fa-bullseye"></i></div>
+                                <div class="diagram-text">Purpose in Life</div>
+                            </div>
+                            <div class="diagram-item" style="--angle: 300deg">
+                                <div class="diagram-icon"><i class="fas fa-seedling"></i></div>
+                                <div class="diagram-text">Personal Growth</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Training Section -->
+    <section id="training" class="training-section">
+        <div class="container">
+            <div class="section-title">
+                <h3>Training & Professional Development</h3>
+                <p>Enhance your institution's capacity to support psychological well-being</p>
+            </div>
+            <div class="training-content">
+                <div class="training-tabs">
+                    <div class="training-tab active" data-training="counselors">
+                        <i class="fas fa-user-md"></i>
+                        <span>For Counselors</span>
+                    </div>
+                    <div class="training-tab" data-training="hr">
+                        <i class="fas fa-briefcase"></i>
+                        <span>For HR Personnel</span>
+                    </div>
+                </div>
+                
+                <div class="training-panels">
+                    <div class="training-panel active" id="counselors-panel">
+                        <div class="training-panel-content">
+                            <h4>Counselor Training Program</h4>
+                            <p>Our comprehensive training program equips counselors with the skills to effectively use ORCA for psychological well-being assessment and intervention planning.</p>
+                            
+                            <div class="training-modules">
+                                <div class="training-module">
+                                    <div class="module-icon">
+                                        <i class="fas fa-chart-pie"></i>
+                                    </div>
+                                    <div class="module-content">
+                                        <h5>Compositional Data Analysis</h5>
+                                        <p>Learn to interpret CoDA-based results and understand the nuanced relationships between Ryff dimensions.</p>
+                                        <div class="module-meta">
+                                            <span><i class="fas fa-clock"></i> 4 hours</span>
+                                            <span><i class="fas fa-certificate"></i> Certificate</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="training-module">
+                                    <div class="module-icon">
+                                        <i class="fas fa-user-shield"></i>
+                                    </div>
+                                    <div class="module-content">
+                                        <h5>Risk Detection & Intervention</h5>
+                                        <p>Develop skills to identify at-risk individuals and create effective intervention strategies based on assessment data.</p>
+                                        <div class="module-meta">
+                                            <span><i class="fas fa-clock"></i> 6 hours</span>
+                                            <span><i class="fas fa-certificate"></i> Certificate</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="training-module">
+                                    <div class="module-icon">
+                                        <i class="fas fa-laptop-code"></i>
+                                    </div>
+                                    <div class="module-content">
+                                        <h5>Dashboard Mastery</h5>
+                                        <p>Master the ORCA dashboard to analyze individual and group trends, generate reports, and track interventions.</p>
+                                        <div class="module-meta">
+                                            <span><i class="fas fa-clock"></i> 3 hours</span>
+                                            <span><i class="fas fa-certificate"></i> Certificate</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <a href="login.html" class="cta-button">Register for Training</a>
+                        </div>
+                    </div>
+                    
+                    <div class="training-panel" id="hr-panel">
+                        <div class="training-panel-content">
+                            <h4>HR Professional Training Program</h4>
+                            <p>Equip your HR team with the knowledge and tools to implement ORCA for employee well-being monitoring and workplace wellness initiatives.</p>
+                            
+                            <div class="training-modules">
+                                <div class="training-module">
+                                    <div class="module-icon">
+                                        <i class="fas fa-users-cog"></i>
+                                    </div>
+                                    <div class="module-content">
+                                        <h5>Employee Well-being Management</h5>
+                                        <p>Learn to administer assessments and interpret results to support employee mental health and professional development.</p>
+                                        <div class="module-meta">
+                                            <span><i class="fas fa-clock"></i> 5 hours</span>
+                                            <span><i class="fas fa-certificate"></i> Certificate</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="training-module">
+                                    <div class="module-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="module-content">
+                                        <h5>Organizational Analytics</h5>
+                                        <p>Develop skills to analyze department-level trends and implement data-driven wellness initiatives.</p>
+                                        <div class="module-meta">
+                                            <span><i class="fas fa-clock"></i> 4 hours</span>
+                                            <span><i class="fas fa-certificate"></i> Certificate</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="training-module">
+                                    <div class="module-icon">
+                                        <i class="fas fa-shield-alt"></i>
+                                    </div>
+                                    <div class="module-content">
+                                        <h5>Privacy & Ethical Considerations</h5>
+                                        <p>Understand best practices for maintaining confidentiality and ethical handling of psychological data.</p>
+                                        <div class="module-meta">
+                                            <span><i class="fas fa-clock"></i> 3 hours</span>
+                                            <span><i class="fas fa-certificate"></i> Certificate</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <a href="login.html" class="cta-button">Register for Training</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about" id="about">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-image scale-in">
+                    <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Team working on ORCA">
+                </div>
+                <div class="about-text fade-in">
+                    <h3>About ORCA</h3>
+                    <p>ORCA (Optimized Ryff-scale Computation & Analysis) was developed by a team of researchers and developers from the University of the Immaculate Conception to address the growing need for efficient, accurate psychological well-being assessment in educational settings.</p>
+                    <p>Built on Carol Ryff's validated six-dimensional model of psychological well-being, ORCA transforms traditional assessment methods through automation, AI-powered interpretation, and user-centered design.</p>
+                    <p>Our mission is to make psychological well-being assessment more accessible, actionable, and integrated into educational support systems, ultimately contributing to healthier, more resilient academic communities.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <h3>Ready to Transform Psychological Well-being Assessment?</h3>
+            <p>Join educational institutions already using ORCA to support student and employee psychological well-being with data-driven insights.</p>
+            <div class="cta-buttons">
+                <a href="login.html" class="cta-button-white">Start Assessment</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <div class="section-title">
+                <h3>Get In Touch</h3>
+                <p>Have questions about ORCA? Reach out to our team for more information</p>
+            </div>
+            <div class="contact-container">
+                <div class="contact-info fade-in">
+                    <div class="contact-card">
+                        <div class="contact-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <h4>Our Location</h4>
+                        <p>Father Selga St, Davao City<br>Philippines 8000</p>
+                    </div>
+                    <div class="contact-card">
+                        <div class="contact-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <h4>Email Us</h4>
+                        <p>info@orca-wellbeing.com<br>support@orca-wellbeing.com</p>
+                    </div>
+                    <div class="contact-card">
+                        <div class="contact-icon">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                        <h4>Call Us</h4>
+                        <p>+63 (82) 123 4567<br>+63 (82) 987 6543</p>
+                    </div>
+                </div>
+                <div class="contact-form fade-in">
+                    <form>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="name">Your Name</label>
+                                <input type="text" id="name" placeholder="Enter your name">
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Your Email</label>
+                                <input type="email" id="email" placeholder="Enter your email">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="subject">Subject</label>
+                            <input type="text" id="subject" placeholder="Enter subject">
+                        </div>
+                        <div class="form-group">
+                            <label for="message">Message</label>
+                            <textarea id="message" rows="5" placeholder="Enter your message"></textarea>
+                        </div>
+                        <button type="submit" class="cta-button">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h4>ORCA</h4>
+                    <p>Optimized Ryff-scale Computation & Analysis</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="footer-column">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#how-it-works">How It Works</a></li>
+                        <li><a href="#training">Training</a></li>
+                        <li><a href="#about">About</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Research</a></li>
+                        <li><a href="#">Support</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Contact</h4>
+                    <ul>
+                        <li><a href="mailto:info@orca-wellbeing.com">info@orca-wellbeing.com</a></li>
+                        <li><a href="tel:+6382123456">+63 (82) 123 4567</a></li>
+                        <li><a href="https://maps.google.com/?q=Father+Selga+St,+Davao+City">Father Selga St, Davao City</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; {{ new Date().getFullYear() }} ORCA. All rights reserved. University of the Immaculate Conception</p>
+            </div>
+        </div>
+    </footer>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'LandingPage',
+  mounted() {
+    // Header scroll effect
+    window.addEventListener('scroll', this.handleScroll);
+    
+    // Initial visibility check
+    setTimeout(this.checkVisibility, 100);
+    
+    // Animate stat bars
+    this.initStatBars();
+    
+    // Hover effects for dimensions
+    this.initDimensionHoverEffects();
+    
+    // Initialize counter animations
+    this.initCounters();
+    
+    // Initialize dashboard tabs
+    this.initDashboardTabs();
+    
+    // Initialize training tabs
+    this.initTrainingTabs();
+  },
+  beforeUnmount() {
+    window.removeEventListener('scroll', this.handleScroll);
+  },
+  methods: {
+    handleScroll() {
+      const header = document.getElementById('header');
+      if (window.scrollY > 50) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+      
+      this.checkVisibility();
+    },
+    checkVisibility() {
+      const fadeElements = document.querySelectorAll('.fade-in');
+      const scaleElements = document.querySelectorAll('.scale-in');
+      const slideLeftElements = document.querySelectorAll('.slide-in-left');
+      const slideRightElements = document.querySelectorAll('.slide-in-right');
+      const stepElements = document.querySelectorAll('.step');
+      const contactElements = document.querySelectorAll('.contact-card, .contact-form');
+      
+      const isInViewport = (element) => {
+        const rect = element.getBoundingClientRect();
+        return (
+          rect.top <= (window.innerHeight || document.documentElement.clientHeight) * 0.85 &&
+          rect.bottom >= 0
+        );
+      };
+      
+      fadeElements.forEach(element => {
+        if (isInViewport(element)) {
+          element.classList.add('visible');
+        }
+      });
+      
+      scaleElements.forEach(element => {
+        if (isInViewport(element)) {
+          element.classList.add('visible');
+        }
+      });
+      
+      slideLeftElements.forEach(element => {
+        if (isInViewport(element)) {
+          element.classList.add('visible');
+        }
+      });
+      
+      slideRightElements.forEach(element => {
+        if (isInViewport(element)) {
+          element.classList.add('visible');
+        }
+      });
+      
+      stepElements.forEach(element => {
+        if (isInViewport(element)) {
+          element.classList.add('visible');
+        }
+      });
+      
+      contactElements.forEach(element => {
+        if (isInViewport(element)) {
+          element.classList.add('visible');
+        }
+      });
+    },
+    scrollToSection(event, targetId) {
+      event.preventDefault();
+      if (targetId === '#') return;
+      
+      const targetElement = document.querySelector(targetId);
+      if (targetElement) {
+        window.scrollTo({
+          top: targetElement.offsetTop - 100,
+          behavior: 'smooth'
+        });
+      }
+    },
+    initStatBars() {
+      const statFills = document.querySelectorAll('.stat-fill');
+      
+      // Store original widths
+      statFills.forEach(fill => {
+        const width = getComputedStyle(fill).width;
+        fill.setAttribute('data-width', width);
+        fill.style.width = '0';
+      });
+      
+      // Trigger stat bar animation when in viewport
+      const heroGraphic = document.querySelector('.hero-graphic');
+      if (heroGraphic) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              this.animateStatBars();
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.5 });
+        
+        observer.observe(heroGraphic);
+      }
+    },
+    animateStatBars() {
+      const statFills = document.querySelectorAll('.stat-fill');
+      
+      statFills.forEach(fill => {
+        const targetWidth = fill.getAttribute('data-width') || fill.style.width;
+        fill.style.width = '0';
+        
+        setTimeout(() => {
+          fill.style.width = targetWidth;
+        }, 500);
+      });
+    },
+    initDimensionHoverEffects() {
+      const dimensions = document.querySelectorAll('.dimension');
+      dimensions.forEach(dimension => {
+        dimension.addEventListener('mouseenter', function() {
+          const index = this.classList[1].split('-')[1];
+          const statFill = document.querySelector(`.stat-fill-${index}`);
+          if (statFill) {
+            statFill.style.opacity = '0.8';
+            statFill.style.transform = 'scaleX(1.05)';
+          }
+        });
+        
+        dimension.addEventListener('mouseleave', function() {
+          const index = this.classList[1].split('-')[1];
+          const statFill = document.querySelector(`.stat-fill-${index}`);
+          if (statFill) {
+            statFill.style.opacity = '1';
+            statFill.style.transform = 'scaleX(1)';
+          }
+        });
+      });
+    },
+    initCounters() {
+      const counters = document.querySelectorAll('.counter');
+      const speed = 200;
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const counter = entry.target;
+            const target = parseInt(counter.getAttribute('data-target'));
+            let count = 0;
+            
+            const updateCount = () => {
+              const increment = target / speed;
+              
+              if (count < target) {
+                count += increment;
+                counter.innerText = Math.ceil(count);
+                setTimeout(updateCount, 1);
+              } else {
+                counter.innerText = target;
+              }
+            };
+            
+            updateCount();
+            observer.unobserve(counter);
+          }
+        });
+      }, { threshold: 0.5 });
+      
+      counters.forEach(counter => {
+        observer.observe(counter);
+      });
+    },
+    initDashboardTabs() {
+      const tabs = document.querySelectorAll('.dashboard-tab');
+      
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // Remove active class from all tabs
+          tabs.forEach(t => t.classList.remove('active'));
+          
+          // Add active class to clicked tab
+          tab.classList.add('active');
+          
+          // Get tab data attribute
+          const tabId = tab.getAttribute('data-tab');
+          
+          // Hide all panels
+          const panels = document.querySelectorAll('.dashboard-panel');
+          panels.forEach(panel => panel.classList.remove('active'));
+          
+          // Show selected panel
+          const selectedPanel = document.getElementById(`${tabId}-panel`);
+          if (selectedPanel) {
+            selectedPanel.classList.add('active');
+          }
+        });
+      });
+    },
+    initTrainingTabs() {
+      const trainingTabs = document.querySelectorAll('.training-tab');
+      
+      trainingTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // Remove active class from all tabs
+          trainingTabs.forEach(t => t.classList.remove('active'));
+          
+          // Add active class to clicked tab
+          tab.classList.add('active');
+          
+          // Get tab data attribute
+          const trainingId = tab.getAttribute('data-training');
+          
+          // Hide all panels
+          const trainingPanels = document.querySelectorAll('.training-panel');
+          trainingPanels.forEach(panel => panel.classList.remove('active'));
+          
+          // Show selected panel
+          const selectedPanel = document.getElementById(`${trainingId}-panel`);
+          if (selectedPanel) {
+            selectedPanel.classList.add('active');
+          }
+        });
+      });
+    }
+  }
+}
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+:root {
+    --primary: #00b3b0;
+    --primary-dark: #009491;
+    --secondary: #f8c630;
+    --accent: #ff6b6b;
+    --light: #ffffff;
+    --dark: #1a2e35;
+    --gray: #f7f9fa;
+    --text: #546e7a;
+    --text-light: #78909c;
+    --border-radius: 8px;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    
+    /* Dimension colors */
+    --dim-1: #00b3b0;
+    --dim-2: #3498db;
+    --dim-3: #9b59b6;
+    --dim-4: #f1c40f;
+    --dim-5: #e74c3c;
+    --dim-6: #2ecc71;
+}
+
+.text-primary {
+    color: var(--primary);
+}
+
+/* Floating Shapes */
+.floating-shapes {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.shape {
+    position: absolute;
+    opacity: 0.1;
+    z-index: 0;
+}
+
+.shape1 {
+    top: 20%;
+    left: 10%;
+    width: 80px;
+    height: 80px;
+    background-color: var(--primary);
+    border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
+    animation: floatAnimation 14s ease-in-out infinite;
+}
+
+.shape2 {
+    top: 60%;
+    left: 15%;
+    width: 60px;
+    height: 60px;
+    background-color: var(--secondary);
+    border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
+    animation: floatAnimation 16s ease-in-out infinite 2s;
+}
+
+.shape3 {
+    top: 30%;
+    right: 15%;
+    width: 70px;
+    height: 70px;
+    background-color: var(--accent);
+    border-radius: 59% 41% 38% 62% / 50% 45% 55% 50%;
+    animation: floatAnimation 12s ease-in-out infinite 1s;
+}
+
+.shape4 {
+    top: 70%;
+    right: 10%;
+    width: 50px;
+    height: 50px;
+    background-color: var(--dim-3);
+    border-radius: 50% 50% 20% 80% / 25% 80% 20% 75%;
+    animation: floatAnimation 18s ease-in-out infinite 3s;
+}
+
+@keyframes floatAnimation {
+    0% {
+        transform: translate(0, 0) rotate(0);
+    }
+    25% {
+        transform: translate(10px, -15px) rotate(5deg);
+    }
+    50% {
+        transform: translate(0, 10px) rotate(0);
+    }
+    75% {
+        transform: translate(-10px, -5px) rotate(-5deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(0);
+    }
+}
+
+/* Hero Stats */
+.hero-stats {
+    display: flex;
+    margin-top: 30px;
+    gap: 30px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 5px;
+    position: relative;
+}
+
+.stat-number::after {
+    content: "+";
+    font-size: 20px;
+    position: absolute;
+    top: 0;
+    right: -15px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--text);
+}
+
+/* Hero Buttons */
+.hero-buttons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.cta-button-outline {
+    background-color: transparent;
+    color: var(--primary);
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s;
+    border: 2px solid var(--primary);
+    cursor: pointer;
+    display: inline-block;
+    font-size: 15px;
+}
+
+.cta-button-outline:hover {
+    background-color: rgba(0, 179, 176, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Assessment Section */
+.assessment-section {
+    padding: 100px 0;
+    background-color: var(--light);
+}
+
+.assessment-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 50px;
+}
+
+.assessment-card {
+    background-color: var(--light);
+    border-radius: var(--border-radius);
+    padding: 30px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border-top: 4px solid var(--primary);
+}
+
+.assessment-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+.assessment-icon {
+    width: 70px;
+    height: 70px;
+    background-color: rgba(0, 179, 176, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.assessment-icon i {
+    font-size: 30px;
+    color: var(--primary);
+}
+
+.assessment-card h4 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--dark);
+}
+
+.assessment-card p {
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.assessment-meta {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.meta-item i {
+    color: var(--primary);
+}
+
+/* User Roles Section */
+.user-roles-section {
+    padding: 100px 0;
+    background-color: var(--gray);
+}
+
+.roles-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 50px;
+}
+
+.role-card {
+    background-color: var(--light);
+    border-radius: var(--border-radius);
+    padding: 30px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s;
+    text-align: center;
+    height: 100%;
+}
+
+.role-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+.role-icon {
+    width: 80px;
+    height: 80px;
+    background-color: rgba(0, 179, 176, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.role-icon i {
+    font-size: 36px;
+    color: var(--primary);
+}
+
+.role-card h4 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--dark);
+}
+
+.role-features {
+    list-style: none;
+    text-align: left;
+    margin-bottom: 30px;
+}
+
+.role-features li {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.role-features li i {
+    color: var(--primary);
+    font-size: 14px;
+}
+
+/* Dimensions Graphic */
+.hero-graphic {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 500px;
+}
+
+.dimensions-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.dimension-circle {
+    position: relative;
+    width: 380px;
+    height: 380px;
+    margin: 0 auto;
+}
+
+.dimension {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background-color: white;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+.dimension:hover {
+    transform: scale(1.1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.dimension-1 {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 3px solid var(--dim-1);
+    animation: float 4s ease-in-out infinite;
+}
+
+.dimension-2 {
+    top: 20%;
+    right: 0;
+    border: 3px solid var(--dim-2);
+    animation: float 5s ease-in-out infinite 0.5s;
+}
+
+.dimension-3 {
+    bottom: 20%;
+    right: 0;
+    border: 3px solid var(--dim-3);
+    animation: float 4.5s ease-in-out infinite 1s;
+}
+
+.dimension-4 {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 3px solid var(--dim-4);
+    animation: float 5.5s ease-in-out infinite 1.5s;
+}
+
+.dimension-5 {
+    bottom: 20%;
+    left: 0;
+    border: 3px solid var(--dim-5);
+    animation: float 5s ease-in-out infinite 2s;
+}
+
+.dimension-6 {
+    top: 20%;
+    left: 0;
+    border: 3px solid var(--dim-6);
+    animation: float 4.5s ease-in-out infinite 2.5s;
+}
+
+.dimension-icon {
+    font-size: 24px;
+    margin-bottom: 5px;
+}
+
+.dimension-1 .dimension-icon {
+    color: var(--dim-1);
+}
+
+.dimension-2 .dimension-icon {
+    color: var(--dim-2);
+}
+
+.dimension-3 .dimension-icon {
+    color: var(--dim-3);
+}
+
+.dimension-4 .dimension-icon {
+    color: var(--dim-4);
+}
+
+.dimension-5 .dimension-icon {
+    color: var(--dim-5);
+}
+
+.dimension-6 .dimension-icon {
+    color: var(--dim-6);
+}
+
+.dimension-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--dark);
+}
+
+.dimension-center {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background-color: var(--primary);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 5px 15px rgba(0, 179, 176, 0.3);
+    z-index: 2;
+    border: 3px solid white;
+}
+
+.dimension-center-text {
+    font-size: 14px;
+    text-align: center;
+}
+
+.dimension-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    animation: spin 60s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.pulse-circle {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: var(--primary);
+    opacity: 0.6;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}
+
+.dimension-stats {
+    margin-top: 30px;
+}
+
+.stat-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.stat-label {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.stat-track {
+    flex: 2;
+    height: 8px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 15px;
+}
+
+.stat-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.5s ease-out, opacity 0.3s, transform 0.3s;
+}
+
+.stat-fill-1 {
+    background-color: var(--dim-1);
+    width: 78%;
+}
+
+.stat-fill-2 {
+    background-color: var(--dim-2);
+    width: 65%;
+}
+
+.stat-fill-3 {
+    background-color: var(--dim-3);
+    width: 82%;
+}
+
+.stat-value {
+    flex: 0 0 40px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: right;
+}
+
+/* Feature Cards */
+.feature-card {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.feature-detail {
+    font-size: 14px;
+    color: var(--primary);
+    margin-top: 10px;
+    font-weight: 500;
+    border-top: 1px solid rgba(0, 179, 176, 0.2);
+    padding-top: 10px;
+}
+
+/* Dashboard Tabs */
+.data-visualization {
+    padding: 100px 0;
+    background-color: var(--gray);
+}
+
+.dashboard-preview {
+    margin-top: 50px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background-color: white;
+}
+
+.dashboard-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-tab {
+    padding: 15px 30px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.dashboard-tab.active {
+    color: var(--primary);
+}
+
+.dashboard-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary);
+}
+
+.dashboard-content {
+    position: relative;
+    height: 500px;
+}
+
+.dashboard-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.5s ease;
+}
+
+.dashboard-panel.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.dashboard-image {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.dashboard-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.overlay-text {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 30px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    color: white;
+}
+
+.overlay-text h4 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: white;
+}
+
+.overlay-text p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+/* Step Icons */
+.step {
+    position: relative;
+}
+
+.step-icon {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 60px;
+    height: 60px;
+    background-color: rgba(0, 179, 176, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 24px;
+    opacity: 0.8;
+}
+
+/* Research Section */
+.research-section {
+    padding: 100px 0;
+    background-color: var(--light);
+}
+
+.research-content {
+    display: flex;
+    align-items: center;
+    gap: 60px;
+    margin-top: 50px;
+}
+
+.research-text {
+    flex: 1;
+}
+
+.research-text h4 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--dark);
+}
+
+.research-text p {
+    color: var(--text);
+    line-height: 1.8;
+    margin-bottom: 20px;
+}
+
+.research-stats {
+    display: flex;
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.research-stat {
+    text-align: center;
+}
+
+.research-stat .stat-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 5px;
+}
+
+.research-stat .stat-label {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.research-image {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.research-diagram {
+    position: relative;
+    width: 400px;
+    height: 400px;
+}
+
+.diagram-center {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    background-color: var(--primary);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    padding: 10px;
+    box-shadow: 0 5px 15px rgba(0, 179, 176, 0.3);
+    z-index: 2;
+}
+
+.diagram-items {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.diagram-item {
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(160px) rotate(calc(-1 * var(--angle)));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: var(--shadow);
+    animation: float 4s ease-in-out infinite;
+    animation-delay: calc(var(--angle) / 60 * 0.5s);
+}
+
+.diagram-icon {
+    font-size: 24px;
+    margin-bottom: 5px;
+    color: var(--primary);
+}
+
+.diagram-text {
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--dark);
+}
+
+@media (max-width: 992px) {
+    .dimension-circle {
+        transform: scale(0.9);
+    }
+    
+    .hero-stats {
+        justify-content: center;
+    }
+    
+    .step-icon {
+        display: none;
+    }
+    
+    .research-content {
+        flex-direction: column;
+    }
+    
+    .research-diagram {
+        width: 350px;
+        height: 350px;
+        margin-top: 40px;
+    }
+    
+    .diagram-item {
+        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(140px) rotate(calc(-1 * var(--angle)));
+    }
+}
+
+@media (max-width: 768px) {
+    .dimension-circle {
+        width: 300px;
+        height: 300px;
+        transform: scale(0.8);
+    }
+    
+    .dimension {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .dimension-icon {
+        font-size: 20px;
+    }
+    
+    .dimension-label {
+        font-size: 9px;
+    }
+    
+    .dashboard-tab {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+    
+    .dashboard-content {
+        height: 350px;
+    }
+    
+    .hero-buttons {
+        flex-direction: column;
+    }
+    
+    .research-diagram {
+        width: 300px;
+        height: 300px;
+    }
+    
+    .diagram-item {
+        width: 70px;
+        height: 70px;
+        transform: translate(-50%, -50%) rotate(var(--angle)) translateX(120px) rotate(calc(-1 * var(--angle)));
+    }
+    
+    .diagram-icon {
+        font-size: 20px;
+    }
+    
+    .diagram-text {
+        font-size: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dimension-circle {
+        transform: scale(0.7);
+    }
+    
+    .hero-stats {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+
+/* Animation Classes */
+.fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease;
+}
+
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.scale-in {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.8s ease;
+}
+
+.scale-in.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.slide-in-left {
+    opacity: 0;
+    transform: translateX(-50px);
+    transition: all 0.6s ease;
+}
+
+.slide-in-left.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.slide-in-right {
+    opacity: 0;
+    transform: translateX(50px);
+    transition: all 0.6s ease;
+}
+
+.slide-in-right.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Training Section */
+.training-section {
+    padding: 100px 0;
+    background-color: var(--gray);
+}
+
+.training-content {
+    margin-top: 50px;
+}
+
+.training-tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+    gap: 10px;
+}
+
+.training-tab {
+    padding: 15px 25px;
+    background-color: white;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.training-tab.active {
+    background-color: var(--primary);
+    color: white;
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 179, 176, 0.2);
+}
+
+.training-tab i {
+    font-size: 18px;
+}
+
+.training-panels {
+    position: relative;
+    min-height: 400px;
+}
+
+.training-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.5s ease;
+    transform: translateY(20px);
+}
+
+.training-panel.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.training-panel-content {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 40px;
+    box-shadow: var(--shadow);
+}
+
+.training-panel-content h4 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--dark);
+}
+
+.training-panel-content > p {
+    color: var(--text);
+    margin-bottom: 30px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.training-modules {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.training-module {
+    display: flex;
+    gap: 15px;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    background-color: var(--gray);
+    transition: all 0.3s ease;
+}
+
+.training-module:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.module-icon {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    background-color: rgba(0, 179, 176, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.module-content h5 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--dark);
+}
+
+.module-content p {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.module-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.module-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.module-meta i {
+    color: var(--primary);
+}
+
+.training-panel .cta-button {
+    margin: 0 auto;
+    display: block;
+    width: fit-content;
+}
+
+@media (max-width: 768px) {
+    .training-tabs {
+        flex-direction: column;
+    }
+    
+    .training-tab {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .training-modules {
+        grid-template-columns: 1fr;
+    }
+    
+    .training-panel-content {
+        padding: 25px;
+    }
+}
+
+.hero {
+    position: relative;
+    padding: 120px 0 80px;
+    background-color: var(--light);
+    overflow: hidden;
+    z-index: 1;
+    background: linear-gradient(to bottom right, #f7f9fa, #e6f7f7);
+}
+
+/* Contact Section */
+.contact-section {
+    padding: 100px 0;
+    background-color: var(--light);
+    position: relative;
+    overflow: hidden;
+}
+
+.contact-container {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 40px;
+    margin-top: 50px;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.contact-card {
+    background-color: var(--gray);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.contact-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
+    background-color: white;
+}
+
+.contact-icon {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0, 179, 176, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 20px;
+    margin-bottom: 15px;
+}
+
+.contact-card h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--dark);
+}
+
+.contact-card p {
+    color: var(--text);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.contact-form {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 40px;
+    box-shadow: var(--shadow);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.contact-form .cta-button {
+    width: 100%;
+    margin-top: 10px;
+}
+
+@media (max-width: 992px) {
+    .contact-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .contact-info {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .contact-card {
+        flex: 1 1 calc(33.333% - 20px);
+        min-width: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    
+    .contact-info {
+        flex-direction: column;
+    }
+    
+    .contact-card {
+        width: 100%;
+    }
+    
+    .contact-form {
+        padding: 25px;
+    }
+}
+</style> 
