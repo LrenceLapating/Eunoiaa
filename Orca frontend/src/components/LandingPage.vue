@@ -407,34 +407,34 @@
                     </div>
                 </div>
                 <div class="research-image slide-in-right">
-                    <div class="research-diagram">
-                        <div class="diagram-center">
+                    <div class="ryff-wheel">
+                        <div class="ryff-center">
                             <span>Psychological Well-being</span>
                         </div>
-                        <div class="diagram-items">
-                            <div class="diagram-item" style="--angle: 0deg">
-                                <div class="diagram-icon"><i class="fas fa-user"></i></div>
-                                <div class="diagram-text">Self-Acceptance</div>
+                        <div class="ryff-dimensions">
+                            <div class="ryff-dimension" style="--angle: 0deg">
+                                <div class="dimension-icon"><i class="fas fa-user"></i></div>
+                                <div class="dimension-name">Self-Acceptance</div>
                             </div>
-                            <div class="diagram-item" style="--angle: 60deg">
-                                <div class="diagram-icon"><i class="fas fa-users"></i></div>
-                                <div class="diagram-text">Positive Relations</div>
+                            <div class="ryff-dimension" style="--angle: 60deg">
+                                <div class="dimension-icon"><i class="fas fa-users"></i></div>
+                                <div class="dimension-name">Positive Relations</div>
                             </div>
-                            <div class="diagram-item" style="--angle: 120deg">
-                                <div class="diagram-icon"><i class="fas fa-brain"></i></div>
-                                <div class="diagram-text">Autonomy</div>
+                            <div class="ryff-dimension" style="--angle: 120deg">
+                                <div class="dimension-icon"><i class="fas fa-brain"></i></div>
+                                <div class="dimension-name">Autonomy</div>
                             </div>
-                            <div class="diagram-item" style="--angle: 180deg">
-                                <div class="diagram-icon"><i class="fas fa-globe"></i></div>
-                                <div class="diagram-text">Environmental Mastery</div>
+                            <div class="ryff-dimension" style="--angle: 180deg">
+                                <div class="dimension-icon"><i class="fas fa-globe"></i></div>
+                                <div class="dimension-name">Environmental Mastery</div>
                             </div>
-                            <div class="diagram-item" style="--angle: 240deg">
-                                <div class="diagram-icon"><i class="fas fa-bullseye"></i></div>
-                                <div class="diagram-text">Purpose in Life</div>
+                            <div class="ryff-dimension" style="--angle: 240deg">
+                                <div class="dimension-icon"><i class="fas fa-bullseye"></i></div>
+                                <div class="dimension-name">Purpose in Life</div>
                             </div>
-                            <div class="diagram-item" style="--angle: 300deg">
-                                <div class="diagram-icon"><i class="fas fa-seedling"></i></div>
-                                <div class="diagram-text">Personal Growth</div>
+                            <div class="ryff-dimension" style="--angle: 300deg">
+                                <div class="dimension-icon"><i class="fas fa-seedling"></i></div>
+                                <div class="dimension-name">Personal Growth</div>
                             </div>
                         </div>
                     </div>
@@ -1359,6 +1359,7 @@ export default {
 .dimension-icon {
     font-size: 24px;
     margin-bottom: 5px;
+    color: var(--primary);
 }
 
 .dimension-1 .dimension-icon {
@@ -1467,7 +1468,7 @@ export default {
         transform: translateY(0);
     }
     50% {
-        transform: translateY(-10px);
+        transform: translateY(-5px);
     }
     100% {
         transform: translateY(0);
@@ -1724,13 +1725,14 @@ export default {
     align-items: center;
 }
 
-.research-diagram {
+.ryff-wheel {
     position: relative;
     width: 400px;
     height: 400px;
+    margin: 0 auto;
 }
 
-.diagram-center {
+.ryff-center {
     position: absolute;
     width: 120px;
     height: 120px;
@@ -1747,10 +1749,10 @@ export default {
     text-align: center;
     padding: 10px;
     box-shadow: 0 5px 15px rgba(0, 179, 176, 0.3);
-    z-index: 2;
+    z-index: 10;
 }
 
-.diagram-items {
+.ryff-dimensions {
     position: absolute;
     width: 100%;
     height: 100%;
@@ -1758,13 +1760,13 @@ export default {
     left: 0;
 }
 
-.diagram-item {
+.ryff-dimension {
     position: absolute;
-    width: 90px;
-    height: 90px;
+    width: 80px;
+    height: 80px;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(160px) rotate(calc(-1 * var(--angle)));
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(150px) rotate(calc(-1 * var(--angle)));
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1772,21 +1774,27 @@ export default {
     background-color: white;
     border-radius: 50%;
     box-shadow: var(--shadow);
-    animation: float 4s ease-in-out infinite;
-    animation-delay: calc(var(--angle) / 60 * 0.5s);
+    z-index: 5;
+    transition: all 0.3s ease;
 }
 
-.diagram-icon {
+.ryff-dimension:hover {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(150px) rotate(calc(-1 * var(--angle))) scale(1.1);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.dimension-icon {
     font-size: 24px;
     margin-bottom: 5px;
     color: var(--primary);
 }
 
-.diagram-text {
+.dimension-name {
     font-size: 10px;
     font-weight: 600;
     text-align: center;
     color: var(--dark);
+    max-width: 90%;
 }
 
 @media (max-width: 992px) {
@@ -1806,13 +1814,17 @@ export default {
         flex-direction: column;
     }
     
-    .research-diagram {
+    .ryff-wheel {
         width: 350px;
         height: 350px;
-        margin-top: 40px;
+        margin: 40px auto 0;
+        position: relative;
+        overflow: visible;
     }
     
-    .diagram-item {
+    .ryff-dimension {
+        width: 80px;
+        height: 80px;
         transform: translate(-50%, -50%) rotate(var(--angle)) translateX(140px) rotate(calc(-1 * var(--angle)));
     }
 }
@@ -1830,11 +1842,11 @@ export default {
     }
     
     .dimension-icon {
-        font-size: 20px;
+        font-size: 18px;
     }
     
     .dimension-label {
-        font-size: 9px;
+        font-size: 8px;
     }
     
     .dashboard-tab {
@@ -1850,22 +1862,20 @@ export default {
         flex-direction: column;
     }
     
-    .research-diagram {
+    .ryff-wheel {
         width: 300px;
         height: 300px;
+        margin: 20px auto 0;
     }
     
-    .diagram-item {
+    .ryff-dimension {
         width: 70px;
         height: 70px;
         transform: translate(-50%, -50%) rotate(var(--angle)) translateX(120px) rotate(calc(-1 * var(--angle)));
+        font-size: 90%;
     }
     
-    .diagram-icon {
-        font-size: 20px;
-    }
-    
-    .diagram-text {
+    .dimension-name {
         font-size: 8px;
     }
 }
