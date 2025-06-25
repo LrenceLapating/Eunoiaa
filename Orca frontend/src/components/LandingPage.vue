@@ -16,7 +16,7 @@
                     <li><a href="#contact">Contact</a></li>
                 </ul>
             </nav>
-            <a href="login.html" class="cta-button">Login</a>
+            <a @click="navigateToLogin" class="cta-button">Login</a>
         </div>
     </header>
 
@@ -35,7 +35,7 @@
                 <h2>Optimized <span class="text-primary">Ryff-scale</span> Computation & Analysis</h2>
                 <p>ORCA streamlines psychological well-being evaluation using the validated Ryff Scale, providing real-time insights and personalized feedback for educational institutions.</p>
                 <div class="hero-buttons">
-                    <a href="#assessment" class="cta-button">Start Assessment</a>
+                    <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                     <a href="#features" class="cta-button-outline">Explore Features</a>
                 </div>
                 <div class="hero-stats">
@@ -111,7 +111,7 @@
                         <div class="meta-item"><i class="fas fa-clock"></i> 15-20 min</div>
                         <div class="meta-item"><i class="fas fa-chart-bar"></i> Detailed Results</div>
                     </div>
-                    <a href="login.html" class="cta-button">Start Assessment</a>
+                    <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                 </div>
                 <div class="assessment-card fade-in">
                     <div class="assessment-icon">
@@ -123,7 +123,7 @@
                         <div class="meta-item"><i class="fas fa-clock"></i> 20-25 min</div>
                         <div class="meta-item"><i class="fas fa-chart-bar"></i> Comprehensive</div>
                     </div>
-                    <a href="login.html" class="cta-button">Start Assessment</a>
+                    <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                 </div>
                 <div class="assessment-card fade-in">
                     <div class="assessment-icon">
@@ -135,7 +135,7 @@
                         <div class="meta-item"><i class="fas fa-clock"></i> 30-40 min</div>
                         <div class="meta-item"><i class="fas fa-chart-bar"></i> In-Depth Analysis</div>
                     </div>
-                    <a href="login.html" class="cta-button">Start Assessment</a>
+                    <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                 </div>
             </div>
         </div>
@@ -225,7 +225,7 @@
                         <li><i class="fas fa-check"></i> Progress tracking over time</li>
                         <li><i class="fas fa-check"></i> Actionable recommendations</li>
                     </ul>
-                    <a href="login.html" class="cta-button">Student Login</a>
+                    <a @click="navigateToLogin" class="cta-button">Student Login</a>
                 </div>
                 <div class="role-card">
                     <div class="role-icon">
@@ -238,7 +238,7 @@
                         <li><i class="fas fa-check"></i> Work-life balance guidance</li>
                         <li><i class="fas fa-check"></i> Professional development support</li>
                     </ul>
-                    <a href="login.html" class="cta-button">Employee Login</a>
+                    <a @click="navigateToLogin" class="cta-button">Employee Login</a>
                 </div>
                 <div class="role-card slide-in-right">
                     <div class="role-icon">
@@ -251,7 +251,7 @@
                         <li><i class="fas fa-check"></i> Demographic trend analysis</li>
                         <li><i class="fas fa-check"></i> Intervention planning tools</li>
                     </ul>
-                    <a href="login.html" class="cta-button">Counselor Login</a>
+                    <a @click="navigateToLogin" class="cta-button">Counselor Login</a>
                 </div>
             </div>
         </div>
@@ -532,7 +532,7 @@
                                 </div>
                             </div>
                             
-                            <a href="login.html" class="cta-button">Register for Training</a>
+                            <a @click="navigateToLogin" class="cta-button">Register for Training</a>
                         </div>
                     </div>
                     
@@ -585,7 +585,7 @@
                                 </div>
                             </div>
                             
-                            <a href="login.html" class="cta-button">Register for Training</a>
+                            <a @click="navigateToLogin" class="cta-button">Register for Training</a>
                         </div>
                     </div>
                 </div>
@@ -626,7 +626,7 @@
             <h3 class="glowing-text">Ready to Transform Psychological Well-being Assessment?</h3>
             <p>Join educational institutions already using ORCA to support student and employee psychological well-being with data-driven insights.</p>
             <div class="cta-buttons">
-                <a href="login.html" class="cta-button-white animated-button">Start Assessment</a>
+                <a @click="navigateToLogin" class="cta-button-white animated-button">Start Assessment</a>
             </div>
         </div>
     </section>
@@ -1067,6 +1067,9 @@ export default {
         const randomX = Math.random() * 100;
         particle.style.left = `${randomX}%`;
       });
+    },
+    navigateToLogin() {
+      this.$emit('navigate-to-login');
     }
   }
 }
@@ -2991,5 +2994,10 @@ export default {
 
 .animated-button:hover:before {
     left: 100%;
+}
+
+/* Add this style to the <style> section of the component */
+.cta-button, .cta-button-white, .cta-button-outline {
+  cursor: pointer;
 }
 </style>
