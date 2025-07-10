@@ -13,50 +13,80 @@
       <div class="sidebar-menu">
         <h3>Counselor Menu</h3>
         <ul>
-          <li class="active">
-            <a href="#">
-              <i class="fas fa-th-large"></i>
+          <li :class="{ active: currentView === 'dashboard' }">
+            <a @click="currentView = 'dashboard'" class="menu-item">
+              <div class="menu-icon">
+                <i class="fas fa-th-large"></i>
+              </div>
               <span>Dashboard</span>
             </a>
           </li>
-          <li>
-            <a href="#">
-              <i class="fas fa-chart-bar"></i>
+          <li :class="{ active: ['bulkAssessment', 'autoReminders', 'ryffScoring'].includes(currentView) }">
+            <a @click="toggleSubmenu('ryffAssessment')" class="menu-item has-submenu">
+              <div class="menu-icon">
+                <i class="fas fa-chart-bar"></i>
+              </div>
               <span>Ryff Assessment</span>
+              <i class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }"></i>
             </a>
-            <ul class="submenu">
-              <li><a href="#">Bulk Assessment</a></li>
-              <li><a href="#">Auto-Reminders</a></li>
-              <li><a href="#">Ryff Scoring</a></li>
+            <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }">
+              <li :class="{ active: currentView === 'bulkAssessment' }">
+                <a @click="currentView = 'bulkAssessment'" class="submenu-item">
+                  <i class="fas fa-users"></i>
+                  <span>Bulk Assessment</span>
+                </a>
+              </li>
+              <li :class="{ active: currentView === 'autoReminders' }">
+                <a @click="currentView = 'autoReminders'" class="submenu-item">
+                  <i class="fas fa-bell"></i>
+                  <span>Auto-Reminders</span>
+                </a>
+              </li>
+              <li :class="{ active: currentView === 'ryffScoring' }">
+                <a @click="currentView = 'ryffScoring'" class="submenu-item">
+                  <i class="fas fa-calculator"></i>
+                  <span>Ryff Scoring</span>
+                </a>
+              </li>
             </ul>
           </li>
-          <li>
-            <a href="#">
-              <i class="fas fa-signal"></i>
+          <li :class="{ active: currentView === 'status' }">
+            <a @click="currentView = 'status'" class="menu-item">
+              <div class="menu-icon">
+                <i class="fas fa-signal"></i>
+              </div>
               <span>Status</span>
             </a>
           </li>
-          <li>
-            <a href="#">
-              <i class="fas fa-comment-alt"></i>
+          <li :class="{ active: currentView === 'guidance' }">
+            <a @click="currentView = 'guidance'" class="menu-item">
+              <div class="menu-icon">
+                <i class="fas fa-comment-alt"></i>
+              </div>
               <span>Guidance Feedback</span>
             </a>
           </li>
-          <li>
-            <a href="#">
-              <i class="fas fa-file-alt"></i>
+          <li :class="{ active: currentView === 'reports' }">
+            <a @click="currentView = 'reports'" class="menu-item">
+              <div class="menu-icon">
+                <i class="fas fa-file-alt"></i>
+              </div>
               <span>Reports</span>
             </a>
           </li>
-          <li>
-            <a href="#">
-              <i class="fas fa-cog"></i>
+          <li :class="{ active: currentView === 'settings' }">
+            <a @click="currentView = 'settings'" class="menu-item">
+              <div class="menu-icon">
+                <i class="fas fa-cog"></i>
+              </div>
               <span>Settings</span>
             </a>
           </li>
           <li class="logout-item">
-            <a @click="goToLanding">
-              <i class="fas fa-sign-out-alt"></i>
+            <a @click="goToLanding" class="menu-item">
+              <div class="menu-icon logout-icon">
+                <i class="fas fa-sign-out-alt"></i>
+              </div>
               <span>Logout</span>
             </a>
           </li>
@@ -69,8 +99,8 @@
       <!-- Top Navigation Bar -->
       <header class="top-nav">
         <div class="page-title">
-          <h1>Dashboard</h1>
-          <p>Overview</p>
+          <h1>{{ pageTitle }}</h1>
+          <p>{{ pageSubtitle }}</p>
         </div>
         <div class="nav-actions">
           <div class="notifications">
@@ -87,495 +117,251 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-content">
-        <div class="dashboard-header">
-          <div class="title-section">
-            <div class="title-icon">
-              <i class="fas fa-chart-line"></i>
-            </div>
-            <div>
-              <h2>Dashboard Overview</h2>
-              <p>Monitor well-being metrics across departments</p>
-            </div>
-          </div>
-          <div class="filter-section">
-            <div class="filter-group">
-              <div class="filter-label">Time Period:</div>
-              <div class="date-filter">
-                <i class="far fa-calendar"></i>
-                <span>Last 30 Days</span>
-                <i class="fas fa-chevron-down"></i>
-              </div>
-            </div>
-            <button class="refresh-btn" title="Refresh Data">
-              <i class="fas fa-sync-alt"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Metrics Cards -->
-        <div class="metrics-row">
-          <div class="metric-card">
-            <div class="metric-content">
-              <div class="metric-header">
-                <h3>Total Assessments</h3>
-                <div class="metric-icon">
-                  <i class="fas fa-clipboard-list"></i>
+        <!-- Main Dashboard View -->
+        <div v-if="currentView === 'dashboard'">
+          <div class="dashboard-header">
+            <div class="filter-section">
+              <div class="filter-group">
+                <div class="filter-label">Time Period:</div>
+                <div class="date-filter">
+                  <i class="far fa-calendar"></i>
+                  <span>Last 30 Days</span>
+                  <i class="fas fa-chevron-down"></i>
                 </div>
               </div>
-              <div class="metric-value">971</div>
-              <div class="metric-change positive">
-                <i class="fas fa-arrow-up"></i>
-                <span>+8.2%</span>
-                <span class="compared-text">Compared to previous month</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-content">
-              <div class="metric-header">
-                <h3>Completion Rate</h3>
-                <div class="metric-icon">
-                  <i class="fas fa-check-circle"></i>
-                </div>
-              </div>
-              <div class="metric-value">84.3%</div>
-              <div class="metric-change positive">
-                <i class="fas fa-arrow-up"></i>
-                <span>+2.5%</span>
-                <span class="compared-text">Compared to previous month</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-content">
-              <div class="metric-header">
-                <h3>Average Well-being Score</h3>
-                <div class="metric-icon">
-                  <i class="fas fa-smile"></i>
-                </div>
-              </div>
-              <div class="metric-value">3.9<span class="metric-unit">/5</span></div>
-              <div class="metric-change negative">
-                <i class="fas fa-arrow-down"></i>
-                <span>-0.1</span>
-                <span class="compared-text">Compared to previous month</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Two Column Layout Container -->
-        <div class="two-column-layout">
-          <!-- Risk Alerts Section -->
-          <div class="section risk-alerts-section">
-            <div class="section-header alert-header">
-              <div class="section-title">
-                <div class="section-icon alert-icon">
-                  <i class="fas fa-exclamation-circle"></i>
-                </div>
-                <div>
-                  <h3>Risk Alerts</h3>
-                  <p>Departments and subscales requiring immediate attention</p>
-                </div>
-              </div>
-              <div class="section-actions">
-                <button class="action-btn">
-                  <i class="fas fa-bell-slash"></i>
-                  <span>Mute Alerts</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="alerts-container">
-              <div class="alert-item">
-                <div class="alert-badge">COE</div>
-                <div class="alert-details">
-                  <h4>Positive Relations</h4>
-                  <p>Score: 3.5 • <span class="negative">-0.3</span></p>
-                </div>
-                <div class="alert-students">
-                  <p>41 students</p>
-                  <span>at risk</span>
-                </div>
-              </div>
-
-              <div class="alert-item">
-                <div class="alert-badge">CCS</div>
-                <div class="alert-details">
-                  <h4>Self-Acceptance</h4>
-                  <p>Score: 3.6 • <span class="negative">-0.2</span></p>
-                </div>
-                <div class="alert-students">
-                  <p>32 students</p>
-                  <span>at risk</span>
-                </div>
-              </div>
-
-              <div class="alert-item">
-                <div class="alert-badge">CN</div>
-                <div class="alert-details">
-                  <h4>Purpose in Life</h4>
-                  <p>Score: 3.8 • <span class="negative">-0.1</span></p>
-                </div>
-                <div class="alert-students">
-                  <p>28 students</p>
-                  <span>at risk</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Department Assessment Overview -->
-          <div class="section department-section">
-            <div class="section-header">
-              <div class="section-title">
-                <div class="section-icon dept-icon">
-                  <i class="fas fa-building"></i>
-                </div>
-                <div>
-                  <h3>Department Assessment Overview</h3>
-                  <p>Assessment participation and low scores by department</p>
-                </div>
-              </div>
-              <button class="export-btn">
-                <i class="fas fa-download"></i>
-                Export
+              <button class="refresh-btn" title="Refresh Data">
+                <i class="fas fa-sync-alt"></i>
               </button>
             </div>
+          </div>
 
-            <div class="table-container">
-              <table class="department-table">
-                <thead>
-                  <tr>
-                    <th>Department</th>
-                    <th>Total Test Takers</th>
-                    <th>Low Scores</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>CCS</td>
-                    <td>245</td>
-                    <td>32</td>
-                  </tr>
-                  <tr>
-                    <td>CN</td>
-                    <td>189</td>
-                    <td>28</td>
-                  </tr>
-                  <tr>
-                    <td>CBA</td>
-                    <td>156</td>
-                    <td>19</td>
-                  </tr>
-                  <tr>
-                    <td>COE</td>
-                    <td>203</td>
-                    <td>41</td>
-                  </tr>
-                  <tr>
-                    <td>CAS</td>
-                    <td>178</td>
-                    <td>23</td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- Metrics Cards -->
+          <div class="metrics-row">
+            <div class="metric-card">
+              <div class="metric-content">
+                <div class="metric-header">
+                  <h3>Total Assessments</h3>
+                  <div class="metric-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                  </div>
+                </div>
+                <div class="metric-value">971</div>
+                <div class="metric-change positive">
+                  <i class="fas fa-arrow-up"></i>
+                  <span>+8.2%</span>
+                  <span class="compared-text">Compared to previous month</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <div class="metric-header">
+                  <h3>Completion Rate</h3>
+                  <div class="metric-icon">
+                    <i class="fas fa-check-circle"></i>
+                  </div>
+                </div>
+                <div class="metric-value">84.3%</div>
+                <div class="metric-change positive">
+                  <i class="fas fa-arrow-up"></i>
+                  <span>+2.5%</span>
+                  <span class="compared-text">Compared to previous month</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-content">
+                <div class="metric-header">
+                  <h3>Average Well-being Score</h3>
+                  <div class="metric-icon">
+                    <i class="fas fa-smile"></i>
+                  </div>
+                </div>
+                <div class="metric-value">3.9<span class="metric-unit">/5</span></div>
+                <div class="metric-change negative">
+                  <i class="fas fa-arrow-down"></i>
+                  <span>-0.1</span>
+                  <span class="compared-text">Compared to previous month</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two Column Layout Container -->
+          <div class="two-column-layout">
+            <!-- Risk Alerts Section -->
+            <div class="section risk-alerts-section">
+              <div class="section-header alert-header">
+                <div class="section-title">
+                  <div class="section-icon alert-icon">
+                    <i class="fas fa-exclamation-circle"></i>
+                  </div>
+                  <div>
+                    <h3>Risk Alerts</h3>
+                    <p>Departments and subscales requiring immediate attention</p>
+                  </div>
+                </div>
+                <div class="section-actions">
+                  <button class="action-btn">
+                    <i class="fas fa-bell-slash"></i>
+                    <span>Mute Alerts</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="alerts-container">
+                <div class="alert-item">
+                  <div class="alert-badge">COE</div>
+                  <div class="alert-details">
+                    <h4>Positive Relations</h4>
+                    <p>Score: 3.5 • <span class="negative">-0.3</span></p>
+                  </div>
+                  <div class="alert-students">
+                    <p>41 students</p>
+                    <span>at risk</span>
+                  </div>
+                </div>
+
+                <div class="alert-item">
+                  <div class="alert-badge">CCS</div>
+                  <div class="alert-details">
+                    <h4>Self-Acceptance</h4>
+                    <p>Score: 3.6 • <span class="negative">-0.2</span></p>
+                  </div>
+                  <div class="alert-students">
+                    <p>32 students</p>
+                    <span>at risk</span>
+                  </div>
+                </div>
+
+                <div class="alert-item">
+                  <div class="alert-badge">CN</div>
+                  <div class="alert-details">
+                    <h4>Purpose in Life</h4>
+                    <p>Score: 3.8 • <span class="negative">-0.1</span></p>
+                  </div>
+                  <div class="alert-students">
+                    <p>28 students</p>
+                    <span>at risk</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Department Assessment Overview -->
+            <div class="section department-section">
+              <div class="section-header">
+                <div class="section-title">
+                  <div class="section-icon dept-icon">
+                    <i class="fas fa-building"></i>
+                  </div>
+                  <div>
+                    <h3>Department Assessment Overview</h3>
+                    <p>Assessment participation and low scores by department</p>
+                  </div>
+                </div>
+                <button class="export-btn">
+                  <i class="fas fa-download"></i>
+                  Export
+                </button>
+              </div>
+
+              <div class="table-container">
+                <table class="department-table">
+                  <thead>
+                    <tr>
+                      <th>Department</th>
+                      <th>Total Test Takers</th>
+                      <th>Low Scores</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>CCS</td>
+                      <td>245</td>
+                      <td>32</td>
+                    </tr>
+                    <tr>
+                      <td>CN</td>
+                      <td>189</td>
+                      <td>28</td>
+                    </tr>
+                    <tr>
+                      <td>CBA</td>
+                      <td>156</td>
+                      <td>19</td>
+                    </tr>
+                    <tr>
+                      <td>COE</td>
+                      <td>203</td>
+                      <td>41</td>
+                    </tr>
+                    <tr>
+                      <td>CAS</td>
+                      <td>178</td>
+                      <td>23</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Average Ryff Subscale Scores -->
+          <div class="section subscale-section">
+            <div class="section-header">
+              <div class="section-title">
+                <div class="section-icon chart-icon">
+                  <i class="fas fa-chart-bar"></i>
+                </div>
+                <div>
+                  <h3>Average Ryff Subscale Scores by Department</h3>
+                  <p>Visual representation of well-being scores across departments</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-container">
+              <SimpleRyffChart />
             </div>
           </div>
         </div>
 
-        <!-- Average Ryff Subscale Scores -->
-        <div class="section subscale-section">
-          <div class="section-header">
-            <div class="section-title">
-              <div class="section-icon chart-icon">
-                <i class="fas fa-chart-bar"></i>
-              </div>
-              <div>
-                <h3>Average Ryff Subscale Scores by Department</h3>
-                <p>Visual representation of well-being scores across departments</p>
-              </div>
-            </div>
-            <div class="chart-controls">
-              <div class="department-filter">
-                <span>All Departments</span>
-                <i class="fas fa-chevron-down"></i>
-              </div>
-              <div class="chart-types">
-                <button class="chart-type active">Bar Chart</button>
-                <button class="chart-type">Trend</button>
-              </div>
-            </div>
-          </div>
+        <!-- Bulk Assessment View -->
+        <bulk-assessment v-if="currentView === 'bulkAssessment'" />
 
-          <div class="chart-container">
-            <div class="modern-chart">
-              <div class="chart-header">
-                <p>Visual representation of well-being scores across departments</p>
-              </div>
-              
-              <div class="chart-area">
-                <!-- Y-axis -->
-                <div class="y-axis">
-                  <div class="y-label">5</div>
-                  <div class="y-label">4</div>
-                  <div class="y-label">3</div>
-                  <div class="y-label">2</div>
-                  <div class="y-label">1</div>
-                  <div class="y-label">0</div>
-                </div>
-                
-                <!-- Chart grid -->
-                <div class="chart-grid">
-                  <!-- Horizontal grid lines -->
-                  <div class="grid-line"></div>
-                  <div class="grid-line"></div>
-                  <div class="grid-line"></div>
-                  <div class="grid-line"></div>
-                  <div class="grid-line"></div>
-                </div>
-                
-                <!-- Department groups -->
-                <div class="departments-container">
-                  <!-- CCS Department -->
-                  <div class="dept-column">
-                    <div class="bar-group">
-                      <div class="bar-wrapper">
-                        <div class="bar autonomy" style="height: 82%;">
-                          <span class="bar-value">4.1</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar self-acceptance" style="height: 76%;">
-                          <span class="bar-value">3.8</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar personal-growth" style="height: 80%;">
-                          <span class="bar-value">4.0</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar purpose-in-life" style="height: 78%;">
-                          <span class="bar-value">3.9</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar environmental-mastery" style="height: 78%;">
-                          <span class="bar-value">3.9</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar positive-relations" style="height: 72%;">
-                          <span class="bar-value">3.6</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="dept-name">CCS</div>
-                  </div>
-                  
-                  <!-- CN Department -->
-                  <div class="dept-column">
-                    <div class="bar-group">
-                      <div class="bar-wrapper">
-                        <div class="bar autonomy" style="height: 78%;">
-                          <span class="bar-value">3.9</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar self-acceptance" style="height: 82%;">
-                          <span class="bar-value">4.1</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar personal-growth" style="height: 76%;">
-                          <span class="bar-value">3.8</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar purpose-in-life" style="height: 84%;">
-                          <span class="bar-value">4.2</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar environmental-mastery" style="height: 78%;">
-                          <span class="bar-value">3.9</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar positive-relations" style="height: 78%;">
-                          <span class="bar-value">3.9</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="dept-name">CN</div>
-                  </div>
-                  
-                  <!-- CBA Department -->
-                  <div class="dept-column">
-                    <div class="bar-group">
-                      <div class="bar-wrapper">
-                        <div class="bar autonomy" style="height: 80%;">
-                          <span class="bar-value">4.0</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar self-acceptance" style="height: 78%;">
-                          <span class="bar-value">3.9</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar personal-growth" style="height: 80%;">
-                          <span class="bar-value">4.0</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar purpose-in-life" style="height: 76%;">
-                          <span class="bar-value">3.8</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar environmental-mastery" style="height: 82%;">
-                          <span class="bar-value">4.1</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar positive-relations" style="height: 78%;">
-                          <span class="bar-value">3.9</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="dept-name">CBA</div>
-                  </div>
-                  
-                  <!-- COE Department -->
-                  <div class="dept-column">
-                    <div class="bar-group">
-                      <div class="bar-wrapper">
-                        <div class="bar autonomy" style="height: 74%;">
-                          <span class="bar-value">3.7</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar self-acceptance" style="height: 72%;">
-                          <span class="bar-value">3.6</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar personal-growth" style="height: 76%;">
-                          <span class="bar-value">3.8</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar purpose-in-life" style="height: 74%;">
-                          <span class="bar-value">3.7</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar environmental-mastery" style="height: 76%;">
-                          <span class="bar-value">3.8</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar positive-relations" style="height: 70%;">
-                          <span class="bar-value">3.5</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="dept-name">COE</div>
-                  </div>
-                  
-                  <!-- CAS Department -->
-                  <div class="dept-column">
-                    <div class="bar-group">
-                      <div class="bar-wrapper">
-                        <div class="bar autonomy" style="height: 82%;">
-                          <span class="bar-value">4.1</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar self-acceptance" style="height: 80%;">
-                          <span class="bar-value">4.0</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar personal-growth" style="height: 84%;">
-                          <span class="bar-value">4.2</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar purpose-in-life" style="height: 80%;">
-                          <span class="bar-value">4.0</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar environmental-mastery" style="height: 82%;">
-                          <span class="bar-value">4.1</span>
-                        </div>
-                      </div>
-                      <div class="bar-wrapper">
-                        <div class="bar positive-relations" style="height: 76%;">
-                          <span class="bar-value">3.8</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="dept-name">CAS</div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- X-axis categories -->
-              <div class="x-axis">
-                <div class="x-label">Autonomy</div>
-                <div class="x-label">Self-Acceptance</div>
-                <div class="x-label">Personal Growth</div>
-                <div class="x-label">Purpose in Life</div>
-                <div class="x-label">Environmental Mastery</div>
-                <div class="x-label">Positive Relations</div>
-              </div>
-              
-              <!-- Legend -->
-              <div class="chart-legend">
-                <div class="legend-item">
-                  <div class="color-box autonomy"></div>
-                  <span>Autonomy</span>
-                </div>
-                <div class="legend-item">
-                  <div class="color-box self-acceptance"></div>
-                  <span>Self-Acceptance</span>
-                </div>
-                <div class="legend-item">
-                  <div class="color-box personal-growth"></div>
-                  <span>Personal Growth</span>
-                </div>
-                <div class="legend-item">
-                  <div class="color-box purpose-in-life"></div>
-                  <span>Purpose in Life</span>
-                </div>
-                <div class="legend-item">
-                  <div class="color-box environmental-mastery"></div>
-                  <span>Environmental Mastery</span>
-                </div>
-                <div class="legend-item">
-                  <div class="color-box positive-relations"></div>
-                  <span>Positive Relations</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Auto Reminders View -->
+        <auto-reminders v-if="currentView === 'autoReminders'" />
+
+        <!-- Ryff Scoring View -->
+        <ryff-scoring v-if="currentView === 'ryffScoring'" />
+
+        <!-- Other views -->
       </div>
     </main>
   </div>
 </template>
 
 <script>
+import SimpleRyffChart from './SimpleRyffChart.vue'
+import BulkAssessment from './BulkAssessment.vue'
+import AutoReminders from './AutoReminders.vue'
+import RyffScoring from './RyffScoring.vue'
+
 export default {
   name: 'CounselorDashboard',
+  components: {
+    SimpleRyffChart,
+    BulkAssessment,
+    AutoReminders,
+    RyffScoring
+  },
   data() {
     return {
+      currentView: 'dashboard',
+      showSubmenu: null,
       selectedDepartment: 'all',
       currentDate: new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
@@ -585,9 +371,38 @@ export default {
       })
     }
   },
+  computed: {
+    pageTitle() {
+      switch(this.currentView) {
+        case 'bulkAssessment':
+          return 'Bulk Assessment';
+        case 'autoReminders':
+          return 'Auto-Reminders';
+        case 'ryffScoring':
+          return 'Ryff Scoring';
+        default:
+          return 'Dashboard Overview';
+      }
+    },
+    pageSubtitle() {
+      switch(this.currentView) {
+        case 'bulkAssessment':
+          return 'Distribute the Ryff assessment to target groups in one click';
+        case 'autoReminders':
+          return 'Schedule automatic assessment reminders';
+        case 'ryffScoring':
+          return 'Review and analyze assessment scores';
+        default:
+          return 'Monitor well-being metrics across departments';
+      }
+    }
+  },
   methods: {
     goToLanding() {
       this.$emit('switch-to-landing');
+    },
+    toggleSubmenu(menu) {
+      this.showSubmenu = this.showSubmenu === menu ? null : menu;
     }
   }
 }
@@ -627,25 +442,26 @@ export default {
 
 /* Sidebar Styles */
 .sidebar {
-  width: 250px;
+  width: 260px;
   background-color: white;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
-  padding: 20px 0;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
+  padding: 0;
   display: flex;
   flex-direction: column;
   z-index: 10;
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
   position: fixed;
   height: 100vh;
   overflow-y: auto;
+  transition: all 0.3s ease;
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  padding: 0 20px 20px;
+  padding: 25px 20px;
   border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   position: relative;
 }
 
@@ -653,42 +469,58 @@ export default {
   content: '';
   position: absolute;
   bottom: -1px;
-  left: 20px;
-  width: 50px;
-  height: 2px;
-  background-color: var(--primary);
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+  transition: width 0.3s ease;
+}
+
+.sidebar:hover .logo-container::after {
+  width: 100px;
 }
 
 .logo-container img {
-  width: 32px;
-  height: 32px;
+  width: 35px;
+  height: 35px;
   margin-right: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 179, 176, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.sidebar:hover .logo-container img {
+  transform: rotate(5deg);
 }
 
 .logo-text h1 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   margin: 0;
   color: var(--primary);
+  letter-spacing: 0.5px;
 }
 
 .logo-text p {
   font-size: 12px;
   margin: 0;
   color: var(--text-light);
+  opacity: 0.8;
 }
 
 .sidebar-menu {
   flex: 1;
+  padding: 10px 0;
 }
 
 .sidebar-menu h3 {
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   color: var(--text-light);
-  padding: 0 20px;
-  margin-bottom: 10px;
+  padding: 0 25px;
+  margin-bottom: 15px;
   font-weight: 500;
+  letter-spacing: 1px;
 }
 
 .sidebar-menu ul {
@@ -699,67 +531,136 @@ export default {
 
 .sidebar-menu li {
   margin-bottom: 2px;
+  position: relative;
 }
 
-.sidebar-menu li a {
+.menu-item {
   display: flex;
   align-items: center;
-  padding: 12px 20px;
+  padding: 12px 25px;
   color: var(--text);
   text-decoration: none;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   border-left: 3px solid transparent;
+  cursor: pointer;
+  position: relative;
 }
 
-.sidebar-menu li.active a {
+.menu-item:hover {
+  background-color: rgba(0, 179, 176, 0.04);
+  color: var(--primary);
+}
+
+.sidebar-menu li.active .menu-item {
   background-color: rgba(0, 179, 176, 0.08);
   color: var(--primary);
   border-left: 3px solid var(--primary);
   font-weight: 500;
 }
 
-.sidebar-menu li a:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+.menu-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text-light);
+  transition: all 0.3s ease;
 }
 
-.sidebar-menu li i {
-  margin-right: 10px;
-  width: 20px;
-  text-align: center;
+.menu-item:hover .menu-icon,
+.sidebar-menu li.active .menu-icon {
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.has-submenu {
+  justify-content: space-between;
+}
+
+.has-submenu span {
+  flex: 1;
+}
+
+.submenu-arrow {
+  font-size: 10px;
+  color: var(--text-light);
+  transition: transform 0.3s ease;
+}
+
+.submenu-arrow.submenu-open {
+  transform: rotate(90deg);
+  color: var(--primary);
 }
 
 .submenu {
-  padding-left: 46px !important;
-  margin-top: 5px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0, 1, 0, 1);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
-.submenu li {
-  margin-bottom: 0;
+.submenu.submenu-open {
+  max-height: 300px;
+  transition: max-height 0.5s ease-in-out;
 }
 
-.submenu li a {
-  padding: 8px 0;
+.submenu-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px 10px 57px;
+  color: var(--text);
   font-size: 13px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.submenu-item i {
+  width: 18px;
+  margin-right: 10px;
+  font-size: 13px;
+  color: var(--text-light);
+}
+
+.submenu-item:hover {
+  background-color: rgba(0, 179, 176, 0.04);
+  color: var(--primary);
+}
+
+.submenu-item:hover i {
+  color: var(--primary);
+}
+
+.submenu li.active .submenu-item {
+  color: var(--primary);
+  font-weight: 500;
+  background-color: rgba(0, 179, 176, 0.08);
+}
+
+.submenu li.active .submenu-item i {
+  color: var(--primary);
 }
 
 /* Add this CSS for the logout button */
 .logout-item {
   margin-top: 30px;
   border-top: 1px solid #f0f0f0;
-  padding-top: 10px;
+  padding-top: 15px;
 }
 
-.logout-item a {
-  color: #f44336 !important;
-}
-
-.logout-item a:hover {
-  background-color: rgba(244, 67, 54, 0.05) !important;
-}
-
-.logout-item i {
+.logout-item .menu-item {
   color: #f44336;
+}
+
+.logout-item .menu-item:hover {
+  background-color: rgba(244, 67, 54, 0.05);
+}
+
+.logout-icon {
+  color: #f44336 !important;
 }
 
 /* Main Content Styles */
@@ -785,6 +686,12 @@ export default {
   z-index: 5;
 }
 
+.page-title {
+  font-size: 13px;
+  color: var(--text-light);
+  margin: 0;
+}
+
 .page-title h1 {
   font-size: 20px;
   font-weight: 600;
@@ -796,19 +703,6 @@ export default {
   font-size: 13px;
   color: var(--text-light);
   margin: 0;
-  display: flex;
-  align-items: center;
-}
-
-.page-title p::before {
-  content: 'Home';
-  color: var(--text-light);
-}
-
-.page-title p::after {
-  content: '/';
-  margin: 0 5px;
-  color: var(--text-light);
 }
 
 .nav-actions {
@@ -887,31 +781,10 @@ export default {
 
 .dashboard-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 25px;
-}
-
-.title-section {
-  display: flex;
+  justify-content: flex-end;
   align-items: center;
-}
-
-.title-icon {
-  margin-right: 10px;
-}
-
-.title-section h2 {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 5px 0;
-  color: var(--dark);
-}
-
-.title-section p {
-  font-size: 13px;
-  color: var(--text-light);
-  margin: 0;
+  margin-bottom: 20px;
+  padding-top: 5px;
 }
 
 .filter-section {
@@ -1177,8 +1050,8 @@ export default {
 .alert-badge {
   width: 45px;
   height: 45px;
-  background-color: #ffebee;
   color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.3);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -1186,7 +1059,6 @@ export default {
   font-weight: 600;
   font-size: 14px;
   margin-right: 15px;
-  box-shadow: 0 2px 5px rgba(244, 67, 54, 0.15);
 }
 
 .alert-details {
@@ -1318,10 +1190,12 @@ export default {
 }
 
 .chart-container {
-  padding: 15px;
-  background-color: #fdfdfd;
+  padding: 20px;
+  background-color: white;
   border-radius: 8px;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+  min-height: 500px;
 }
 
 .chart-placeholder {
@@ -1421,317 +1295,6 @@ export default {
 .dept-label {
   font-size: 12px;
   font-weight: 500;
-  margin-top: 8px;
-}
-
-.x-axis {
-  display: none;
-}
-
-.color-box {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  margin-right: 8px;
-}
-
-.color-box.autonomy {
-  background-color: #f44336;
-}
-
-.color-box.self-acceptance {
-  background-color: #2196f3;
-}
-
-.color-box.personal-growth {
-  background-color: #1a2e35;
-}
-
-.color-box.purpose-in-life {
-  background-color: #ffc107;
-}
-
-.color-box.environmental-mastery {
-  background-color: #ff9800;
-}
-
-.color-box.positive-relations {
-  background-color: #e91e63;
-}
-
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 20px;
-  padding: 15px;
-  background-color: white;
-  border-radius: 8px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  margin: 0 15px 5px;
-  padding: 5px 10px;
-  border-radius: 20px;
-  transition: background-color 0.2s;
-}
-
-.legend-item:hover {
-  background-color: #f7f9fa;
-}
-
-@media (max-width: 1200px) {
-  .metrics-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 992px) {
-  .sidebar {
-    width: 70px;
-  }
-  
-  .logo-text, .sidebar-menu h3, .sidebar-menu li a span {
-    display: none;
-  }
-  
-  .logo-container {
-    justify-content: center;
-    padding: 15px 0;
-  }
-  
-  .logo-container img {
-    margin-right: 0;
-  }
-  
-  .sidebar-menu li a {
-    justify-content: center;
-    padding: 15px 0;
-  }
-  
-  .sidebar-menu li i {
-    margin-right: 0;
-    font-size: 18px;
-  }
-  
-  .submenu {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .metrics-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .top-nav {
-    padding: 0 15px;
-  }
-  
-  .dashboard-content {
-    padding: 15px;
-  }
-}
-
-/* New styles for the modern chart */
-.modern-chart {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  padding: 15px;
-}
-
-.chart-header {
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-}
-
-.chart-header h4 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 5px 0;
-  color: var(--dark);
-  position: relative;
-}
-
-.chart-header h4::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 40px;
-  height: 2px;
-  background-color: var(--primary);
-}
-
-.chart-header p {
-  font-size: 13px;
-  color: var(--text-light);
-  margin: 0;
-}
-
-.chart-filters {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.filter-dropdown {
-  display: flex;
-  align-items: center;
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.filter-dropdown i {
-  margin-left: 8px;
-  color: var(--text-light);
-}
-
-.chart-type-selector {
-  display: flex;
-}
-
-.type-btn {
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  padding: 8px 12px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.type-btn:first-child {
-  border-radius: 4px 0 0 4px;
-}
-
-.type-btn:last-child {
-  border-radius: 0 4px 4px 0;
-  border-left: none;
-}
-
-.type-btn.active {
-  background-color: var(--primary);
-  color: white;
-  border-color: var(--primary);
-}
-
-.chart-area {
-  position: relative;
-  height: 300px;
-  display: flex;
-  margin-bottom: 30px;
-}
-
-.y-axis {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: space-between;
-  width: 30px;
-  height: 100%;
-}
-
-.y-label {
-  font-size: 12px;
-  color: var(--text-light);
-  text-align: right;
-  padding-right: 8px;
-}
-
-.chart-grid {
-  position: absolute;
-  left: 30px;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: space-between;
-  pointer-events: none;
-}
-
-.grid-line {
-  width: 100%;
-  height: 1px;
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.grid-line:nth-child(5) {
-  background-color: rgba(0, 0, 0, 0.1);
-  height: 2px;
-}
-
-.departments-container {
-  display: flex;
-  justify-content: space-around;
-  flex: 1;
-  height: 100%;
-  padding-left: 30px;
-}
-
-.dept-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 18%;
-}
-
-.bar-group {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  align-items: flex-end;
-}
-
-.bar-wrapper {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  padding: 0 2px;
-}
-
-.bar {
-  width: 100%;
-  max-width: 14px;
-  border-radius: 4px 4px 0 0;
-  position: relative;
-  transition: all 0.3s;
-}
-
-.bar:hover {
-  transform: scaleY(1.02);
-}
-
-.bar-value {
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  font-size: 10px;
-  padding: 2px 4px;
-  border-radius: 2px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.bar:hover .bar-value {
-  opacity: 1;
-}
-
-.dept-name {
-  font-size: 12px;
-  font-weight: 500;
   margin-top: 10px;
   padding: 4px 8px;
   background-color: #f5f7fa;
@@ -1809,20 +1372,20 @@ export default {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 8px;
   margin-right: 15px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .alert-icon {
-  background-color: #ffebee;
   color: #f44336;
 }
 
-/* Add: */
 .dept-icon {
-  background-color: #e3f2fd;
   color: #2196f3;
+}
+
+.chart-icon {
+  color: #4caf50;
 }
 
 /* Add subtle hover effects to table rows */
@@ -1850,12 +1413,6 @@ export default {
   border-radius: 50%;
   margin-right: 8px;
   background-color: var(--primary);
-}
-
-/* Add style for the chart icon */
-.chart-icon {
-  background-color: #e8f5e9;
-  color: #4caf50;
 }
 
 /* Add two-column layout styles */
@@ -1927,5 +1484,325 @@ export default {
   height: 38px;
   font-size: 13px;
   margin-right: 10px;
+}
+
+/* Enhanced Chart Styles */
+.enhanced-chart {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  padding: 20px;
+}
+
+.chart-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.chart-tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.chart-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  position: relative;
+  transition: all 0.2s;
+}
+
+.chart-tab.active {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.chart-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--primary);
+}
+
+.chart-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chart-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-light);
+  transition: all 0.2s;
+}
+
+.chart-action-btn:hover {
+  background-color: #f5f5f5;
+  color: var(--primary);
+}
+
+.main-chart-area {
+  display: flex;
+  height: 300px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.chart-y-axis {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  width: 40px;
+  padding-right: 10px;
+  border-right: 1px solid #f0f0f0;
+}
+
+.y-value {
+  font-size: 11px;
+  color: var(--text-light);
+  text-align: right;
+}
+
+.chart-visualization {
+  flex: 1;
+  position: relative;
+  padding-left: 10px;
+}
+
+.horizontal-grid-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  z-index: 1;
+}
+
+.h-grid-line {
+  width: 100%;
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.h-grid-line:first-child {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.chart-columns {
+  display: flex;
+  justify-content: space-around;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.chart-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 18%;
+}
+
+.column-bars {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.bar-set {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  width: 100%;
+  justify-content: space-around;
+}
+
+.data-bar {
+  width: 12px;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.data-bar:hover {
+  transform: scaleY(1.05);
+}
+
+.bar-tooltip {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.bar-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid rgba(0, 0, 0, 0.8);
+}
+
+.bar-tooltip strong {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.data-bar:hover .bar-tooltip {
+  opacity: 1;
+}
+
+.column-label {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  margin-top: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.chart-categories {
+  display: flex;
+  justify-content: space-around;
+  padding: 15px 40px 0;
+  margin-bottom: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.category {
+  font-size: 11px;
+  color: var(--text-light);
+  text-align: center;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.enhanced-legend {
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.legend-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 10px;
+  color: var(--dark);
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.legend-item:hover {
+  background-color: #f0f0f0;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 8px;
+}
+
+.legend-text {
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Bar colors */
+.data-bar.autonomy,
+.legend-color.autonomy {
+  background-color: #f44336;
+}
+
+.data-bar.self-acceptance,
+.legend-color.self-acceptance {
+  background-color: #2196f3;
+}
+
+.data-bar.personal-growth,
+.legend-color.personal-growth {
+  background-color: #1a2e35;
+}
+
+.data-bar.purpose-in-life,
+.legend-color.purpose-in-life {
+  background-color: #ffc107;
+}
+
+.data-bar.environmental-mastery,
+.legend-color.environmental-mastery {
+  background-color: #ff9800;
+}
+
+.data-bar.positive-relations,
+.legend-color.positive-relations {
+  background-color: #e91e63;
+}
+
+@media (max-width: 992px) {
+  .metrics-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .two-column-layout {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 576px) {
+  .metrics-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style> 
