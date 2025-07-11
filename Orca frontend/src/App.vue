@@ -5,9 +5,9 @@
 </template>
 
 <script>
-import LandingPage from './components/LandingPage.vue'
-import Login from './components/Login.vue'
-import CounselorDashboard from './components/CounselorDashboard.vue'
+import LandingPage from './components/Main/LandingPage.vue'
+import Login from './components/Main/Login.vue'
+import CounselorDashboard from './components/Counselor/CounselorDashboard.vue'
 
 export default {
   name: 'App',

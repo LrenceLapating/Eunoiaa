@@ -86,7 +86,7 @@
               Overall Score
               <i class="fas fa-sort"></i>
             </th>
-            <th>Risk Level</th>
+            <th>Dimension Risk</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -102,12 +102,28 @@
             <td>{{ student.section }}</td>
             <td>{{ student.submissionDate }}</td>
             <td>
-              <span class="score">{{ student.overallScore }}</span>
+              <span class="score">{{ calculateOverallScore(student) }}</span>
             </td>
             <td>
-              <span class="risk-badge" :class="getRiskClass(student.riskLevel)">
-                {{ student.riskLevel }}
-              </span>
+              <div class="dimension-risk">
+                <span class="risk-count" v-if="hasAnyRiskDimension(student)" title="Number of at-risk dimensions">
+                  {{ getAtRiskDimensionsCount(student) }}/6
+                </span>
+                <div class="risk-scores">
+                  <div 
+                    v-for="(score, subscale) in student.subscales" 
+                    :key="subscale"
+                    v-if="isAtRisk(score * 7)"
+                    class="risk-dimension-container"
+                  >
+                    <div class="risk-dimension-score">
+                      {{ Math.round(score * 7) }}
+                      <div class="hover-label">{{ formatSubscaleName(subscale) }}</div>
+                    </div>
+                  </div>
+                </div>
+                <span v-if="!hasAnyRiskDimension(student)" class="no-risk">No Risk</span>
+              </div>
             </td>
             <td>
               <button class="view-button" @click="viewStudentDetails(student)">
@@ -141,13 +157,14 @@
               </div>
               <div class="info-item">
                 <span class="info-label">Overall Score:</span>
-                <span class="info-value score">{{ selectedStudent.overallScore }}</span>
+                <span class="info-value score">{{ calculateOverallScore(selectedStudent) }}</span>
               </div>
               <div class="info-item">
-                <span class="info-label">Risk Level:</span>
-                <span class="risk-badge" :class="getRiskClass(selectedStudent.riskLevel)">
-                  {{ selectedStudent.riskLevel }}
+                <span class="info-label">At-Risk Dimensions:</span>
+                <span v-if="hasAnyRiskDimension(selectedStudent)" class="risk-badge high-risk">
+                  {{ getAtRiskDimensionsCount(selectedStudent) }} Dimension(s)
                 </span>
+                <span v-else class="risk-badge low-risk">None</span>
               </div>
             </div>
           </div>
@@ -155,13 +172,26 @@
           <div class="subscale-scores">
             <h4>Subscale Scores</h4>
             <div class="subscale-grid">
-              <div class="subscale-item" v-for="(score, subscale) in selectedStudent.subscales" :key="subscale">
+              <div 
+                class="subscale-item" 
+                v-for="(score, subscale) in selectedStudent.subscales" 
+                :key="subscale"
+                :class="{ 'at-risk': isAtRisk(score * 7) }"
+              >
                 <div class="subscale-header">
                   <span class="subscale-name">{{ formatSubscaleName(subscale) }}</span>
-                  <span class="subscale-score">{{ score }}</span>
+                  <span class="subscale-score">{{ Math.round(score * 7) }}/49</span>
                 </div>
                 <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: (score/5*100) + '%', backgroundColor: getScoreColor(score) }"></div>
+                  <div 
+                    class="progress-fill" 
+                    :style="{ width: (score*7/49*100) + '%', backgroundColor: getDimensionScoreColor(score*7) }"
+                  ></div>
+                </div>
+                <div class="risk-status">
+                  <span :class="getDimensionRiskClass(score*7)">
+                    {{ getDimensionRiskLabel(score*7) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -202,15 +232,13 @@ export default {
           department: 'CCS',
           section: 'BSIT1A',
           submissionDate: '2024-06-08',
-          overallScore: 64,
-          riskLevel: 'High Risk',
           subscales: {
-            autonomy: 3.2,
-            environmentalMastery: 2.8,
-            personalGrowth: 3.5,
-            positiveRelations: 3.1,
-            purposeInLife: 3.4,
-            selfAcceptance: 2.9
+            autonomy: 2.4, // Scaled to 7-49: 17 (at risk)
+            environmentalMastery: 2.8, // 20
+            personalGrowth: 3.5, // 25
+            positiveRelations: 3.1, // 22
+            purposeInLife: 3.4, // 24
+            selfAcceptance: 2.9  // 20
           }
         },
         {
@@ -219,15 +247,13 @@ export default {
           department: 'CCS',
           section: 'BSCS3A',
           submissionDate: '2024-06-07',
-          overallScore: 55,
-          riskLevel: 'High Risk',
           subscales: {
-            autonomy: 2.7,
-            environmentalMastery: 2.5,
-            personalGrowth: 3.0,
-            positiveRelations: 2.8,
-            purposeInLife: 2.6,
-            selfAcceptance: 2.9
+            autonomy: 2.0, // 14 (at risk)
+            environmentalMastery: 2.5, // 18 (at risk)
+            personalGrowth: 3.0, // 21
+            positiveRelations: 2.0, // 14 (at risk)
+            purposeInLife: 2.6, // 18 (at risk)
+            selfAcceptance: 2.9  // 20
           }
         },
         {
@@ -236,15 +262,13 @@ export default {
           department: 'CCS',
           section: 'BSIT3A',
           submissionDate: '2024-06-02',
-          overallScore: 50,
-          riskLevel: 'High Risk',
           subscales: {
-            autonomy: 2.4,
-            environmentalMastery: 2.3,
-            personalGrowth: 2.9,
-            positiveRelations: 2.5,
-            purposeInLife: 2.5,
-            selfAcceptance: 2.4
+            autonomy: 2.4, // 17 (at risk)
+            environmentalMastery: 2.3, // 16 (at risk)
+            personalGrowth: 2.9, // 20
+            positiveRelations: 2.5, // 18 (at risk)
+            purposeInLife: 2.5, // 18 (at risk)
+            selfAcceptance: 2.4  // 17 (at risk)
           }
         },
         {
@@ -253,15 +277,13 @@ export default {
           department: 'CCS',
           section: 'BSIT3A',
           submissionDate: '2024-06-10',
-          overallScore: 58,
-          riskLevel: 'Medium Risk',
           subscales: {
-            autonomy: 3.1,
-            environmentalMastery: 2.9,
-            personalGrowth: 3.0,
-            positiveRelations: 2.7,
-            purposeInLife: 3.2,
-            selfAcceptance: 2.9
+            autonomy: 3.1, // 22
+            environmentalMastery: 2.9, // 20
+            personalGrowth: 3.0, // 21
+            positiveRelations: 2.7, // 19
+            purposeInLife: 3.2, // 22
+            selfAcceptance: 2.9  // 20
           }
         },
         {
@@ -270,15 +292,13 @@ export default {
           department: 'CCS',
           section: 'BSCS2B',
           submissionDate: '2024-06-09',
-          overallScore: 67,
-          riskLevel: 'Medium Risk',
           subscales: {
-            autonomy: 3.5,
-            environmentalMastery: 3.3,
-            personalGrowth: 3.2,
-            positiveRelations: 3.4,
-            purposeInLife: 3.4,
-            selfAcceptance: 3.2
+            autonomy: 3.5, // 25
+            environmentalMastery: 3.3, // 23
+            personalGrowth: 3.2, // 22
+            positiveRelations: 3.4, // 24
+            purposeInLife: 3.4, // 24
+            selfAcceptance: 3.2  // 22
           }
         },
         {
@@ -287,15 +307,13 @@ export default {
           department: 'COE',
           section: 'BSCE3B',
           submissionDate: '2024-06-04',
-          overallScore: 68,
-          riskLevel: 'Medium Risk',
           subscales: {
-            autonomy: 3.4,
-            environmentalMastery: 3.5,
-            personalGrowth: 3.4,
-            positiveRelations: 3.3,
-            purposeInLife: 3.5,
-            selfAcceptance: 3.4
+            autonomy: 3.4, // 24
+            environmentalMastery: 3.5, // 25
+            personalGrowth: 3.4, // 24
+            positiveRelations: 3.3, // 23
+            purposeInLife: 3.5, // 25
+            selfAcceptance: 3.4  // 24
           }
         },
         {
@@ -304,15 +322,13 @@ export default {
           department: 'CAS',
           section: 'BSPS2B',
           submissionDate: '2024-06-03',
-          overallScore: 67,
-          riskLevel: 'Medium Risk',
           subscales: {
-            autonomy: 3.3,
-            environmentalMastery: 3.4,
-            personalGrowth: 3.3,
-            positiveRelations: 3.4,
-            purposeInLife: 3.2,
-            selfAcceptance: 3.4
+            autonomy: 3.3, // 23
+            environmentalMastery: 3.4, // 24
+            personalGrowth: 3.3, // 23
+            positiveRelations: 3.4, // 24
+            purposeInLife: 3.2, // 22
+            selfAcceptance: 3.4  // 24
           }
         },
         {
@@ -321,15 +337,13 @@ export default {
           department: 'CBA',
           section: 'BSBA3A',
           submissionDate: '2024-06-02',
-          overallScore: 65,
-          riskLevel: 'Medium Risk',
           subscales: {
-            autonomy: 3.3,
-            environmentalMastery: 3.2,
-            personalGrowth: 3.2,
-            positiveRelations: 3.4,
-            purposeInLife: 3.3,
-            selfAcceptance: 3.1
+            autonomy: 3.3, // 23
+            environmentalMastery: 3.2, // 22
+            personalGrowth: 3.2, // 22
+            positiveRelations: 3.4, // 24
+            purposeInLife: 3.3, // 23
+            selfAcceptance: 3.1  // 22
           }
         },
         {
@@ -338,15 +352,13 @@ export default {
           department: 'CN',
           section: 'BSCS2B',
           submissionDate: '2024-06-01',
-          overallScore: 69,
-          riskLevel: 'Medium Risk',
           subscales: {
-            autonomy: 3.5,
-            environmentalMastery: 3.4,
-            personalGrowth: 3.5,
-            positiveRelations: 3.4,
-            purposeInLife: 3.6,
-            selfAcceptance: 3.5
+            autonomy: 3.5, // 25
+            environmentalMastery: 3.4, // 24
+            personalGrowth: 3.5, // 25
+            positiveRelations: 3.4, // 24
+            purposeInLife: 3.6, // 25
+            selfAcceptance: 3.5  // 25
           }
         },
         {
@@ -355,15 +367,13 @@ export default {
           department: 'CCS',
           section: 'BSIT2B',
           submissionDate: '2024-06-06',
-          overallScore: 76,
-          riskLevel: 'Low Risk',
           subscales: {
-            autonomy: 3.8,
-            environmentalMastery: 3.9,
-            personalGrowth: 3.7,
-            positiveRelations: 3.8,
-            purposeInLife: 3.8,
-            selfAcceptance: 3.8
+            autonomy: 5.4, // 38
+            environmentalMastery: 5.6, // 39
+            personalGrowth: 5.3, // 37
+            positiveRelations: 5.4, // 38
+            purposeInLife: 5.4, // 38
+            selfAcceptance: 5.4  // 38
           }
         },
         {
@@ -372,15 +382,13 @@ export default {
           department: 'CCS',
           section: 'BSCS1A',
           submissionDate: '2024-06-05',
-          overallScore: 71,
-          riskLevel: 'Low Risk',
           subscales: {
-            autonomy: 3.6,
-            environmentalMastery: 3.5,
-            personalGrowth: 3.6,
-            positiveRelations: 3.5,
-            purposeInLife: 3.6,
-            selfAcceptance: 3.7
+            autonomy: 5.1, // 36
+            environmentalMastery: 5.0, // 35
+            personalGrowth: 5.1, // 36
+            positiveRelations: 5.0, // 35
+            purposeInLife: 5.1, // 36
+            selfAcceptance: 5.3  // 37
           }
         },
         {
@@ -389,25 +397,84 @@ export default {
           department: 'COE',
           section: 'BSCE2A',
           submissionDate: '2024-06-03',
-          overallScore: 80,
-          riskLevel: 'Low Risk',
           subscales: {
-            autonomy: 4.0,
-            environmentalMastery: 4.1,
-            personalGrowth: 3.9,
-            positiveRelations: 4.0,
-            purposeInLife: 4.1,
-            selfAcceptance: 3.9
+            autonomy: 5.7, // 40
+            environmentalMastery: 5.9, // 41
+            personalGrowth: 5.6, // 39
+            positiveRelations: 5.7, // 40
+            purposeInLife: 5.9, // 41
+            selfAcceptance: 5.6  // 39
           }
         }
       ],
-      filteredStudents: []
+      filteredStudents: [],
+      // Define risk thresholds based on quartiles
+      riskThresholds: {
+        q1: 17, // Below or equal to this is "At Risk" (Q1)
+        q4: 39  // Above or equal to this is "Healthy" (Q4)
+      }
     };
   },
   created() {
     this.filterStudents();
   },
   methods: {
+    // Calculate overall score as sum of all dimension scores (scaled from 0-5 to 7-49)
+    calculateOverallScore(student) {
+      let total = 0;
+      for (const subscale in student.subscales) {
+        total += Math.round(student.subscales[subscale] * 7);
+      }
+      return total;
+    },
+    
+    // Check if a dimension score is at risk (in Q1)
+    isAtRisk(score) {
+      return score <= this.riskThresholds.q1;
+    },
+    
+    // Check if student has any at-risk dimensions
+    hasAnyRiskDimension(student) {
+      for (const subscale in student.subscales) {
+        if (this.isAtRisk(student.subscales[subscale] * 7)) {
+          return true;
+        }
+      }
+      return false;
+    },
+    
+    // Get count of at-risk dimensions
+    getAtRiskDimensionsCount(student) {
+      let count = 0;
+      for (const subscale in student.subscales) {
+        if (this.isAtRisk(student.subscales[subscale] * 7)) {
+          count++;
+        }
+      }
+      return count;
+    },
+    
+    // Get color based on dimension score
+    getDimensionScoreColor(score) {
+      if (score <= this.riskThresholds.q1) return '#f44336';  // Red for at risk (Q1)
+      if (score < this.riskThresholds.q4) return '#ff9800';  // Orange for moderate (Q2-Q3)
+      return '#4caf50';  // Green for healthy (Q4)
+    },
+    
+    // Get risk class for styling
+    getDimensionRiskClass(score) {
+      if (score <= this.riskThresholds.q1) return 'high-risk';
+      if (score < this.riskThresholds.q4) return 'medium-risk';
+      return 'low-risk';
+    },
+    
+    // Get risk label based on score
+    getDimensionRiskLabel(score) {
+      if (score <= this.riskThresholds.q1) return 'AT RISK';
+      if (score < this.riskThresholds.q4) return 'MODERATE';
+      return 'HEALTHY';
+    },
+    
     filterStudents() {
       let result = [...this.students];
       
@@ -421,9 +488,21 @@ export default {
         result = result.filter(student => student.section === this.sectionFilter);
       }
       
-      // Apply risk level filter
+      // Apply risk level filter - now based on having at-risk dimensions
       if (this.riskLevelFilter !== 'all') {
-        result = result.filter(student => student.riskLevel === this.riskLevelFilter);
+        if (this.riskLevelFilter === 'High Risk') {
+          result = result.filter(student => {
+            const atRiskCount = this.getAtRiskDimensionsCount(student);
+            return atRiskCount >= 3; // High risk if 3+ dimensions are at risk
+          });
+        } else if (this.riskLevelFilter === 'Medium Risk') {
+          result = result.filter(student => {
+            const atRiskCount = this.getAtRiskDimensionsCount(student);
+            return atRiskCount > 0 && atRiskCount < 3; // Medium risk if 1-2 dimensions are at risk
+          });
+        } else if (this.riskLevelFilter === 'Low Risk') {
+          result = result.filter(student => !this.hasAnyRiskDimension(student));
+        }
       }
       
       // Apply search filter
@@ -441,7 +520,7 @@ export default {
         let comparison = 0;
         
         if (this.sortField === 'overallScore') {
-          comparison = a.overallScore - b.overallScore;
+          comparison = this.calculateOverallScore(a) - this.calculateOverallScore(b);
         } else if (this.sortField === 'submissionDate') {
           comparison = new Date(a.submissionDate) - new Date(b.submissionDate);
         }
@@ -464,11 +543,6 @@ export default {
       if (riskLevel === 'High Risk') return 'high-risk';
       if (riskLevel === 'Medium Risk') return 'medium-risk';
       return 'low-risk';
-    },
-    getScoreColor(score) {
-      if (score < 3.0) return '#f44336';  // Red for low scores
-      if (score < 3.5) return '#ff9800';  // Orange for medium scores
-      return '#4caf50';  // Green for high scores
     },
     formatSubscaleName(subscale) {
       const formatted = subscale.replace(/([A-Z])/g, ' $1').trim();
@@ -909,6 +983,132 @@ export default {
 
 .contact-btn:hover {
   background-color: #009e9b;
+}
+
+/* Add styles for the dimension risk column */
+.dimension-risk {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.risk-count {
+  font-weight: 600;
+  color: #f44336;
+  font-size: 13px;
+  background-color: #ffebee;
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-bottom: 3px;
+}
+
+.risk-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.risk-dimension-container {
+  position: relative;
+  display: inline-block;
+  margin: 2px;
+}
+
+.risk-dimension-score {
+  display: inline-block;
+  padding: 3px 6px;
+  background-color: #ffebee;
+  color: #f44336;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+.risk-dimension-container:hover .risk-dimension-score {
+  background-color: #f44336;
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+}
+
+.hover-label {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 100;
+}
+
+.hover-label::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -4px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
+.risk-dimension-score:hover .hover-label {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Remove unused tooltip styles */
+:global(.custom-tooltip),
+:global(.custom-tooltip::after),
+:global(.show-tooltip),
+.dimension-name-tooltip,
+.dimension-name-tooltip::after,
+.risk-dimension-container:hover .dimension-name-tooltip {
+  display: none;
+}
+
+.no-risk {
+  color: #4caf50;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Add styles for subscale risk indicators */
+.subscale-item.at-risk {
+  background-color: rgba(244, 67, 54, 0.05);
+  border-left: 3px solid #f44336;
+  padding-left: 12px;
+  border-radius: 4px;
+}
+
+.risk-status {
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.risk-status .high-risk {
+  color: #f44336;
+}
+
+.risk-status .medium-risk {
+  color: #ff9800;
+}
+
+.risk-status .low-risk {
+  color: #4caf50;
 }
 
 @media (max-width: 768px) {

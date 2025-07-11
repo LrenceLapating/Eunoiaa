@@ -16,7 +16,7 @@
           <li :class="{ active: currentView === 'dashboard' }">
             <a @click="currentView = 'dashboard'" class="menu-item">
               <div class="menu-icon">
-                <i class="fas fa-th-large"></i>
+              <i class="fas fa-th-large"></i>
               </div>
               <span>Dashboard</span>
             </a>
@@ -24,7 +24,7 @@
           <li :class="{ active: ['bulkAssessment', 'autoReminders', 'ryffScoring'].includes(currentView) }">
             <a @click="toggleSubmenu('ryffAssessment')" class="menu-item has-submenu">
               <div class="menu-icon">
-                <i class="fas fa-chart-bar"></i>
+              <i class="fas fa-chart-bar"></i>
               </div>
               <span>Ryff Assessment</span>
               <i class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }"></i>
@@ -53,7 +53,7 @@
           <li :class="{ active: currentView === 'status' }">
             <a @click="currentView = 'status'" class="menu-item">
               <div class="menu-icon">
-                <i class="fas fa-signal"></i>
+              <i class="fas fa-signal"></i>
               </div>
               <span>Status</span>
             </a>
@@ -61,7 +61,7 @@
           <li :class="{ active: currentView === 'guidance' }">
             <a @click="currentView = 'guidance'" class="menu-item">
               <div class="menu-icon">
-                <i class="fas fa-comment-alt"></i>
+              <i class="fas fa-comment-alt"></i>
               </div>
               <span>Guidance Feedback</span>
             </a>
@@ -69,7 +69,7 @@
           <li :class="{ active: currentView === 'reports' }">
             <a @click="currentView = 'reports'" class="menu-item">
               <div class="menu-icon">
-                <i class="fas fa-file-alt"></i>
+              <i class="fas fa-file-alt"></i>
               </div>
               <span>Reports</span>
             </a>
@@ -77,7 +77,7 @@
           <li :class="{ active: currentView === 'settings' }">
             <a @click="currentView = 'settings'" class="menu-item">
               <div class="menu-icon">
-                <i class="fas fa-cog"></i>
+              <i class="fas fa-cog"></i>
               </div>
               <span>Settings</span>
             </a>
@@ -85,7 +85,7 @@
           <li class="logout-item">
             <a @click="goToLanding" class="menu-item">
               <div class="menu-icon logout-icon">
-                <i class="fas fa-sign-out-alt"></i>
+              <i class="fas fa-sign-out-alt"></i>
               </div>
               <span>Logout</span>
             </a>
@@ -119,214 +119,214 @@
       <div class="dashboard-content">
         <!-- Main Dashboard View -->
         <div v-if="currentView === 'dashboard'">
-          <div class="dashboard-header">
-            <div class="filter-section">
-              <div class="filter-group">
-                <div class="filter-label">Time Period:</div>
-                <div class="date-filter">
-                  <i class="far fa-calendar"></i>
-                  <span>Last 30 Days</span>
-                  <i class="fas fa-chevron-down"></i>
-                </div>
+        <div class="dashboard-header">
+          <div class="filter-section">
+            <div class="filter-group">
+              <div class="filter-label">Time Period:</div>
+              <div class="date-filter">
+                <i class="far fa-calendar"></i>
+                <span>Last 30 Days</span>
+                <i class="fas fa-chevron-down"></i>
               </div>
-              <button class="refresh-btn" title="Refresh Data">
-                <i class="fas fa-sync-alt"></i>
-              </button>
             </div>
+            <button class="refresh-btn" title="Refresh Data">
+              <i class="fas fa-sync-alt"></i>
+            </button>
           </div>
+        </div>
 
-          <!-- Metrics Cards -->
-          <div class="metrics-row">
-            <div class="metric-card">
-              <div class="metric-content">
-                <div class="metric-header">
-                  <h3>Total Assessments</h3>
-                  <div class="metric-icon">
-                    <i class="fas fa-clipboard-list"></i>
-                  </div>
-                </div>
-                <div class="metric-value">971</div>
-                <div class="metric-change positive">
-                  <i class="fas fa-arrow-up"></i>
-                  <span>+8.2%</span>
-                  <span class="compared-text">Compared to previous month</span>
+        <!-- Metrics Cards -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-content">
+              <div class="metric-header">
+                <h3>Total Assessments</h3>
+                <div class="metric-icon">
+                  <i class="fas fa-clipboard-list"></i>
                 </div>
               </div>
-            </div>
-
-            <div class="metric-card">
-              <div class="metric-content">
-                <div class="metric-header">
-                  <h3>Completion Rate</h3>
-                  <div class="metric-icon">
-                    <i class="fas fa-check-circle"></i>
-                  </div>
-                </div>
-                <div class="metric-value">84.3%</div>
-                <div class="metric-change positive">
-                  <i class="fas fa-arrow-up"></i>
-                  <span>+2.5%</span>
-                  <span class="compared-text">Compared to previous month</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="metric-card">
-              <div class="metric-content">
-                <div class="metric-header">
-                  <h3>Average Well-being Score</h3>
-                  <div class="metric-icon">
-                    <i class="fas fa-smile"></i>
-                  </div>
-                </div>
-                <div class="metric-value">3.9<span class="metric-unit">/5</span></div>
-                <div class="metric-change negative">
-                  <i class="fas fa-arrow-down"></i>
-                  <span>-0.1</span>
-                  <span class="compared-text">Compared to previous month</span>
-                </div>
+              <div class="metric-value">971</div>
+              <div class="metric-change positive">
+                <i class="fas fa-arrow-up"></i>
+                <span>+8.2%</span>
+                <span class="compared-text">Compared to previous month</span>
               </div>
             </div>
           </div>
 
-          <!-- Two Column Layout Container -->
-          <div class="two-column-layout">
-            <!-- Risk Alerts Section -->
-            <div class="section risk-alerts-section">
-              <div class="section-header alert-header">
-                <div class="section-title">
-                  <div class="section-icon alert-icon">
-                    <i class="fas fa-exclamation-circle"></i>
-                  </div>
-                  <div>
-                    <h3>Risk Alerts</h3>
-                    <p>Departments and subscales requiring immediate attention</p>
-                  </div>
-                </div>
-                <div class="section-actions">
-                  <button class="action-btn">
-                    <i class="fas fa-bell-slash"></i>
-                    <span>Mute Alerts</span>
-                  </button>
+          <div class="metric-card">
+            <div class="metric-content">
+              <div class="metric-header">
+                <h3>Completion Rate</h3>
+                <div class="metric-icon">
+                  <i class="fas fa-check-circle"></i>
                 </div>
               </div>
-
-              <div class="alerts-container">
-                <div class="alert-item">
-                  <div class="alert-badge">COE</div>
-                  <div class="alert-details">
-                    <h4>Positive Relations</h4>
-                    <p>Score: 3.5 • <span class="negative">-0.3</span></p>
-                  </div>
-                  <div class="alert-students">
-                    <p>41 students</p>
-                    <span>at risk</span>
-                  </div>
-                </div>
-
-                <div class="alert-item">
-                  <div class="alert-badge">CCS</div>
-                  <div class="alert-details">
-                    <h4>Self-Acceptance</h4>
-                    <p>Score: 3.6 • <span class="negative">-0.2</span></p>
-                  </div>
-                  <div class="alert-students">
-                    <p>32 students</p>
-                    <span>at risk</span>
-                  </div>
-                </div>
-
-                <div class="alert-item">
-                  <div class="alert-badge">CN</div>
-                  <div class="alert-details">
-                    <h4>Purpose in Life</h4>
-                    <p>Score: 3.8 • <span class="negative">-0.1</span></p>
-                  </div>
-                  <div class="alert-students">
-                    <p>28 students</p>
-                    <span>at risk</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Department Assessment Overview -->
-            <div class="section department-section">
-              <div class="section-header">
-                <div class="section-title">
-                  <div class="section-icon dept-icon">
-                    <i class="fas fa-building"></i>
-                  </div>
-                  <div>
-                    <h3>Department Assessment Overview</h3>
-                    <p>Assessment participation and low scores by department</p>
-                  </div>
-                </div>
-                <button class="export-btn">
-                  <i class="fas fa-download"></i>
-                  Export
-                </button>
-              </div>
-
-              <div class="table-container">
-                <table class="department-table">
-                  <thead>
-                    <tr>
-                      <th>Department</th>
-                      <th>Total Test Takers</th>
-                      <th>Low Scores</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>CCS</td>
-                      <td>245</td>
-                      <td>32</td>
-                    </tr>
-                    <tr>
-                      <td>CN</td>
-                      <td>189</td>
-                      <td>28</td>
-                    </tr>
-                    <tr>
-                      <td>CBA</td>
-                      <td>156</td>
-                      <td>19</td>
-                    </tr>
-                    <tr>
-                      <td>COE</td>
-                      <td>203</td>
-                      <td>41</td>
-                    </tr>
-                    <tr>
-                      <td>CAS</td>
-                      <td>178</td>
-                      <td>23</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div class="metric-value">84.3%</div>
+              <div class="metric-change positive">
+                <i class="fas fa-arrow-up"></i>
+                <span>+2.5%</span>
+                <span class="compared-text">Compared to previous month</span>
               </div>
             </div>
           </div>
 
-          <!-- Average Ryff Subscale Scores -->
-          <div class="section subscale-section">
-            <div class="section-header">
+          <div class="metric-card">
+            <div class="metric-content">
+              <div class="metric-header">
+                <h3>Average Well-being Score</h3>
+                <div class="metric-icon">
+                  <i class="fas fa-smile"></i>
+                </div>
+              </div>
+              <div class="metric-value">3.9<span class="metric-unit">/5</span></div>
+              <div class="metric-change negative">
+                <i class="fas fa-arrow-down"></i>
+                <span>-0.1</span>
+                <span class="compared-text">Compared to previous month</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two Column Layout Container -->
+        <div class="two-column-layout">
+          <!-- Risk Alerts Section -->
+          <div class="section risk-alerts-section">
+            <div class="section-header alert-header">
               <div class="section-title">
-                <div class="section-icon chart-icon">
-                  <i class="fas fa-chart-bar"></i>
+                <div class="section-icon alert-icon">
+                  <i class="fas fa-exclamation-circle"></i>
                 </div>
                 <div>
-                  <h3>Average Ryff Subscale Scores by Department</h3>
-                  <p>Visual representation of well-being scores across departments</p>
+                  <h3>Risk Alerts</h3>
+                  <p>Departments and subscales requiring immediate attention</p>
                 </div>
+              </div>
+              <div class="section-actions">
+                <button class="action-btn">
+                  <i class="fas fa-bell-slash"></i>
+                  <span>Mute Alerts</span>
+                </button>
               </div>
             </div>
 
-            <div class="chart-container">
-              <SimpleRyffChart />
+            <div class="alerts-container">
+              <div class="alert-item">
+                <div class="alert-badge">COE</div>
+                <div class="alert-details">
+                  <h4>Positive Relations</h4>
+                  <p>Score: 3.5 • <span class="negative">-0.3</span></p>
+                </div>
+                <div class="alert-students">
+                  <p>41 students</p>
+                  <span>at risk</span>
+                </div>
+              </div>
+
+              <div class="alert-item">
+                <div class="alert-badge">CCS</div>
+                <div class="alert-details">
+                  <h4>Self-Acceptance</h4>
+                  <p>Score: 3.6 • <span class="negative">-0.2</span></p>
+                </div>
+                <div class="alert-students">
+                  <p>32 students</p>
+                  <span>at risk</span>
+                </div>
+              </div>
+
+              <div class="alert-item">
+                <div class="alert-badge">CN</div>
+                <div class="alert-details">
+                  <h4>Purpose in Life</h4>
+                  <p>Score: 3.8 • <span class="negative">-0.1</span></p>
+                </div>
+                <div class="alert-students">
+                  <p>28 students</p>
+                  <span>at risk</span>
+                </div>
+              </div>
             </div>
           </div>
+
+          <!-- Department Assessment Overview -->
+          <div class="section department-section">
+            <div class="section-header">
+              <div class="section-title">
+                <div class="section-icon dept-icon">
+                  <i class="fas fa-building"></i>
+                </div>
+                <div>
+                  <h3>Department Assessment Overview</h3>
+                  <p>Assessment participation and low scores by department</p>
+                </div>
+              </div>
+              <button class="export-btn">
+                <i class="fas fa-download"></i>
+                Export
+              </button>
+            </div>
+
+            <div class="table-container">
+              <table class="department-table">
+                <thead>
+                  <tr>
+                    <th>Department</th>
+                    <th>Total Test Takers</th>
+                    <th>Low Scores</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>CCS</td>
+                    <td>245</td>
+                    <td>32</td>
+                  </tr>
+                  <tr>
+                    <td>CN</td>
+                    <td>189</td>
+                    <td>28</td>
+                  </tr>
+                  <tr>
+                    <td>CBA</td>
+                    <td>156</td>
+                    <td>19</td>
+                  </tr>
+                  <tr>
+                    <td>COE</td>
+                    <td>203</td>
+                    <td>41</td>
+                  </tr>
+                  <tr>
+                    <td>CAS</td>
+                    <td>178</td>
+                    <td>23</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Average Ryff Subscale Scores -->
+        <div class="section subscale-section">
+          <div class="section-header">
+            <div class="section-title">
+              <div class="section-icon chart-icon">
+                <i class="fas fa-chart-bar"></i>
+              </div>
+              <div>
+                <h3>Average Ryff Subscale Scores by Department</h3>
+                <p>Visual representation of well-being scores across departments</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <SimpleRyffChart />
+          </div>
+        </div>
         </div>
 
         <!-- Bulk Assessment View -->
@@ -345,7 +345,7 @@
 </template>
 
 <script>
-import SimpleRyffChart from './SimpleRyffChart.vue'
+import SimpleRyffChart from '../Shared/SimpleRyffChart.vue'
 import BulkAssessment from './BulkAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
 import RyffScoring from './RyffScoring.vue'
