@@ -119,214 +119,168 @@
       <div class="dashboard-content">
         <!-- Main Dashboard View -->
         <div v-if="currentView === 'dashboard'">
-        <div class="dashboard-header">
-          <div class="filter-section">
-            <div class="filter-group">
-              <div class="filter-label">Time Period:</div>
-              <div class="date-filter">
-                <i class="far fa-calendar"></i>
-                <span>Last 30 Days</span>
-                <i class="fas fa-chevron-down"></i>
+          <div class="dashboard-header">
+            <div class="filter-section">
+              <div class="filter-group">
+                <div class="filter-label">Academic Period:</div>
+                <select v-model="selectedPeriod" class="period-filter" @change="refreshData">
+                  <option value="1-2024">1st Semester 2024-2025</option>
+                  <option value="2-2024">2nd Semester 2024-2025</option>
+                  <option value="1-2025">1st Semester 2025-2026</option>
+                  <option value="2-2025">2nd Semester 2025-2026</option>
+                </select>
               </div>
-            </div>
-            <button class="refresh-btn" title="Refresh Data">
-              <i class="fas fa-sync-alt"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Metrics Cards -->
-        <div class="metrics-row">
-          <div class="metric-card">
-            <div class="metric-content">
-              <div class="metric-header">
-                <h3>Total Assessments</h3>
-                <div class="metric-icon">
-                  <i class="fas fa-clipboard-list"></i>
-                </div>
-              </div>
-              <div class="metric-value">971</div>
-              <div class="metric-change positive">
-                <i class="fas fa-arrow-up"></i>
-                <span>+8.2%</span>
-                <span class="compared-text">Compared to previous month</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-content">
-              <div class="metric-header">
-                <h3>Completion Rate</h3>
-                <div class="metric-icon">
-                  <i class="fas fa-check-circle"></i>
-                </div>
-              </div>
-              <div class="metric-value">84.3%</div>
-              <div class="metric-change positive">
-                <i class="fas fa-arrow-up"></i>
-                <span>+2.5%</span>
-                <span class="compared-text">Compared to previous month</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <div class="metric-content">
-              <div class="metric-header">
-                <h3>Average Well-being Score</h3>
-                <div class="metric-icon">
-                  <i class="fas fa-smile"></i>
-                </div>
-              </div>
-              <div class="metric-value">3.9<span class="metric-unit">/5</span></div>
-              <div class="metric-change negative">
-                <i class="fas fa-arrow-down"></i>
-                <span>-0.1</span>
-                <span class="compared-text">Compared to previous month</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Two Column Layout Container -->
-        <div class="two-column-layout">
-          <!-- Risk Alerts Section -->
-          <div class="section risk-alerts-section">
-            <div class="section-header alert-header">
-              <div class="section-title">
-                <div class="section-icon alert-icon">
-                  <i class="fas fa-exclamation-circle"></i>
-                </div>
-                <div>
-                  <h3>Risk Alerts</h3>
-                  <p>Departments and subscales requiring immediate attention</p>
-                </div>
-              </div>
-              <div class="section-actions">
-                <button class="action-btn">
-                  <i class="fas fa-bell-slash"></i>
-                  <span>Mute Alerts</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="alerts-container">
-              <div class="alert-item">
-                <div class="alert-badge">COE</div>
-                <div class="alert-details">
-                  <h4>Positive Relations</h4>
-                  <p>Score: 3.5 • <span class="negative">-0.3</span></p>
-                </div>
-                <div class="alert-students">
-                  <p>41 students</p>
-                  <span>at risk</span>
-                </div>
-              </div>
-
-              <div class="alert-item">
-                <div class="alert-badge">CCS</div>
-                <div class="alert-details">
-                  <h4>Self-Acceptance</h4>
-                  <p>Score: 3.6 • <span class="negative">-0.2</span></p>
-                </div>
-                <div class="alert-students">
-                  <p>32 students</p>
-                  <span>at risk</span>
-                </div>
-              </div>
-
-              <div class="alert-item">
-                <div class="alert-badge">CN</div>
-                <div class="alert-details">
-                  <h4>Purpose in Life</h4>
-                  <p>Score: 3.8 • <span class="negative">-0.1</span></p>
-                </div>
-                <div class="alert-students">
-                  <p>28 students</p>
-                  <span>at risk</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Department Assessment Overview -->
-          <div class="section department-section">
-            <div class="section-header">
-              <div class="section-title">
-                <div class="section-icon dept-icon">
-                  <i class="fas fa-building"></i>
-                </div>
-                <div>
-                  <h3>Department Assessment Overview</h3>
-                  <p>Assessment participation and low scores by department</p>
-                </div>
-              </div>
-              <button class="export-btn">
-                <i class="fas fa-download"></i>
-                Export
+              <button class="refresh-btn" title="Refresh Data" @click="refreshData">
+                <i class="fas fa-sync-alt"></i>
               </button>
             </div>
-
-            <div class="table-container">
-              <table class="department-table">
-                <thead>
-                  <tr>
-                    <th>Department</th>
-                    <th>Total Test Takers</th>
-                    <th>Low Scores</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>CCS</td>
-                    <td>245</td>
-                    <td>32</td>
-                  </tr>
-                  <tr>
-                    <td>CN</td>
-                    <td>189</td>
-                    <td>28</td>
-                  </tr>
-                  <tr>
-                    <td>CBA</td>
-                    <td>156</td>
-                    <td>19</td>
-                  </tr>
-                  <tr>
-                    <td>COE</td>
-                    <td>203</td>
-                    <td>41</td>
-                  </tr>
-                  <tr>
-                    <td>CAS</td>
-                    <td>178</td>
-                    <td>23</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
-        </div>
 
-        <!-- Average Ryff Subscale Scores -->
-        <div class="section subscale-section">
-          <div class="section-header">
-            <div class="section-title">
-              <div class="section-icon chart-icon">
-                <i class="fas fa-chart-bar"></i>
+          <!-- Metrics Cards -->
+          <div class="metrics-row">
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-content">
+                  <div class="metric-header">
+                    <h3>Total Assessments</h3>
+                    <div class="metric-icon">
+                      <i class="fas fa-clipboard-list"></i>
+                    </div>
+                  </div>
+                  <div class="metric-value">971</div>
+                </div>
               </div>
-              <div>
-                <h3>Average Ryff Subscale Scores by Department</h3>
-                <p>Visual representation of well-being scores across departments</p>
+
+              <div class="metric-card">
+                <div class="metric-content">
+                  <div class="metric-header">
+                    <h3>Completion Rate</h3>
+                    <div class="metric-icon">
+                      <i class="fas fa-check-circle"></i>
+                    </div>
+                  </div>
+                  <div class="metric-value">84.3%</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="chart-container">
-            <SimpleRyffChart />
+          <!-- Two Column Layout Container -->
+          <div class="two-column-layout">
+            <!-- Risk Alerts Section -->
+            <div class="section risk-alerts-section">
+              <div class="section-header alert-header">
+                <div class="section-title">
+                  <div class="section-icon alert-icon">
+                    <i class="fas fa-exclamation-circle"></i>
+                  </div>
+                  <div>
+                    <h3>Risk Alerts</h3>
+                    <p>Dimensions requiring immediate attention</p>
+                  </div>
+                </div>
+                <div class="section-actions">
+                  <button class="action-btn">
+                    <i class="fas fa-bell-slash"></i>
+                    <span>Mute Alerts</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="alerts-container">
+                <div v-for="(dimension, index) in dimensions" 
+                     :key="index" 
+                     class="alert-item"
+                     @click="showDimensionDetails(dimension)"
+                     :class="{ 'clickable': true }">
+                  <div class="alert-details">
+                    <h4>{{ dimension.name }}</h4>
+                  </div>
+                  <div class="alert-colleges">
+                    <p>{{ dimension.highRiskColleges.length }} colleges</p>
+                    <span>at high risk</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- College Assessment Overview -->
+            <div class="section college-section">
+              <div class="section-header">
+                <div class="section-title">
+                  <div class="section-icon dept-icon">
+                    <i class="fas fa-building"></i>
+                  </div>
+                  <div>
+                    <h3>College Assessment Overview</h3>
+                    <p>Assessment participation and low scores by college</p>
+                  </div>
+                </div>
+                <button class="export-btn">
+                  <i class="fas fa-download"></i>
+                  Export
+                </button>
+              </div>
+
+              <div class="table-container">
+                <table class="college-table">
+                  <thead>
+                    <tr>
+                      <th>College</th>
+                      <th>Total Test Takers</th>
+                      <th>Low Scores</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td data-college="CCS">CCS</td>
+                      <td>245</td>
+                      <td>32</td>
+                    </tr>
+                    <tr>
+                      <td data-college="CN">CN</td>
+                      <td>189</td>
+                      <td>28</td>
+                    </tr>
+                    <tr>
+                      <td data-college="CBA">CBA</td>
+                      <td>156</td>
+                      <td>19</td>
+                    </tr>
+                    <tr>
+                      <td data-college="COE">COE</td>
+                      <td>203</td>
+                      <td>41</td>
+                    </tr>
+                    <tr>
+                      <td data-college="CAS">CAS</td>
+                      <td>178</td>
+                      <td>23</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <!-- Average Ryff Subscale Scores -->
+          <div class="section subscale-section">
+            <div class="section-header">
+              <div class="section-title">
+                <div class="section-icon chart-icon">
+                  <i class="fas fa-chart-bar"></i>
+                </div>
+                <div>
+                  <h3>Average Ryff Subscale Scores by College</h3>
+                  <p>Visual representation of well-being scores across colleges</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-container">
+              <SimpleRyffChart />
+            </div>
+          </div>
         </div>
 
         <!-- Bulk Assessment View -->
@@ -337,8 +291,31 @@
 
         <!-- Ryff Scoring View -->
         <ryff-scoring v-if="currentView === 'ryffScoring'" />
+      </div>
 
-        <!-- Other views -->
+      <!-- Dimension Details Modal -->
+      <div class="modal" v-if="showModal" @click.self="closeModal">
+        <div class="modal-content dimension-details">
+          <div class="modal-header">
+            <h3>{{ selectedDimension.name }} - Colleges at High Risk</h3>
+            <button class="close-button" @click="closeModal">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="college-risk-list">
+              <div v-for="(college, index) in selectedDimension.highRiskColleges" 
+                   :key="index" 
+                   class="college-risk-item">
+                <div class="college-name">{{ college.name }}</div>
+                <div class="student-count">
+                  <span class="count">{{ college.studentCount }}</span>
+                  <span class="label">students at risk</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -362,13 +339,65 @@ export default {
     return {
       currentView: 'dashboard',
       showSubmenu: null,
-      selectedDepartment: 'all',
+      selectedCollege: 'all',
+      showModal: false,
+      selectedDimension: null,
+      dimensions: [
+        {
+          name: 'Autonomy',
+          highRiskColleges: [
+            { name: 'CCS', studentCount: 15 },
+            { name: 'COE', studentCount: 12 },
+            { name: 'CAS', studentCount: 14 }
+          ]
+        },
+        {
+          name: 'Environmental Mastery',
+          highRiskColleges: [
+            { name: 'CN', studentCount: 18 },
+            { name: 'CBA', studentCount: 10 },
+            { name: 'CCS', studentCount: 7 }
+          ]
+        },
+        {
+          name: 'Personal Growth',
+          highRiskColleges: [
+            { name: 'CAS', studentCount: 16 },
+            { name: 'COE', studentCount: 12 }
+          ]
+        },
+        {
+          name: 'Positive Relations',
+          highRiskColleges: [
+            { name: 'CN', studentCount: 20 },
+            { name: 'CCS', studentCount: 15 },
+            { name: 'CBA', studentCount: 10 }
+          ]
+        },
+        {
+          name: 'Purpose in Life',
+          highRiskColleges: [
+            { name: 'COE', studentCount: 17 },
+            { name: 'CAS', studentCount: 15 }
+          ]
+        },
+        {
+          name: 'Self-Acceptance',
+          highRiskColleges: [
+            { name: 'CCS', studentCount: 18 },
+            { name: 'CN', studentCount: 12 },
+            { name: 'CBA', studentCount: 8 }
+          ]
+        }
+      ],
       currentDate: new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
-      })
+      }),
+      selectedPeriod: '1-2024',  // default to 1st sem 2024-2025
+      academicYears: [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
     }
   },
   computed: {
@@ -393,7 +422,7 @@ export default {
         case 'ryffScoring':
           return 'Review and analyze assessment scores';
         default:
-          return 'Monitor well-being metrics across departments';
+          return 'Monitor well-being metrics across colleges';
       }
     }
   },
@@ -403,6 +432,20 @@ export default {
     },
     toggleSubmenu(menu) {
       this.showSubmenu = this.showSubmenu === menu ? null : menu;
+    },
+    showDimensionDetails(dimension) {
+      this.selectedDimension = dimension;
+      this.showModal = true;
+    },
+    closeModal() {
+      this.showModal = false;
+      this.selectedDimension = null;
+    },
+    refreshData() {
+      // Extract semester and year from selectedPeriod
+      const [semester, year] = this.selectedPeriod.split('-');
+      console.log(`Refreshing data for ${semester === '1' ? '1st' : '2nd'} Semester ${year}-${Number(year)+1}`);
+      // Implement actual refresh logic here
     }
   }
 }
@@ -669,6 +712,16 @@ export default {
   display: flex;
   flex-direction: column;
   margin-left: 250px;
+  padding: 20px;
+  background-color: #f5f5f5; /* Plain dirty white background */
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+/* Remove any dot patterns or textures */
+.main-content::before,
+.main-content::after {
+  display: none;
 }
 
 /* Top Navigation */
@@ -790,100 +843,100 @@ export default {
 .filter-section {
   display: flex;
   align-items: center;
+  gap: 1.5rem;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .filter-group {
   display: flex;
   align-items: center;
-  margin-right: 10px;
+  gap: 0.75rem;
 }
 
 .filter-label {
-  font-size: 13px;
-  color: var(--text-light);
-  margin-right: 5px;
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
-.date-filter {
-  display: flex;
-  align-items: center;
-  background-color: white;
-  padding: 8px 15px;
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+.year-filter,
+.semester-filter {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.9rem;
+  color: #1e293b;
   cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
 }
 
-.date-filter i:first-child {
-  margin-right: 8px;
-  color: var(--primary);
+.year-filter:hover,
+.semester-filter:hover {
+  border-color: #94a3b8;
 }
 
-.date-filter i:last-child {
-  margin-left: 8px;
-  font-size: 12px;
-  color: var(--text-light);
+.year-filter:focus,
+.semester-filter:focus {
+  outline: none;
+  border-color: #00b3b0;
+  box-shadow: 0 0 0 2px rgba(0, 179, 176, 0.1);
 }
 
 .refresh-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  background-color: white;
-  border: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
   cursor: pointer;
-  color: var(--text);
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .refresh-btn:hover {
-  background-color: var(--primary);
-  color: white;
-  border-color: var(--primary);
+  background: #f8fafc;
+  color: #00b3b0;
+  border-color: #00b3b0;
+}
+
+.refresh-btn i {
+  font-size: 1rem;
 }
 
 /* Metrics Row */
 .metrics-row {
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.metrics-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  margin-bottom: 15px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  width: 100%;
 }
 
 .metric-card {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  padding: 15px;
-  transition: transform 0.2s, box-shadow 0.2s;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.metric-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   height: 100%;
-  background-color: var(--primary);
-  opacity: 0;
-  transition: opacity 0.2s;
+  width: 100%;
 }
 
 .metric-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
-}
-
-.metric-card:hover::before {
-  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .metric-content {
@@ -1105,7 +1158,7 @@ export default {
   max-height: 300px;
 }
 
-.department-table {
+.college-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -1113,7 +1166,7 @@ export default {
   overflow: hidden;
 }
 
-.department-table th {
+.college-table th {
   text-align: left;
   padding: 15px;
   font-size: 13px;
@@ -1123,17 +1176,17 @@ export default {
   border-bottom: 1px solid #e0e0e0;
 }
 
-.department-table td {
+.college-table td {
   padding: 12px 15px;
   font-size: 14px;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.department-table tr:hover td {
+.college-table tr:hover td {
   background-color: #f9fcff;
 }
 
-.department-table tr:last-child td {
+.college-table tr:last-child td {
   border-bottom: none;
 }
 
@@ -1145,7 +1198,7 @@ export default {
   margin-top: 15px;
 }
 
-.department-filter {
+.college-filter {
   display: flex;
   align-items: center;
   background-color: white;
@@ -1156,7 +1209,7 @@ export default {
   cursor: pointer;
 }
 
-.department-filter i {
+.college-filter i {
   margin-left: 8px;
   font-size: 12px;
   color: var(--text-light);
@@ -1240,7 +1293,7 @@ export default {
   border-bottom: 1px solid #eaeaea;
 }
 
-.department-group {
+.college-group {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1365,7 +1418,7 @@ export default {
   margin-right: 8px;
 }
 
-/* Add section icons to department section and subscale section */
+/* Add section icons to college section and subscale section */
 .section-icon {
   display: flex;
   align-items: center;
@@ -1389,23 +1442,23 @@ export default {
 }
 
 /* Add subtle hover effects to table rows */
-.department-table tr {
+.college-table tr {
   transition: all 0.2s;
 }
 
-.department-table tr:hover td {
+.college-table tr:hover td {
   background-color: #f0f7ff;
 }
 
-/* Add department badge to the table */
-.department-table td:first-child {
+/* Add college badge to the table */
+.college-table td:first-child {
   padding: 12px 15px;
   font-size: 14px;
   font-weight: 500;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.department-table td:first-child::before {
+.college-table td:first-child::before {
   content: '';
   display: inline-block;
   width: 8px;
@@ -1417,9 +1470,11 @@ export default {
 
 /* Add two-column layout styles */
 .two-column-layout {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+  width: 100%;
 }
 
 .two-column-layout .section {
@@ -1450,7 +1505,7 @@ export default {
 }
 
 /* Improve the table styling for the two-column layout */
-.department-table {
+.college-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -1459,16 +1514,16 @@ export default {
 }
 
 /* Add these additional styles */
-.two-column-layout .department-table {
+.two-column-layout .college-table {
   font-size: 13px;
 }
 
-.two-column-layout .department-table th {
+.two-column-layout .college-table th {
   padding: 12px 10px;
   font-size: 12px;
 }
 
-.two-column-layout .department-table td {
+.two-column-layout .college-table td {
   padding: 10px;
   font-size: 13px;
 }
@@ -1804,5 +1859,151 @@ export default {
   .metrics-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Updated and new styles */
+.alert-item.clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.alert-item.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.modal-content {
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(20px);
+  animation: slideUp 0.3s ease forwards;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 1.25rem;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: var(--gray);
+  color: var(--dark);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.college-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.college-risk-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--gray);
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s ease;
+}
+
+.college-risk-item:hover {
+  background: #f0f2f5;
+}
+
+.college-name {
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.student-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.student-count .count {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.student-count .label {
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Update existing alert styles */
+.alert-colleges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.alert-colleges p {
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0;
+}
+
+.alert-colleges span {
+  font-size: 0.85rem;
+  color: var(--text-light);
 }
 </style> 

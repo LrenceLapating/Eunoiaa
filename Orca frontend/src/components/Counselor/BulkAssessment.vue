@@ -42,55 +42,55 @@
 
       <div class="form-group">
         <div class="section-header">
-          <label>Select Departments</label>
+          <label>Select Colleges</label>
           <div class="select-all-option">
             <div class="checkbox-label">
-              <input type="checkbox" id="select-all" v-model="selectAllDepartments" @change="toggleAllDepartments">
-              <label for="select-all">Select All Departments</label>
+              <input type="checkbox" id="select-all" v-model="selectAllColleges" @change="toggleAllColleges">
+              <label for="select-all">Select All Colleges</label>
             </div>
           </div>
         </div>
 
-        <div class="departments-list">
-          <div v-for="(dept, index) in departments" :key="index" class="department-item">
+        <div class="colleges-list">
+          <div v-for="(college, index) in colleges" :key="index" class="college-item">
             <div class="checkbox-label">
-              <input type="checkbox" :id="'dept-' + index" v-model="dept.selected" @change="updateSelectAllState">
-              <label :for="'dept-' + index">{{ dept.name }}</label>
+              <input type="checkbox" :id="'college-' + index" v-model="college.selected" @change="updateSelectAllState">
+              <label :for="'college-' + index">{{ college.name }}</label>
             </div>
             <button 
               class="customize-button" 
-              @click="customizeDepartment(dept)" 
-              :disabled="!dept.selected" 
-              :class="{ 'disabled': !dept.selected }"
+              @click="customizeCollege(college)" 
+              :disabled="!college.selected" 
+              :class="{ 'disabled': !college.selected }"
             >
               <i class="fas fa-filter"></i> Customize
             </button>
           </div>
         </div>
-        <small v-if="validationErrors.departments" class="error-text">{{ validationErrors.departments }}</small>
+        <small v-if="validationErrors.colleges" class="error-text">{{ validationErrors.colleges }}</small>
 
-        <!-- Selected Departments Summary -->
-        <div class="selected-departments-summary" v-if="hasSelectedDepartmentsWithFilters">
-          <h4 class="summary-title">Selected Departments:</h4>
+        <!-- Selected Colleges Summary -->
+        <div class="selected-colleges-summary" v-if="hasSelectedCollegesWithFilters">
+          <h4 class="summary-title">Selected Colleges:</h4>
           
-          <div v-for="(dept, index) in selectedDepartmentsWithFilters" :key="'summary-' + index" class="selected-department-item">
-            <div class="department-name">
-              <span class="department-label">{{ dept.name }}</span>
-              <span class="customized-badge" v-if="dept.customized">(Customized)</span>
+          <div v-for="(college, index) in selectedCollegesWithFilters" :key="'summary-' + index" class="selected-college-item">
+            <div class="college-name">
+              <span class="college-label">{{ college.name }}</span>
+              <span class="customized-badge" v-if="college.customized">(Customized)</span>
             </div>
             
             <ul class="selected-years-list">
-              <li v-if="dept.years.first > 0">
-                <i class="fas fa-circle bullet"></i> 1st Year: {{ dept.years.first }} sections
+              <li v-if="college.years.first > 0">
+                <i class="fas fa-circle bullet"></i> 1st Year: {{ college.years.first }} sections
               </li>
-              <li v-if="dept.years.second > 0">
-                <i class="fas fa-circle bullet"></i> 2nd Year: {{ dept.years.second }} sections
+              <li v-if="college.years.second > 0">
+                <i class="fas fa-circle bullet"></i> 2nd Year: {{ college.years.second }} sections
               </li>
-              <li v-if="dept.years.third > 0">
-                <i class="fas fa-circle bullet"></i> 3rd Year: {{ dept.years.third }} sections
+              <li v-if="college.years.third > 0">
+                <i class="fas fa-circle bullet"></i> 3rd Year: {{ college.years.third }} sections
               </li>
-              <li v-if="dept.years.fourth > 0">
-                <i class="fas fa-circle bullet"></i> 4th Year: {{ dept.years.fourth }} sections
+              <li v-if="college.years.fourth > 0">
+                <i class="fas fa-circle bullet"></i> 4th Year: {{ college.years.fourth }} sections
               </li>
             </ul>
           </div>
@@ -168,13 +168,13 @@
       </div>
     </div>
 
-    <!-- Department Filter Modal -->
-    <department-filter 
-      :is-visible="showDepartmentFilter" 
-      :department-name="currentDepartment ? currentDepartment.name : ''"
-      :existing-filters="currentDepartment ? departmentFilters[currentDepartment.name] : null"
-      @close="showDepartmentFilter = false"
-      @apply-filters="applyDepartmentFilters"
+    <!-- College Filter Modal -->
+    <college-filter 
+      :is-visible="showCollegeFilter" 
+      :college-name="currentCollege ? currentCollege.name : ''"
+      :existing-filters="currentCollege ? collegeFilters[currentCollege.name] : null"
+      @close="showCollegeFilter = false"
+      @apply-filters="applyCollegeFilters"
     />
 
     <!-- Preview Modal -->
@@ -192,8 +192,8 @@
             <span class="preview-value">{{ assessmentName || 'Not specified' }}</span>
           </div>
           <div class="preview-item">
-            <span class="preview-label">Selected Departments:</span>
-            <span class="preview-value">{{ selectedDepartmentsText }}</span>
+            <span class="preview-label">Selected Colleges:</span>
+            <span class="preview-value">{{ selectedCollegesText }}</span>
           </div>
           <div class="preview-item">
             <span class="preview-label">Version:</span>
@@ -227,7 +227,7 @@
 
 <script>
 import SavedVersions from './SavedVersions.vue';
-import DepartmentFilter from './DepartmentFilter.vue';
+import CollegeFilter from './CollegeFilter.vue';
 import AssessmentHistory from './AssessmentHistory.vue';
 import AutoReminders from './AutoReminders.vue'; // Kept for future use
 
@@ -235,25 +235,25 @@ export default {
   name: 'BulkAssessment',
   components: {
     SavedVersions,
-    DepartmentFilter,
+    CollegeFilter,
     AssessmentHistory,
     AutoReminders
   },
   data() {
     return {
       currentView: 'versions', // Start with versions view
-      showDepartmentFilter: false,
-      currentDepartment: null,
-      departmentFilters: {}, // Stores customization info for each department
+      showCollegeFilter: false,
+      currentCollege: null,
+      collegeFilters: {}, // Stores customization info for each college
       filteredSections: {},
       assessmentName: '',
-      selectAllDepartments: false,
-      departments: [
-        { name: 'CCS', selected: false, students: 245 },
-        { name: 'CN', selected: false, students: 189 },
-        { name: 'CBA', selected: false, students: 156 },
-        { name: 'COE', selected: false, students: 203 },
-        { name: 'CAS', selected: false, students: 178 }
+      selectAllColleges: false,
+      colleges: [
+        { name: 'CCS', selected: false },
+        { name: 'CN', selected: false },
+        { name: 'CBA', selected: false },
+        { name: 'COE', selected: false },
+        { name: 'CAS', selected: false }
       ],
       scheduleOption: 'now',
       scheduledDate: this.getDefaultScheduledDate(),
@@ -265,13 +265,13 @@ export default {
       isSending: false,
       validationErrors: {
         assessmentName: '',
-        departments: ''
+        colleges: ''
       }
     }
   },
   computed: {
-    selectedDepartmentsText() {
-      const selected = this.departments.filter(d => d.selected).map(d => d.name);
+    selectedCollegesText() {
+      const selected = this.colleges.filter(c => c.selected).map(c => c.name);
       return selected.length ? selected.join(', ') : 'None selected';
     },
     scheduleText() {
@@ -281,24 +281,24 @@ export default {
         return `Scheduled for ${new Date(this.scheduledDate).toLocaleString()}`;
       }
     },
-    hasSelectedDepartments() {
-      return this.departments.some(d => d.selected);
+    hasSelectedColleges() {
+      return this.colleges.some(c => c.selected);
     },
-    hasSelectedDepartmentsWithFilters() {
-      return this.selectedDepartmentsWithFilters.length > 0;
+    hasSelectedCollegesWithFilters() {
+      return this.selectedCollegesWithFilters.length > 0;
     },
-    selectedDepartmentsWithFilters() {
-      return this.departments
-        .filter(dept => dept.selected)
-        .map(dept => {
-          const isCustomized = this.departmentFilters[dept.name] !== undefined;
-          const filters = this.departmentFilters[dept.name] || {
+    selectedCollegesWithFilters() {
+      return this.colleges
+        .filter(college => college.selected)
+        .map(college => {
+          const isCustomized = this.collegeFilters[college.name] !== undefined;
+          const filters = this.collegeFilters[college.name] || {
             yearCounts: { first: 8, second: 8, third: 8, fourth: 8 },
             totalSections: 32
           };
           
           return {
-            name: dept.name,
+            name: college.name,
             customized: isCustomized && filters.customized,
             years: {
               first: filters.yearCounts.first,
@@ -313,8 +313,8 @@ export default {
     totalEstimatedRecipients() {
       // Each section is assumed to have 35 students on average
       let total = 0;
-      this.selectedDepartmentsWithFilters.forEach(dept => {
-        total += (dept.years.first + dept.years.second + dept.years.third + dept.years.fourth) * 35;
+      this.selectedCollegesWithFilters.forEach(college => {
+        total += (college.years.first + college.years.second + college.years.third + college.years.fourth) * 35;
       });
       return total;
     }
@@ -326,14 +326,14 @@ export default {
       now.setHours(9, 0, 0, 0); // Default to 9:00 AM
       return now.toISOString().slice(0, 16); // Format for datetime-local
     },
-    toggleAllDepartments() {
-      this.departments.forEach(dept => {
-        dept.selected = this.selectAllDepartments;
+    toggleAllColleges() {
+      this.colleges.forEach(college => {
+        college.selected = this.selectAllColleges;
         
         // Apply default filters when selecting
-        if (dept.selected && !this.departmentFilters[dept.name]) {
-          this.departmentFilters[dept.name] = {
-            department: dept.name,
+        if (college.selected && !this.collegeFilters[college.name]) {
+          this.collegeFilters[college.name] = {
+            department: college.name,
             customized: false,
             yearCounts: {
               first: 8,
@@ -344,21 +344,21 @@ export default {
             totalSections: 32,
             totalStudents: 32 * 35 // 35 students per section
           };
-        } else if (!dept.selected) {
+        } else if (!college.selected) {
           // Remove filters when deselecting
-          delete this.departmentFilters[dept.name];
+          delete this.collegeFilters[college.name];
         }
       });
     },
     updateSelectAllState() {
-      this.selectAllDepartments = this.departments.every(dept => dept.selected);
+      this.selectAllColleges = this.colleges.every(college => college.selected);
       
-      // When a department is checked directly (without customization)
-      this.departments.forEach(dept => {
-        if (dept.selected && !this.departmentFilters[dept.name]) {
+      // When a college is checked directly (without customization)
+      this.colleges.forEach(college => {
+        if (college.selected && !this.collegeFilters[college.name]) {
           // Create default filter data with all sections selected
-          this.departmentFilters[dept.name] = {
-            department: dept.name,
+          this.collegeFilters[college.name] = {
+            department: college.name,
             customized: false,
             yearCounts: {
               first: 8,
@@ -369,26 +369,26 @@ export default {
             totalSections: 32,
             totalStudents: 32 * 35 // 35 students per section
           };
-        } else if (!dept.selected) {
-          // If department is deselected, remove its filters
-          delete this.departmentFilters[dept.name];
+        } else if (!college.selected) {
+          // If college is deselected, remove its filters
+          delete this.collegeFilters[college.name];
         }
       });
     },
-    customizeDepartment(dept) {
-      if (!dept.selected) return;
+    customizeCollege(college) {
+      if (!college.selected) return;
       
-      this.currentDepartment = dept;
-      this.showDepartmentFilter = true;
+      this.currentCollege = college;
+      this.showCollegeFilter = true;
     },
-    applyDepartmentFilters(summary) {
-      // Store the selected sections for the current department
-      if (this.currentDepartment) {
-        this.departmentFilters[this.currentDepartment.name] = summary;
+    applyCollegeFilters(summary) {
+      // Store the selected sections for the current college
+      if (this.currentCollege) {
+        this.collegeFilters[this.currentCollege.name] = summary;
         
         // Show a toast notification
         this.showToast = true;
-        this.toastMessage = `Filters applied to ${this.currentDepartment.name}`;
+        this.toastMessage = `Filters applied to ${this.currentCollege.name}`;
         
         // Hide toast after 3 seconds
         setTimeout(() => {
@@ -400,7 +400,7 @@ export default {
       let isValid = true;
       this.validationErrors = {
         assessmentName: '',
-        departments: ''
+        colleges: ''
       };
 
       if (!this.assessmentName.trim()) {
@@ -408,8 +408,8 @@ export default {
         isValid = false;
       }
 
-      if (!this.hasSelectedDepartments) {
-        this.validationErrors.departments = 'Please select at least one department';
+      if (!this.hasSelectedColleges) {
+        this.validationErrors.colleges = 'Please select at least one college';
         isValid = false;
       }
 
@@ -432,7 +432,7 @@ export default {
         this.isSending = false;
         this.showPreview = false;
         this.showToast = true;
-        this.toastMessage = `Assessment "${this.assessmentName}" has been sent to ${this.selectedDepartmentsText}`;
+        this.toastMessage = `Assessment "${this.assessmentName}" has been sent to ${this.selectedCollegesText}`;
         
         // Hide toast after 3 seconds
         setTimeout(() => {
@@ -463,8 +463,8 @@ export default {
     createNewVersion() {
       // Reset form to default values
       this.assessmentName = '';
-      this.selectAllDepartments = false;
-      this.departments.forEach(dept => dept.selected = false);
+      this.selectAllColleges = false;
+      this.colleges.forEach(college => college.selected = false);
       this.scheduleOption = 'now';
       this.scheduledDate = this.getDefaultScheduledDate();
       this.selectedVersion = '54'; // Default to medium version
@@ -627,13 +627,13 @@ textarea.form-control {
   vertical-align: middle;
 }
 
-.departments-list {
+.colleges-list {
   border: 1px solid #e0e0e0;
   border-radius: var(--border-radius);
   overflow: hidden;
 }
 
-.department-item {
+.college-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -642,11 +642,11 @@ textarea.form-control {
   transition: background-color 0.2s;
 }
 
-.department-item:last-child {
+.college-item:last-child {
   border-bottom: none;
 }
 
-.department-item:hover {
+.college-item:hover {
   background-color: #f9f9f9;
 }
 
@@ -934,8 +934,8 @@ textarea.form-control {
   font-size: 18px;
 }
 
-/* Selected Departments Summary Styles */
-.selected-departments-summary {
+/* Selected Colleges Summary Styles */
+.selected-colleges-summary {
   margin-top: 25px;
   padding: 20px;
   background-color: #f9f9f9;
@@ -951,25 +951,25 @@ textarea.form-control {
   margin: 0 0 15px 0;
 }
 
-.selected-department-item {
+.selected-college-item {
   margin-bottom: 15px;
   padding-bottom: 15px;
   border-bottom: 1px solid #eaeaea;
 }
 
-.selected-department-item:last-child {
+.selected-college-item:last-child {
   border-bottom: none;
   margin-bottom: 0;
   padding-bottom: 0;
 }
 
-.department-name {
+.college-name {
   display: flex;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.department-label {
+.college-label {
   font-weight: 500;
   color: var(--dark);
 }

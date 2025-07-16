@@ -3,7 +3,7 @@
     <transition name="modal">
       <div class="filter-content" v-if="isVisible">
         <div class="filter-header">
-          <h3>Filter {{ departmentName }} Department</h3>
+          <h3>Filter {{ collegeName }} College</h3>
           <button class="close-button" @click="close">
             <i class="fas fa-times"></i>
           </button>
@@ -290,13 +290,13 @@
 
 <script>
 export default {
-  name: 'DepartmentFilter',
+  name: 'CollegeFilter',
   props: {
     isVisible: {
       type: Boolean,
       default: false
     },
-    departmentName: {
+    collegeName: {
       type: String,
       required: true
     },
@@ -481,7 +481,7 @@ export default {
       };
       
       const summary = {
-        department: this.departmentName,
+        department: this.collegeName,
         customized: true,
         yearCounts: yearCounts,
         totalSections: yearCounts.first + yearCounts.second + yearCounts.third + yearCounts.fourth,

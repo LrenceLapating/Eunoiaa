@@ -16,11 +16,11 @@
         </div>
         <span>Student View</span>
       </div>
-      <div class="tab-option" :class="{ 'active': currentView === 'department' }" @click="currentView = 'department'">
+      <div class="tab-option" :class="{ 'active': currentView === 'college' }" @click="currentView = 'college'">
         <div class="radio-circle">
-          <div class="radio-inner" v-if="currentView === 'department'"></div>
+          <div class="radio-inner" v-if="currentView === 'college'"></div>
         </div>
-        <span>Department Summary</span>
+        <span>College Summary</span>
       </div>
     </div>
 
@@ -33,8 +33,8 @@
       
       <div class="filter-dropdowns">
         <div class="filter-dropdown">
-          <select v-model="departmentFilter">
-            <option value="all">All Departments</option>
+          <select v-model="collegeFilter">
+            <option value="all">All Colleges</option>
             <option value="CCS">CCS</option>
             <option value="CN">CN</option>
             <option value="CBA">CBA</option>
@@ -50,7 +50,7 @@
             <option value="BSIT1A">BSIT1A</option>
             <option value="BSCS3A">BSCS3A</option>
             <option value="BSIT3A">BSIT3A</option>
-            <option value="BSIT2B">BSIT2B</option>
+            <option value="BSIT2B">BSIT2BB</option>
             <option value="BSCS2B">BSCS2B</option>
             <option value="BSCS1A">BSCS1A</option>
             <option value="BSCS2A">BSCS2A</option>
@@ -76,7 +76,7 @@
         <thead>
           <tr>
             <th>Student</th>
-            <th>Department</th>
+            <th>College</th>
             <th>Section</th>
             <th class="sortable" @click="sortBy('submissionDate')">
               Submission Date
@@ -98,7 +98,7 @@
                 <span class="student-id">{{ student.id }}</span>
               </div>
             </td>
-            <td>{{ student.department }}</td>
+            <td>{{ student.college }}</td>
             <td>{{ student.section }}</td>
             <td>{{ student.submissionDate }}</td>
             <td>
@@ -148,7 +148,7 @@
           <div class="student-details-header">
             <div class="student-profile">
               <h4>{{ selectedStudent.name }}</h4>
-              <p>{{ selectedStudent.id }} • {{ selectedStudent.department }} • {{ selectedStudent.section }}</p>
+              <p>{{ selectedStudent.id }} • {{ selectedStudent.college }} • {{ selectedStudent.section }}</p>
             </div>
             <div class="assessment-info">
               <div class="info-item">
@@ -218,7 +218,7 @@ export default {
     return {
       currentView: 'student',
       searchQuery: '',
-      departmentFilter: 'all',
+      collegeFilter: 'all',
       sectionFilter: 'all',
       riskLevelFilter: 'all',
       sortField: 'submissionDate',
@@ -229,7 +229,7 @@ export default {
         {
           id: 'ST12347',
           name: 'Mike Johnson',
-          department: 'CCS',
+          college: 'CCS',
           section: 'BSIT1A',
           submissionDate: '2024-06-08',
           subscales: {
@@ -244,7 +244,7 @@ export default {
         {
           id: 'ST12348',
           name: 'Sarah Williams',
-          department: 'CCS',
+          college: 'CCS',
           section: 'BSCS3A',
           submissionDate: '2024-06-07',
           subscales: {
@@ -259,7 +259,7 @@ export default {
         {
           id: 'ST12353',
           name: 'Kevin Wong',
-          department: 'CCS',
+          college: 'CCS',
           section: 'BSIT3A',
           submissionDate: '2024-06-02',
           subscales: {
@@ -274,7 +274,7 @@ export default {
         {
           id: 'ST12346',
           name: 'John Doe',
-          department: 'CCS',
+          college: 'CCS',
           section: 'BSIT3A',
           submissionDate: '2024-06-10',
           subscales: {
@@ -289,7 +289,7 @@ export default {
         {
           id: 'ST12344',
           name: 'Jane Smith',
-          department: 'CCS',
+          college: 'CCS',
           section: 'BSCS2B',
           submissionDate: '2024-06-09',
           subscales: {
@@ -304,7 +304,7 @@ export default {
         {
           id: 'ST12351',
           name: 'Robert Brown',
-          department: 'COE',
+          college: 'COE',
           section: 'BSCE3B',
           submissionDate: '2024-06-04',
           subscales: {
@@ -319,7 +319,7 @@ export default {
         {
           id: 'ST12355',
           name: 'Sophia Garcia',
-          department: 'CAS',
+          college: 'CAS',
           section: 'BSPS2B',
           submissionDate: '2024-06-03',
           subscales: {
@@ -334,7 +334,7 @@ export default {
         {
           id: 'ST12356',
           name: 'Alex Thompson',
-          department: 'CBA',
+          college: 'CBA',
           section: 'BSBA3A',
           submissionDate: '2024-06-02',
           subscales: {
@@ -349,7 +349,7 @@ export default {
         {
           id: 'ST12354',
           name: 'Jessica Martin',
-          department: 'CN',
+          college: 'CN',
           section: 'BSCS2B',
           submissionDate: '2024-06-01',
           subscales: {
@@ -364,7 +364,7 @@ export default {
         {
           id: 'ST12349',
           name: 'David Lee',
-          department: 'CCS',
+          college: 'CCS',
           section: 'BSIT2B',
           submissionDate: '2024-06-06',
           subscales: {
@@ -379,7 +379,7 @@ export default {
         {
           id: 'ST12350',
           name: 'Emily Chen',
-          department: 'CCS',
+          college: 'CCS',
           section: 'BSCS1A',
           submissionDate: '2024-06-05',
           subscales: {
@@ -394,7 +394,7 @@ export default {
         {
           id: 'ST12352',
           name: 'Lisa Rodriguez',
-          department: 'COE',
+          college: 'COE',
           section: 'BSCE2A',
           submissionDate: '2024-06-03',
           subscales: {
@@ -478,9 +478,9 @@ export default {
     filterStudents() {
       let result = [...this.students];
       
-      // Apply department filter
-      if (this.departmentFilter !== 'all') {
-        result = result.filter(student => student.department === this.departmentFilter);
+      // Apply college filter
+      if (this.collegeFilter !== 'all') {
+        result = result.filter(student => student.college === this.collegeFilter);
       }
       
       // Apply section filter
@@ -554,7 +554,7 @@ export default {
     }
   },
   watch: {
-    departmentFilter() {
+    collegeFilter() {
       this.filterStudents();
     },
     sectionFilter() {

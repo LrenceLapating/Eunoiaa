@@ -80,12 +80,11 @@
               <div class="details-label">Target Groups:</div>
               <div class="target-groups-tags">
                 <span 
-                  v-for="(dept, idx) in selectedAssessment.departments" 
-                  :key="idx" 
-                  class="dept-tag"
-                  :class="{ 'active': selectedDepartment === dept.code || (!selectedDepartment && idx === 0) }"
-                  @click="selectDepartment(dept.code)">
-                  {{ dept.code }}
+                  v-for="(college, idx) in selectedAssessment.colleges" 
+                  :key="college.code"
+                  :class="{ 'active': selectedCollege === college.code || (!selectedCollege && idx === 0) }"
+                  @click="selectCollege(college.code)">
+                  {{ college.name }}
                 </span>
               </div>
             </div>
@@ -141,21 +140,21 @@ export default {
       searchQuery: '',
       showDetailsModal: false,
       selectedAssessment: {},
-      selectedDepartment: null,
+      selectedCollege: null,
       assessments: [
         {
           id: 1,
           name: 'End of Semester Assessment',
-          targetGroup: 'All Departments',
+          targetGroup: 'All Colleges',
           date: '2023-12-15',
           recipients: 971,
           completion: 85,
-          departments: [
-            { code: 'CCS', recipients: 245, completion: 88, completed: 216, incomplete: 29 },
-            { code: 'CN', recipients: 189, completion: 82, completed: 155, incomplete: 34 },
-            { code: 'CBA', recipients: 156, completion: 79, completed: 123, incomplete: 33 },
-            { code: 'COE', recipients: 203, completion: 91, completed: 185, incomplete: 18 },
-            { code: 'CAS', recipients: 178, completion: 81, completed: 144, incomplete: 34 }
+          colleges: [
+            { code: 'CCS', name: 'College of Computer Studies', recipients: 245, completion: 88, completed: 216, incomplete: 29 },
+            { code: 'CN', name: 'College of Nursing', recipients: 189, completion: 82, completed: 155, incomplete: 34 },
+            { code: 'CBA', name: 'College of Business Administration', recipients: 156, completion: 79, completed: 123, incomplete: 33 },
+            { code: 'COE', name: 'College of Engineering', recipients: 203, completion: 91, completed: 185, incomplete: 18 },
+            { code: 'CAS', name: 'College of Arts and Sciences', recipients: 178, completion: 81, completed: 144, incomplete: 34 }
           ],
           totalCompleted: 823,
           totalIncomplete: 148
@@ -167,9 +166,9 @@ export default {
           date: '2023-10-20',
           recipients: 448,
           completion: 90,
-          departments: [
-            { code: 'CCS', recipients: 245, completion: 92, completed: 225, incomplete: 20 },
-            { code: 'COE', recipients: 203, completion: 88, completed: 179, incomplete: 24 }
+          colleges: [
+            { code: 'CCS', name: 'College of Computer Studies', recipients: 245, completion: 92, completed: 225, incomplete: 20 },
+            { code: 'COE', name: 'College of Engineering', recipients: 203, completion: 88, completed: 179, incomplete: 24 }
           ],
           totalCompleted: 404,
           totalIncomplete: 44
@@ -181,11 +180,11 @@ export default {
           date: '2023-09-05',
           recipients: 160,
           completion: 89,
-          departments: [
-            { code: 'BSIT1A', recipients: 40, completion: 95, completed: 38, incomplete: 2 },
-            { code: 'BSIT1B', recipients: 40, completion: 90, completed: 36, incomplete: 4 },
-            { code: 'BSCS1A', recipients: 40, completion: 85, completed: 34, incomplete: 6 },
-            { code: 'BSCS1B', recipients: 40, completion: 88, completed: 35, incomplete: 5 }
+          colleges: [
+            { code: 'BSIT1A', name: 'BSIT1A', recipients: 40, completion: 95, completed: 38, incomplete: 2 },
+            { code: 'BSIT1B', name: 'BSIT1B', recipients: 40, completion: 90, completed: 36, incomplete: 4 },
+            { code: 'BSCS1A', name: 'BSCS1A', recipients: 40, completion: 85, completed: 34, incomplete: 6 },
+            { code: 'BSCS1B', name: 'BSCS1B', recipients: 40, completion: 88, completed: 35, incomplete: 5 }
           ],
           totalCompleted: 143,
           totalIncomplete: 17
@@ -197,8 +196,8 @@ export default {
           date: '2023-08-10',
           recipients: 45,
           completion: 84,
-          departments: [
-            { code: 'Faculty', recipients: 45, completion: 84, completed: 38, incomplete: 7 }
+          colleges: [
+            { code: 'Faculty', name: 'Faculty Members', recipients: 45, completion: 84, completed: 38, incomplete: 7 }
           ],
           totalCompleted: 38,
           totalIncomplete: 7
@@ -218,20 +217,20 @@ export default {
         };
       }
       
-      // If a specific department is selected
-      if (this.selectedDepartment) {
-        const dept = this.selectedAssessment.departments.find(d => d.code === this.selectedDepartment);
-        if (dept) {
+      // If a specific college is selected
+      if (this.selectedCollege) {
+        const college = this.selectedAssessment.colleges.find(c => c.code === this.selectedCollege);
+        if (college) {
           return {
-            recipients: dept.recipients,
-            completion: dept.completion,
-            completed: dept.completed,
-            incomplete: dept.incomplete
+            recipients: college.recipients,
+            completion: college.completion,
+            completed: college.completed,
+            incomplete: college.incomplete
           };
         }
       }
       
-      // Default to all departments (overall data)
+      // Default to all colleges (overall data)
       return {
         recipients: this.selectedAssessment.recipients,
         completion: this.selectedAssessment.completion,
@@ -264,11 +263,11 @@ export default {
     },
     viewAssessment(assessment) {
       this.selectedAssessment = { ...assessment };
-      this.selectedDepartment = null; // Reset to show overall data initially
+      this.selectedCollege = null; // Reset to show overall data initially
       this.showDetailsModal = true;
     },
-    selectDepartment(deptCode) {
-      this.selectedDepartment = deptCode;
+    selectCollege(collegeCode) {
+      this.selectedCollege = collegeCode;
     }
   }
 };

@@ -12,7 +12,7 @@ export default {
   data() {
     return {
       chart: null,
-      departments: ['CCS', 'CN', 'CBA', 'COE', 'CAS'],
+      colleges: ['CCS', 'CN', 'CBA', 'COE', 'CAS'],
       subscales: [
         'Autonomy', 
         'Self-Acceptance', 
@@ -49,7 +49,7 @@ export default {
       const datasets = this.subscales.map((subscale, index) => {
         return {
           label: subscale,
-          data: this.departments.map(dept => this.scores[dept][index]),
+          data: this.colleges.map(college => this.scores[college][index]),
           backgroundColor: this.colors[index],
           borderColor: this.colors[index].replace('0.7', '1'),
           borderWidth: 1
@@ -60,7 +60,7 @@ export default {
       this.chart = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: this.departments,
+          labels: this.colleges,
           datasets: datasets
         },
         options: {

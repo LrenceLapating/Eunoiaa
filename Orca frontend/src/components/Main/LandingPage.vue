@@ -562,7 +562,7 @@
                                     </div>
                                     <div class="module-content">
                                         <h5>Organizational Analytics</h5>
-                                        <p>Develop skills to analyze department-level trends and implement data-driven wellness initiatives.</p>
+                                        <p>Develop skills to analyze college-level trends and implement data-driven wellness initiatives.</p>
                                         <div class="module-meta">
                                             <span><i class="fas fa-clock"></i> 4 hours</span>
                                             <span><i class="fas fa-certificate"></i> Certificate</span>
