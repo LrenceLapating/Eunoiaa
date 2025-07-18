@@ -21,12 +21,12 @@
               <span>Dashboard</span>
             </a>
           </li>
-          <li :class="{ active: ['bulkAssessment', 'autoReminders', 'ryffScoring'].includes(currentView) }">
+          <li :class="{ active: ['bulkAssessment', 'autoReminders'].includes(currentView) }">
             <a @click="toggleSubmenu('ryffAssessment')" class="menu-item has-submenu">
               <div class="menu-icon">
               <i class="fas fa-chart-bar"></i>
               </div>
-              <span>Ryff Assessment</span>
+              <span>Test Management</span>
               <i class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }"></i>
             </a>
             <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }">
@@ -42,10 +42,28 @@
                   <span>Auto-Reminders</span>
                 </a>
               </li>
+            </ul>
+          </li>
+          <!-- New Results Dropdown -->
+          <li :class="{ active: ['ryffScoring', 'guidance'].includes(currentView) }">
+            <a @click="toggleSubmenu('results')" class="menu-item has-submenu">
+              <div class="menu-icon">
+                <i class="fas fa-poll"></i>
+              </div>
+              <span>Results</span>
+              <i class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'results' }"></i>
+            </a>
+            <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'results' }">
               <li :class="{ active: currentView === 'ryffScoring' }">
                 <a @click="currentView = 'ryffScoring'" class="submenu-item">
                   <i class="fas fa-calculator"></i>
-                  <span>Ryff Scoring</span>
+                  <span>Students</span>
+                </a>
+              </li>
+              <li :class="{ active: currentView === 'guidance' }">
+                <a @click="currentView = 'guidance'" class="submenu-item">
+                  <i class="fas fa-comment-alt"></i>
+                  <span>College</span>
                 </a>
               </li>
             </ul>
@@ -55,15 +73,7 @@
               <div class="menu-icon">
               <i class="fas fa-signal"></i>
               </div>
-              <span>Status</span>
-            </a>
-          </li>
-          <li :class="{ active: currentView === 'guidance' }">
-            <a @click="currentView = 'guidance'" class="menu-item">
-              <div class="menu-icon">
-              <i class="fas fa-comment-alt"></i>
-              </div>
-              <span>Guidance Feedback</span>
+              <span>Account Management</span>
             </a>
           </li>
           <li :class="{ active: currentView === 'reports' }">
@@ -278,7 +288,7 @@
             </div>
 
             <div class="chart-container">
-              <SimpleRyffChart />
+              <SimpleRyffChart :student-data="students" />
             </div>
           </div>
         </div>
@@ -290,7 +300,13 @@
         <auto-reminders v-if="currentView === 'autoReminders'" />
 
         <!-- Ryff Scoring View -->
-        <ryff-scoring v-if="currentView === 'ryffScoring'" />
+        <ryff-scoring v-if="currentView === 'ryffScoring'" 
+                     :selected-dimension="selectedRiskDimension" 
+                     :selected-college="selectedRiskCollege"
+                     @clear-risk-filters="clearRiskFilters" />
+
+        <!-- Guidance Feedback View -->
+        <guidance-feedback v-if="currentView === 'guidance'" />
       </div>
 
       <!-- Dimension Details Modal -->
@@ -306,11 +322,15 @@
             <div class="college-risk-list">
               <div v-for="(college, index) in selectedDimension.highRiskColleges" 
                    :key="index" 
-                   class="college-risk-item">
+                   class="college-risk-item"
+                   @click="viewStudentsAtRisk(selectedDimension.name, college.name)">
                 <div class="college-name">{{ college.name }}</div>
                 <div class="student-count">
                   <span class="count">{{ college.studentCount }}</span>
                   <span class="label">students at risk</span>
+                </div>
+                <div class="view-students-link">
+                  <i class="fas fa-chevron-right"></i>
                 </div>
               </div>
             </div>
@@ -326,6 +346,7 @@ import SimpleRyffChart from '../Shared/SimpleRyffChart.vue'
 import BulkAssessment from './BulkAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
 import RyffScoring from './RyffScoring.vue'
+import GuidanceFeedback from './GuidanceFeedback.vue'
 
 export default {
   name: 'CounselorDashboard',
@@ -333,7 +354,8 @@ export default {
     SimpleRyffChart,
     BulkAssessment,
     AutoReminders,
-    RyffScoring
+    RyffScoring,
+    GuidanceFeedback
   },
   data() {
     return {
@@ -342,54 +364,120 @@ export default {
       selectedCollege: 'all',
       showModal: false,
       selectedDimension: null,
-      dimensions: [
+      selectedRiskDimension: null,
+      selectedRiskCollege: 'all',
+      // Sample student data - this would normally come from an API
+      students: [
         {
-          name: 'Autonomy',
-          highRiskColleges: [
-            { name: 'CCS', studentCount: 15 },
-            { name: 'COE', studentCount: 12 },
-            { name: 'CAS', studentCount: 14 }
-          ]
+          id: 'ST12347',
+          name: 'Mike Johnson',
+          college: 'CCS',
+          section: 'BSIT1A',
+          submissionDate: '2024-06-08',
+          subscales: {
+            autonomy: 2.4, // Scaled to 7-49: 17 (at risk)
+            environmentalMastery: 5.0, // 35 (definitely not at risk)
+            personalGrowth: 3.5, // 25
+            positiveRelations: 3.1, // 22
+            purposeInLife: 3.4, // 24
+            selfAcceptance: 2.9  // 20
+          }
         },
         {
-          name: 'Environmental Mastery',
-          highRiskColleges: [
-            { name: 'CN', studentCount: 18 },
-            { name: 'CBA', studentCount: 10 },
-            { name: 'CCS', studentCount: 7 }
-          ]
+          id: 'ST12348',
+          name: 'Sarah Williams',
+          college: 'CCS',
+          section: 'BSCS3A',
+          submissionDate: '2024-06-07',
+          subscales: {
+            autonomy: 2.0, // 14 (at risk)
+            environmentalMastery: 5.0, // 35 (definitely not at risk)
+            personalGrowth: 3.0, // 21
+            positiveRelations: 2.0, // 14 (at risk)
+            purposeInLife: 2.6, // 18 (at risk)
+            selfAcceptance: 2.9  // 20
+          }
         },
         {
-          name: 'Personal Growth',
-          highRiskColleges: [
-            { name: 'CAS', studentCount: 16 },
-            { name: 'COE', studentCount: 12 }
-          ]
+          id: 'ST12353',
+          name: 'Kevin Wong',
+          college: 'CCS',
+          section: 'BSIT3A',
+          submissionDate: '2024-06-02',
+          subscales: {
+            autonomy: 2.4, // 17 (at risk)
+            environmentalMastery: 2.0, // 14 (definitely at risk) - only this CCS student is at risk for EM
+            personalGrowth: 2.9, // 20
+            positiveRelations: 2.5, // 18 (at risk)
+            purposeInLife: 2.5, // 18 (at risk)
+            selfAcceptance: 2.4  // 17 (at risk)
+          }
         },
         {
-          name: 'Positive Relations',
-          highRiskColleges: [
-            { name: 'CN', studentCount: 20 },
-            { name: 'CCS', studentCount: 15 },
-            { name: 'CBA', studentCount: 10 }
-          ]
+          id: 'ST12351',
+          name: 'Robert Brown',
+          college: 'COE',
+          section: 'BSCE3B',
+          submissionDate: '2024-06-04',
+          subscales: {
+            autonomy: 2.3, // 16 (at risk)
+            environmentalMastery: 3.5, // 25
+            personalGrowth: 3.4, // 24
+            positiveRelations: 3.3, // 23
+            purposeInLife: 2.3, // 16 (at risk)
+            selfAcceptance: 3.4  // 24
+          }
         },
         {
-          name: 'Purpose in Life',
-          highRiskColleges: [
-            { name: 'COE', studentCount: 17 },
-            { name: 'CAS', studentCount: 15 }
-          ]
+          id: 'ST12355',
+          name: 'Sophia Garcia',
+          college: 'CAS',
+          section: 'BSPS2B',
+          submissionDate: '2024-06-03',
+          subscales: {
+            autonomy: 2.2, // 15 (at risk)
+            environmentalMastery: 3.4, // 24
+            personalGrowth: 2.4, // 17 (at risk)
+            positiveRelations: 3.4, // 24
+            purposeInLife: 3.2, // 22
+            selfAcceptance: 3.4  // 24
+          }
         },
         {
-          name: 'Self-Acceptance',
-          highRiskColleges: [
-            { name: 'CCS', studentCount: 18 },
-            { name: 'CN', studentCount: 12 },
-            { name: 'CBA', studentCount: 8 }
-          ]
+          id: 'ST12356',
+          name: 'Alex Thompson',
+          college: 'CBA',
+          section: 'BSBA3A',
+          submissionDate: '2024-06-02',
+          subscales: {
+            autonomy: 3.3, // 23
+            environmentalMastery: 2.2, // 15 (at risk)
+            personalGrowth: 3.2, // 22
+            positiveRelations: 3.4, // 24
+            purposeInLife: 3.3, // 23
+            selfAcceptance: 2.3  // 16 (at risk)
+          }
+        },
+        {
+          id: 'ST12354',
+          name: 'Jessica Martin',
+          college: 'CN',
+          section: 'BSCS2B',
+          submissionDate: '2024-06-01',
+          subscales: {
+            autonomy: 3.5, // 25
+            environmentalMastery: 2.3, // 16 (at risk)
+            personalGrowth: 3.5, // 25
+            positiveRelations: 2.4, // 17 (at risk)
+            purposeInLife: 3.6, // 25
+            selfAcceptance: 2.2  // 15 (at risk)
+          }
         }
       ],
+      // Risk threshold - scores at or below this value are considered "at risk"
+      riskThreshold: 17,
+      // Dimensions will be calculated dynamically
+      dimensions: [],
       currentDate: new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
@@ -400,6 +488,10 @@ export default {
       academicYears: [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
     }
   },
+  created() {
+    // Calculate risk dimensions based on student data
+    this.calculateRiskDimensions();
+  },
   computed: {
     pageTitle() {
       switch(this.currentView) {
@@ -409,6 +501,8 @@ export default {
           return 'Auto-Reminders';
         case 'ryffScoring':
           return 'Ryff Scoring';
+        case 'guidance':
+          return 'Guidance Feedback';
         default:
           return 'Dashboard Overview';
       }
@@ -421,6 +515,8 @@ export default {
           return 'Schedule automatic assessment reminders';
         case 'ryffScoring':
           return 'Review and analyze assessment scores';
+        case 'guidance':
+          return 'Provide guidance and feedback to students';
         default:
           return 'Monitor well-being metrics across colleges';
       }
@@ -441,11 +537,93 @@ export default {
       this.showModal = false;
       this.selectedDimension = null;
     },
+    // New method to navigate to RyffScoring with filters
+    viewStudentsAtRisk(dimensionName, collegeName) {
+      this.selectedRiskDimension = dimensionName;
+      this.selectedRiskCollege = collegeName;
+      this.currentView = 'ryffScoring';
+      this.closeModal();
+      
+      // Log the navigation for debugging
+      console.log(`Navigating to students at risk for ${dimensionName} in ${collegeName}`);
+    },
     refreshData() {
       // Extract semester and year from selectedPeriod
       const [semester, year] = this.selectedPeriod.split('-');
       console.log(`Refreshing data for ${semester === '1' ? '1st' : '2nd'} Semester ${year}-${Number(year)+1}`);
       // Implement actual refresh logic here
+    },
+    
+    // Add method to clear risk filters
+    clearRiskFilters() {
+      this.selectedRiskDimension = null;
+      this.selectedRiskCollege = 'all';
+    },
+    // Calculate risk dimensions based on actual student data
+    calculateRiskDimensions() {
+      // Define dimension names and their corresponding property names in student data
+      const dimensionMap = {
+        'Autonomy': 'autonomy',
+        'Environmental Mastery': 'environmentalMastery',
+        'Personal Growth': 'personalGrowth',
+        'Positive Relations': 'positiveRelations',
+        'Purpose in Life': 'purposeInLife',
+        'Self-Acceptance': 'selfAcceptance'
+      };
+      
+      // Create a new array to store dimensions with at-risk students
+      const calculatedDimensions = [];
+      
+      // For each dimension, check if there are any at-risk students
+      for (const [dimensionName, propertyName] of Object.entries(dimensionMap)) {
+        // Group at-risk students by college
+        const collegeRisks = {};
+        
+        // Check each student
+        this.students.forEach(student => {
+          // Check if this dimension is at risk for this student
+          const score = student.subscales[propertyName] * 7; // Scale to 7-49 range
+          if (score <= this.riskThreshold) {
+            // Add this college to the list if not already present
+            if (!collegeRisks[student.college]) {
+              collegeRisks[student.college] = {
+                name: student.college,
+                studentCount: 0,
+                // Store student IDs to verify counts
+                studentIds: []
+              };
+            }
+            // Increment the student count for this college
+            collegeRisks[student.college].studentCount++;
+            // Store student ID for verification
+            collegeRisks[student.college].studentIds.push(student.id);
+          }
+        });
+        
+        // Convert the college risks object to an array
+        const highRiskColleges = Object.values(collegeRisks);
+        
+        // Only add this dimension if there are any colleges with at-risk students
+        if (highRiskColleges.length > 0) {
+          calculatedDimensions.push({
+            name: dimensionName,
+            highRiskColleges: highRiskColleges
+          });
+        }
+        
+        // Debug log for Environmental Mastery in CCS
+        if (dimensionName === 'Environmental Mastery' && collegeRisks['CCS']) {
+          console.log('Environmental Mastery - CCS at-risk students:', 
+            collegeRisks['CCS'].studentCount,
+            'Student IDs:', collegeRisks['CCS'].studentIds);
+        }
+      }
+      
+      // Update the dimensions array
+      this.dimensions = calculatedDimensions;
+      
+      // Log all dimensions for debugging
+      console.log('Calculated risk dimensions:', JSON.stringify(this.dimensions));
     }
   }
 }
@@ -1938,39 +2116,61 @@ export default {
   gap: 16px;
 }
 
+/* College Risk Item Styles */
 .college-risk-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: var(--gray);
-  border-radius: var(--border-radius);
-  transition: background-color 0.2s ease;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  margin-bottom: 10px;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: 1px solid #e9ecef;
 }
 
 .college-risk-item:hover {
-  background: #f0f2f5;
+  background-color: #e9f5f5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  border-color: var(--primary);
 }
 
 .college-name {
-  font-weight: 600;
+  font-weight: 500;
+  flex: 1;
   color: var(--dark);
 }
 
 .student-count {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 15px;
 }
 
 .student-count .count {
   font-weight: 600;
+  font-size: 18px;
   color: var(--accent);
 }
 
 .student-count .label {
+  font-size: 12px;
   color: var(--text-light);
-  font-size: 0.9rem;
+}
+
+.view-students-link {
+  color: var(--primary);
+  margin-left: 10px;
+}
+
+.view-students-link i {
+  transition: transform 0.2s;
+}
+
+.college-risk-item:hover .view-students-link i {
+  transform: translateX(3px);
 }
 
 @keyframes fadeIn {

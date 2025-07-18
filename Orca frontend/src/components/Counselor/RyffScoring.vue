@@ -8,6 +8,19 @@
       </div>
     </div>
 
+    <!-- Risk Filter Indicator -->
+    <div class="risk-filter-indicator" v-if="selectedDimension">
+      <div class="indicator-content">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Showing <strong>only</strong> students at risk for <strong>{{ selectedDimension }}</strong> 
+          <span v-if="selectedCollege !== 'all'">in <strong>{{ selectedCollege }}</strong></span>
+        </span>
+        <button class="clear-filter-btn" @click="clearRiskFilters">
+          <i class="fas fa-times"></i> Clear Filter
+        </button>
+      </div>
+    </div>
+
     <!-- View Selection Tabs -->
     <div class="view-tabs">
       <div class="tab-option" :class="{ 'active': currentView === 'student' }" @click="currentView = 'student'">
@@ -214,6 +227,16 @@
 <script>
 export default {
   name: 'RyffScoring',
+  props: {
+    selectedDimension: {
+      type: String,
+      default: null
+    },
+    selectedCollege: {
+      type: String,
+      default: 'all'
+    }
+  },
   data() {
     return {
       currentView: 'student',
@@ -225,6 +248,7 @@ export default {
       sortDirection: 'desc',
       showDetailsModal: false,
       selectedStudent: null,
+      // Use the same student data as in the dashboard
       students: [
         {
           id: 'ST12347',
@@ -234,7 +258,7 @@ export default {
           submissionDate: '2024-06-08',
           subscales: {
             autonomy: 2.4, // Scaled to 7-49: 17 (at risk)
-            environmentalMastery: 2.8, // 20
+            environmentalMastery: 5.0, // 35 (definitely not at risk)
             personalGrowth: 3.5, // 25
             positiveRelations: 3.1, // 22
             purposeInLife: 3.4, // 24
@@ -249,7 +273,7 @@ export default {
           submissionDate: '2024-06-07',
           subscales: {
             autonomy: 2.0, // 14 (at risk)
-            environmentalMastery: 2.5, // 18 (at risk)
+            environmentalMastery: 5.0, // 35 (definitely not at risk)
             personalGrowth: 3.0, // 21
             positiveRelations: 2.0, // 14 (at risk)
             purposeInLife: 2.6, // 18 (at risk)
@@ -264,41 +288,11 @@ export default {
           submissionDate: '2024-06-02',
           subscales: {
             autonomy: 2.4, // 17 (at risk)
-            environmentalMastery: 2.3, // 16 (at risk)
+            environmentalMastery: 2.0, // 14 (definitely at risk) - only this CCS student is at risk for EM
             personalGrowth: 2.9, // 20
             positiveRelations: 2.5, // 18 (at risk)
             purposeInLife: 2.5, // 18 (at risk)
             selfAcceptance: 2.4  // 17 (at risk)
-          }
-        },
-        {
-          id: 'ST12346',
-          name: 'John Doe',
-          college: 'CCS',
-          section: 'BSIT3A',
-          submissionDate: '2024-06-10',
-          subscales: {
-            autonomy: 3.1, // 22
-            environmentalMastery: 2.9, // 20
-            personalGrowth: 3.0, // 21
-            positiveRelations: 2.7, // 19
-            purposeInLife: 3.2, // 22
-            selfAcceptance: 2.9  // 20
-          }
-        },
-        {
-          id: 'ST12344',
-          name: 'Jane Smith',
-          college: 'CCS',
-          section: 'BSCS2B',
-          submissionDate: '2024-06-09',
-          subscales: {
-            autonomy: 3.5, // 25
-            environmentalMastery: 3.3, // 23
-            personalGrowth: 3.2, // 22
-            positiveRelations: 3.4, // 24
-            purposeInLife: 3.4, // 24
-            selfAcceptance: 3.2  // 22
           }
         },
         {
@@ -308,11 +302,11 @@ export default {
           section: 'BSCE3B',
           submissionDate: '2024-06-04',
           subscales: {
-            autonomy: 3.4, // 24
+            autonomy: 2.3, // 16 (at risk)
             environmentalMastery: 3.5, // 25
             personalGrowth: 3.4, // 24
             positiveRelations: 3.3, // 23
-            purposeInLife: 3.5, // 25
+            purposeInLife: 2.3, // 16 (at risk)
             selfAcceptance: 3.4  // 24
           }
         },
@@ -323,9 +317,9 @@ export default {
           section: 'BSPS2B',
           submissionDate: '2024-06-03',
           subscales: {
-            autonomy: 3.3, // 23
+            autonomy: 2.2, // 15 (at risk)
             environmentalMastery: 3.4, // 24
-            personalGrowth: 3.3, // 23
+            personalGrowth: 2.4, // 17 (at risk)
             positiveRelations: 3.4, // 24
             purposeInLife: 3.2, // 22
             selfAcceptance: 3.4  // 24
@@ -339,11 +333,11 @@ export default {
           submissionDate: '2024-06-02',
           subscales: {
             autonomy: 3.3, // 23
-            environmentalMastery: 3.2, // 22
+            environmentalMastery: 2.2, // 15 (at risk)
             personalGrowth: 3.2, // 22
             positiveRelations: 3.4, // 24
             purposeInLife: 3.3, // 23
-            selfAcceptance: 3.1  // 22
+            selfAcceptance: 2.3  // 16 (at risk)
           }
         },
         {
@@ -354,61 +348,16 @@ export default {
           submissionDate: '2024-06-01',
           subscales: {
             autonomy: 3.5, // 25
-            environmentalMastery: 3.4, // 24
+            environmentalMastery: 2.3, // 16 (at risk)
             personalGrowth: 3.5, // 25
-            positiveRelations: 3.4, // 24
+            positiveRelations: 2.4, // 17 (at risk)
             purposeInLife: 3.6, // 25
-            selfAcceptance: 3.5  // 25
-          }
-        },
-        {
-          id: 'ST12349',
-          name: 'David Lee',
-          college: 'CCS',
-          section: 'BSIT2B',
-          submissionDate: '2024-06-06',
-          subscales: {
-            autonomy: 5.4, // 38
-            environmentalMastery: 5.6, // 39
-            personalGrowth: 5.3, // 37
-            positiveRelations: 5.4, // 38
-            purposeInLife: 5.4, // 38
-            selfAcceptance: 5.4  // 38
-          }
-        },
-        {
-          id: 'ST12350',
-          name: 'Emily Chen',
-          college: 'CCS',
-          section: 'BSCS1A',
-          submissionDate: '2024-06-05',
-          subscales: {
-            autonomy: 5.1, // 36
-            environmentalMastery: 5.0, // 35
-            personalGrowth: 5.1, // 36
-            positiveRelations: 5.0, // 35
-            purposeInLife: 5.1, // 36
-            selfAcceptance: 5.3  // 37
-          }
-        },
-        {
-          id: 'ST12352',
-          name: 'Lisa Rodriguez',
-          college: 'COE',
-          section: 'BSCE2A',
-          submissionDate: '2024-06-03',
-          subscales: {
-            autonomy: 5.7, // 40
-            environmentalMastery: 5.9, // 41
-            personalGrowth: 5.6, // 39
-            positiveRelations: 5.7, // 40
-            purposeInLife: 5.9, // 41
-            selfAcceptance: 5.6  // 39
+            selfAcceptance: 2.2  // 15 (at risk)
           }
         }
       ],
       filteredStudents: [],
-      // Define risk thresholds based on quartiles
+      // Use the same risk threshold as the dashboard
       riskThresholds: {
         q1: 17, // Below or equal to this is "At Risk" (Q1)
         q4: 39  // Above or equal to this is "Healthy" (Q4)
@@ -416,7 +365,35 @@ export default {
     };
   },
   created() {
-    this.filterStudents();
+    // Apply filters from props if they exist
+    if (this.selectedDimension || this.selectedCollege !== 'all') {
+      this.collegeFilter = this.selectedCollege;
+      
+      // Debug: Log Environmental Mastery scores for all students
+      if (this.selectedDimension === 'Environmental Mastery') {
+        console.log('Environmental Mastery scores:');
+        this.students.forEach(student => {
+          const score = student.subscales.environmentalMastery * 7;
+          console.log(`${student.name} (${student.college}): ${score} - At risk: ${score <= this.riskThresholds.q1}`);
+        });
+        
+        // Additional debug: Log the risk threshold
+        console.log(`Risk threshold for Environmental Mastery: ${this.riskThresholds.q1}`);
+        
+        // Verify which students would be filtered
+        const filteredStudents = this.students.filter(student => {
+          const score = student.subscales.environmentalMastery * 7;
+          return student.college === 'CCS' && score <= this.riskThresholds.q1;
+        });
+        
+        console.log(`CCS students at risk for Environmental Mastery:`, 
+          filteredStudents.map(s => `${s.name} (${s.id})`));
+      }
+      
+      this.filterByDimensionAndCollege();
+    } else {
+      this.filterStudents();
+    }
   },
   methods: {
     // Calculate overall score as sum of all dimension scores (scaled from 0-5 to 7-49)
@@ -530,6 +507,64 @@ export default {
       
       this.filteredStudents = result;
     },
+    
+    // Update filterByDimensionAndCollege to use props
+    filterByDimensionAndCollege() {
+      // Reset other filters
+      this.sectionFilter = 'all';
+      this.riskLevelFilter = 'all';
+      this.searchQuery = '';
+      
+      console.log(`Filtering by dimension: ${this.selectedDimension}, college: ${this.collegeFilter}`);
+      console.log(`Risk threshold: ${this.riskThresholds.q1}`);
+      
+      // Apply filters
+      let result = [...this.students];
+      
+      // Filter by college if specified
+      if (this.collegeFilter !== 'all') {
+        result = result.filter(student => student.college === this.collegeFilter);
+        console.log(`After college filter (${this.collegeFilter}): ${result.length} students`);
+      }
+      
+      // Filter by dimension if specified
+      if (this.selectedDimension) {
+        // Map from dashboard dimension names to student data property names
+        const dimensionMapping = {
+          'Autonomy': 'autonomy',
+          'Environmental Mastery': 'environmentalMastery',
+          'Personal Growth': 'personalGrowth',
+          'Positive Relations': 'positiveRelations',
+          'Purpose in Life': 'purposeInLife',
+          'Self-Acceptance': 'selfAcceptance'
+        };
+        
+        const subscaleKey = dimensionMapping[this.selectedDimension];
+        
+        if (subscaleKey) {
+          console.log(`Filtering by dimension: ${this.selectedDimension} (${subscaleKey})`);
+          
+          // Filter students who are at risk for this specific dimension only
+          result = result.filter(student => {
+            // Check if this specific dimension is at risk
+            const score = student.subscales[subscaleKey] * 7; // Scale to 7-49 range
+            const isAtRisk = score <= this.riskThresholds.q1;
+            
+            console.log(`${student.name} (${student.id}): ${subscaleKey} score = ${score}, at risk: ${isAtRisk}`);
+            
+            return isAtRisk;
+          });
+          
+          // Log the filtered students for debugging
+          console.log(`After dimension filter: ${result.length} students at risk for ${this.selectedDimension}`);
+          console.log(`Students at risk for ${this.selectedDimension} in ${this.collegeFilter}:`, 
+            result.map(s => `${s.name} (${s.id})`));
+        }
+      }
+      
+      this.filteredStudents = result;
+    },
+    
     sortBy(field) {
       if (this.sortField === field) {
         this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -545,12 +580,35 @@ export default {
       return 'low-risk';
     },
     formatSubscaleName(subscale) {
+      if (subscale === 'autonomy') return 'Autonomy';
+      if (subscale === 'environmentalMastery') return 'Environmental Mastery';
+      if (subscale === 'personalGrowth') return 'Personal Growth';
+      if (subscale === 'positiveRelations') return 'Positive Relations';
+      if (subscale === 'purposeInLife') return 'Purpose in Life';
+      if (subscale === 'selfAcceptance') return 'Self-Acceptance';
+      
+      // Fallback to the original formatting logic
       const formatted = subscale.replace(/([A-Z])/g, ' $1').trim();
       return formatted.charAt(0).toUpperCase() + formatted.slice(1);
     },
     viewStudentDetails(student) {
       this.selectedStudent = student;
       this.showDetailsModal = true;
+    },
+    // Reset filters
+    resetFilters() {
+      this.collegeFilter = 'all';
+      this.sectionFilter = 'all';
+      this.riskLevelFilter = 'all';
+      this.selectedDimension = null;
+      this.searchQuery = '';
+      this.filterStudents();
+    },
+    // Add method to clear risk filters
+    clearRiskFilters() {
+      this.$emit('clear-risk-filters');
+      this.collegeFilter = 'all';
+      this.filterStudents();
     }
   },
   watch: {
@@ -562,6 +620,13 @@ export default {
     },
     riskLevelFilter() {
       this.filterStudents();
+    },
+    selectedDimension() {
+      this.filterByDimensionAndCollege();
+    },
+    selectedCollege() {
+      this.collegeFilter = this.selectedCollege;
+      this.filterByDimensionAndCollege();
     }
   }
 };
@@ -1109,6 +1174,50 @@ export default {
 
 .risk-status .low-risk {
   color: #4caf50;
+}
+
+/* Risk Filter Indicator */
+.risk-filter-indicator {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.indicator-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.indicator-content i {
+  color: #856404;
+  font-size: 18px;
+  margin-right: 10px;
+}
+
+.indicator-content span {
+  color: #856404;
+  flex-grow: 1;
+}
+
+.clear-filter-btn {
+  background-color: transparent;
+  border: 1px solid #856404;
+  color: #856404;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.clear-filter-btn:hover {
+  background-color: #856404;
+  color: white;
 }
 
 @media (max-width: 768px) {
