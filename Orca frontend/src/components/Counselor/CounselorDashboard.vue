@@ -126,19 +126,24 @@
       </header>
 
       <!-- Dashboard Content -->
-      <div class="dashboard-content">
+      <div class="content-container">
         <!-- Main Dashboard View -->
         <div v-if="currentView === 'dashboard'">
           <div class="dashboard-header">
             <div class="filter-section">
               <div class="filter-group">
-                <div class="filter-label">Academic Period:</div>
-                <select v-model="selectedPeriod" class="period-filter" @change="refreshData">
-                  <option value="1-2024">1st Semester 2024-2025</option>
-                  <option value="2-2024">2nd Semester 2024-2025</option>
-                  <option value="1-2025">1st Semester 2025-2026</option>
-                  <option value="2-2025">2nd Semester 2025-2026</option>
-                </select>
+                <div class="filter-label">Academic Period</div>
+                <div class="custom-select-wrapper">
+                  <select v-model="selectedPeriod" class="period-filter" @change="refreshData">
+                    <option value="1-2024">1st Semester 2024-2025</option>
+                    <option value="2-2024">2nd Semester 2024-2025</option>
+                    <option value="1-2025">1st Semester 2025-2026</option>
+                    <option value="2-2025">2nd Semester 2025-2026</option>
+                  </select>
+                  <div class="select-icon">
+                    <i class="fas fa-chevron-down"></i>
+                  </div>
+                </div>
               </div>
               <button class="refresh-btn" title="Refresh Data" @click="refreshData">
                 <i class="fas fa-sync-alt"></i>
@@ -157,7 +162,7 @@
                       <i class="fas fa-clipboard-list"></i>
                     </div>
                   </div>
-                  <div class="metric-value">971</div>
+                  <div class="metric-value">12</div>
                 </div>
               </div>
 
@@ -169,7 +174,7 @@
                       <i class="fas fa-check-circle"></i>
                     </div>
                   </div>
-                  <div class="metric-value">84.3%</div>
+                  <div class="metric-value">100%</div>
                 </div>
               </div>
             </div>
@@ -244,28 +249,28 @@
                   <tbody>
                     <tr>
                       <td data-college="CCS">CCS</td>
-                      <td>245</td>
-                      <td>32</td>
+                      <td>5</td>
+                      <td>3</td>
                     </tr>
                     <tr>
                       <td data-college="CN">CN</td>
-                      <td>189</td>
-                      <td>28</td>
-                    </tr>
-                    <tr>
-                      <td data-college="CBA">CBA</td>
-                      <td>156</td>
-                      <td>19</td>
+                      <td>1</td>
+                      <td>1</td>
                     </tr>
                     <tr>
                       <td data-college="COE">COE</td>
-                      <td>203</td>
-                      <td>41</td>
+                      <td>2</td>
+                      <td>1</td>
+                    </tr>
+                    <tr>
+                      <td data-college="CBA">CBA</td>
+                      <td>2</td>
+                      <td>1</td>
                     </tr>
                     <tr>
                       <td data-college="CAS">CAS</td>
-                      <td>178</td>
-                      <td>23</td>
+                      <td>2</td>
+                      <td>1</td>
                     </tr>
                   </tbody>
                 </table>
@@ -306,7 +311,10 @@
                      @clear-risk-filters="clearRiskFilters" />
 
         <!-- Guidance Feedback View -->
-        <guidance-feedback v-if="currentView === 'guidance'" />
+        <college-view v-if="currentView === 'guidance'" />
+
+        <!-- Assessment Status View -->
+        <assessment-status v-if="currentView === 'status'" />
       </div>
 
       <!-- Dimension Details Modal -->
@@ -346,7 +354,8 @@ import SimpleRyffChart from '../Shared/SimpleRyffChart.vue'
 import BulkAssessment from './BulkAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
 import RyffScoring from './RyffScoring.vue'
-import GuidanceFeedback from './GuidanceFeedback.vue'
+import CollegeView from './CollegeView.vue'
+import AssessmentStatus from './AssessmentStatus.vue'
 
 export default {
   name: 'CounselorDashboard',
@@ -355,7 +364,8 @@ export default {
     BulkAssessment,
     AutoReminders,
     RyffScoring,
-    GuidanceFeedback
+    CollegeView,
+    AssessmentStatus
   },
   data() {
     return {
@@ -472,6 +482,82 @@ export default {
             purposeInLife: 3.6, // 25
             selfAcceptance: 2.2  // 15 (at risk)
           }
+        },
+        // Healthy students with no risk dimensions
+        {
+          id: 'ST12360',
+          name: 'Emily Chen',
+          college: 'CCS',
+          section: 'BSCS4A',
+          submissionDate: '2024-06-09',
+          subscales: {
+            autonomy: 5.6, // 39 (healthy)
+            environmentalMastery: 5.8, // 41 (healthy)
+            personalGrowth: 6.0, // 42 (healthy)
+            positiveRelations: 5.7, // 40 (healthy)
+            purposeInLife: 5.9, // 41 (healthy)
+            selfAcceptance: 5.8  // 41 (healthy)
+          }
+        },
+        {
+          id: 'ST12361',
+          name: 'David Park',
+          college: 'CCS',
+          section: 'BSIT4A',
+          submissionDate: '2024-06-08',
+          subscales: {
+            autonomy: 5.4, // 38 (healthy)
+            environmentalMastery: 5.5, // 39 (healthy)
+            personalGrowth: 5.7, // 40 (healthy)
+            positiveRelations: 5.9, // 41 (healthy)
+            purposeInLife: 5.8, // 41 (healthy)
+            selfAcceptance: 5.6  // 39 (healthy)
+          }
+        },
+        {
+          id: 'ST12362',
+          name: 'Maria Rodriguez',
+          college: 'COE',
+          section: 'BSCE4A',
+          submissionDate: '2024-06-07',
+          subscales: {
+            autonomy: 5.7, // 40 (healthy)
+            environmentalMastery: 5.9, // 41 (healthy)
+            personalGrowth: 5.8, // 41 (healthy)
+            positiveRelations: 6.0, // 42 (healthy)
+            purposeInLife: 5.7, // 40 (healthy)
+            selfAcceptance: 5.9  // 41 (healthy)
+          }
+        },
+        {
+          id: 'ST12363',
+          name: 'James Wilson',
+          college: 'CBA',
+          section: 'BSBA4A',
+          submissionDate: '2024-06-06',
+          subscales: {
+            autonomy: 5.5, // 39 (healthy)
+            environmentalMastery: 5.6, // 39 (healthy)
+            personalGrowth: 5.9, // 41 (healthy)
+            positiveRelations: 5.8, // 41 (healthy)
+            purposeInLife: 5.6, // 39 (healthy)
+            selfAcceptance: 5.7  // 40 (healthy)
+          }
+        },
+        {
+          id: 'ST12364',
+          name: 'Olivia Lee',
+          college: 'CAS',
+          section: 'BSPS4A',
+          submissionDate: '2024-06-05',
+          subscales: {
+            autonomy: 5.8, // 41 (healthy)
+            environmentalMastery: 5.7, // 40 (healthy)
+            personalGrowth: 5.6, // 39 (healthy)
+            positiveRelations: 5.5, // 39 (healthy)
+            purposeInLife: 5.9, // 41 (healthy)
+            selfAcceptance: 5.8  // 41 (healthy)
+          }
         }
       ],
       // Risk threshold - scores at or below this value are considered "at risk"
@@ -502,7 +588,9 @@ export default {
         case 'ryffScoring':
           return 'Ryff Scoring';
         case 'guidance':
-          return 'Guidance Feedback';
+          return 'College Summary';
+        case 'status':
+          return 'Account Management';
         default:
           return 'Dashboard Overview';
       }
@@ -516,7 +604,9 @@ export default {
         case 'ryffScoring':
           return 'Review and analyze assessment scores';
         case 'guidance':
-          return 'Provide guidance and feedback to students';
+          return 'View and analyze assessment results by college';
+        case 'status':
+          return 'Manage department accounts and user access';
         default:
           return 'Monitor well-being metrics across colleges';
       }
@@ -889,11 +979,28 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: 250px;
+  margin-left: 260px; /* Match exactly the sidebar width */
   padding: 20px;
   background-color: #f5f5f5; /* Plain dirty white background */
   min-height: 100vh;
   overflow-y: auto;
+}
+
+.main-content > div {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: calc(100vh - 100px); /* Adjust for padding and top nav */
+}
+
+/* Content container for all views */
+.content-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
 }
 
 /* Remove any dot patterns or textures */
@@ -1038,6 +1145,58 @@ export default {
   font-size: 0.9rem;
   color: #64748b;
   font-weight: 500;
+}
+
+/* Custom Select Styling */
+.custom-select-wrapper {
+  position: relative;
+  min-width: 240px;
+}
+
+.period-filter {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  padding-right: 2.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.9rem;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.period-filter:hover {
+  border-color: #94a3b8;
+}
+
+.period-filter:focus {
+  outline: none;
+  border-color: #00b3b0;
+  box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.1);
+}
+
+.select-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.custom-select-wrapper:hover .select-icon {
+  color: #00b3b0;
+}
+
+.period-filter:focus + .select-icon {
+  transform: translateY(-50%) rotate(180deg);
+  color: #00b3b0;
 }
 
 .year-filter,

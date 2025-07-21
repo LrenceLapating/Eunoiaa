@@ -251,8 +251,8 @@ export default {
       colleges: [
         { name: 'CCS', selected: false },
         { name: 'CN', selected: false },
-        { name: 'CBA', selected: false },
         { name: 'COE', selected: false },
+        { name: 'CBA', selected: false },
         { name: 'CAS', selected: false }
       ],
       scheduleOption: 'now',

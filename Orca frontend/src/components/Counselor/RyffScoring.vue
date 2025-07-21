@@ -63,10 +63,10 @@
             <option value="BSIT1A">BSIT1A</option>
             <option value="BSCS3A">BSCS3A</option>
             <option value="BSIT3A">BSIT3A</option>
-            <option value="BSIT2B">BSIT2BB</option>
+            <option value="BSCE3B">BSCE3B</option>
+            <option value="BSPS2B">BSPS2B</option>
+            <option value="BSBA3A">BSBA3A</option>
             <option value="BSCS2B">BSCS2B</option>
-            <option value="BSCS1A">BSCS1A</option>
-            <option value="BSCS2A">BSCS2A</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
@@ -354,6 +354,82 @@ export default {
             purposeInLife: 3.6, // 25
             selfAcceptance: 2.2  // 15 (at risk)
           }
+        },
+        // Healthy students with no risk dimensions
+        {
+          id: 'ST12360',
+          name: 'Emily Chen',
+          college: 'CCS',
+          section: 'BSCS4A',
+          submissionDate: '2024-06-09',
+          subscales: {
+            autonomy: 5.6, // 39 (healthy)
+            environmentalMastery: 5.8, // 41 (healthy)
+            personalGrowth: 6.0, // 42 (healthy)
+            positiveRelations: 5.7, // 40 (healthy)
+            purposeInLife: 5.9, // 41 (healthy)
+            selfAcceptance: 5.8  // 41 (healthy)
+          }
+        },
+        {
+          id: 'ST12361',
+          name: 'David Park',
+          college: 'CCS',
+          section: 'BSIT4A',
+          submissionDate: '2024-06-08',
+          subscales: {
+            autonomy: 5.4, // 38 (healthy)
+            environmentalMastery: 5.5, // 39 (healthy)
+            personalGrowth: 5.7, // 40 (healthy)
+            positiveRelations: 5.9, // 41 (healthy)
+            purposeInLife: 5.8, // 41 (healthy)
+            selfAcceptance: 5.6  // 39 (healthy)
+          }
+        },
+        {
+          id: 'ST12362',
+          name: 'Maria Rodriguez',
+          college: 'COE',
+          section: 'BSCE4A',
+          submissionDate: '2024-06-07',
+          subscales: {
+            autonomy: 5.7, // 40 (healthy)
+            environmentalMastery: 5.9, // 41 (healthy)
+            personalGrowth: 5.8, // 41 (healthy)
+            positiveRelations: 6.0, // 42 (healthy)
+            purposeInLife: 5.7, // 40 (healthy)
+            selfAcceptance: 5.9  // 41 (healthy)
+          }
+        },
+        {
+          id: 'ST12363',
+          name: 'James Wilson',
+          college: 'CBA',
+          section: 'BSBA4A',
+          submissionDate: '2024-06-06',
+          subscales: {
+            autonomy: 5.5, // 39 (healthy)
+            environmentalMastery: 5.6, // 39 (healthy)
+            personalGrowth: 5.9, // 41 (healthy)
+            positiveRelations: 5.8, // 41 (healthy)
+            purposeInLife: 5.6, // 39 (healthy)
+            selfAcceptance: 5.7  // 40 (healthy)
+          }
+        },
+        {
+          id: 'ST12364',
+          name: 'Olivia Lee',
+          college: 'CAS',
+          section: 'BSPS4A',
+          submissionDate: '2024-06-05',
+          subscales: {
+            autonomy: 5.8, // 41 (healthy)
+            environmentalMastery: 5.7, // 40 (healthy)
+            personalGrowth: 5.6, // 39 (healthy)
+            positiveRelations: 5.5, // 39 (healthy)
+            purposeInLife: 5.9, // 41 (healthy)
+            selfAcceptance: 5.8  // 41 (healthy)
+          }
         }
       ],
       filteredStudents: [],
@@ -365,34 +441,30 @@ export default {
     };
   },
   created() {
+    console.log("RyffScoring component created with props:", {
+      selectedDimension: this.selectedDimension,
+      selectedCollege: this.selectedCollege
+    });
+    
     // Apply filters from props if they exist
     if (this.selectedDimension || this.selectedCollege !== 'all') {
+      // Set the college filter from the prop
       this.collegeFilter = this.selectedCollege;
       
-      // Debug: Log Environmental Mastery scores for all students
-      if (this.selectedDimension === 'Environmental Mastery') {
-        console.log('Environmental Mastery scores:');
-        this.students.forEach(student => {
-          const score = student.subscales.environmentalMastery * 7;
-          console.log(`${student.name} (${student.college}): ${score} - At risk: ${score <= this.riskThresholds.q1}`);
-        });
-        
-        // Additional debug: Log the risk threshold
-        console.log(`Risk threshold for Environmental Mastery: ${this.riskThresholds.q1}`);
-        
-        // Verify which students would be filtered
-        const filteredStudents = this.students.filter(student => {
-          const score = student.subscales.environmentalMastery * 7;
-          return student.college === 'CCS' && score <= this.riskThresholds.q1;
-        });
-        
-        console.log(`CCS students at risk for Environmental Mastery:`, 
-          filteredStudents.map(s => `${s.name} (${s.id})`));
-      }
-      
-      this.filterByDimensionAndCollege();
+      // Force the filterByDimensionAndCollege method to run
+      this.$nextTick(() => {
+        this.filterByDimensionAndCollege();
+      });
     } else {
       this.filterStudents();
+    }
+  },
+  
+  mounted() {
+    // Double-check that filters are applied correctly after mounting
+    if (this.selectedDimension) {
+      console.log("Component mounted, re-applying dimension filter");
+      this.filterByDimensionAndCollege();
     }
   },
   methods: {
@@ -515,51 +587,52 @@ export default {
       this.riskLevelFilter = 'all';
       this.searchQuery = '';
       
-      console.log(`Filtering by dimension: ${this.selectedDimension}, college: ${this.collegeFilter}`);
+      console.log(`FILTERING: Dimension=${this.selectedDimension}, College=${this.collegeFilter}`);
       console.log(`Risk threshold: ${this.riskThresholds.q1}`);
       
-      // Apply filters
-      let result = [...this.students];
+      // Map from dashboard dimension names to student data property names
+      const dimensionMapping = {
+        'Autonomy': 'autonomy',
+        'Environmental Mastery': 'environmentalMastery',
+        'Personal Growth': 'personalGrowth',
+        'Positive Relations': 'positiveRelations',
+        'Purpose in Life': 'purposeInLife',
+        'Self-Acceptance': 'selfAcceptance'
+      };
       
-      // Filter by college if specified
-      if (this.collegeFilter !== 'all') {
-        result = result.filter(student => student.college === this.collegeFilter);
-        console.log(`After college filter (${this.collegeFilter}): ${result.length} students`);
+      const subscaleKey = this.selectedDimension ? dimensionMapping[this.selectedDimension] : null;
+      
+      if (!subscaleKey && this.selectedDimension) {
+        console.error(`Unknown dimension: ${this.selectedDimension}`);
+        return;
       }
       
-      // Filter by dimension if specified
-      if (this.selectedDimension) {
-        // Map from dashboard dimension names to student data property names
-        const dimensionMapping = {
-          'Autonomy': 'autonomy',
-          'Environmental Mastery': 'environmentalMastery',
-          'Personal Growth': 'personalGrowth',
-          'Positive Relations': 'positiveRelations',
-          'Purpose in Life': 'purposeInLife',
-          'Self-Acceptance': 'selfAcceptance'
-        };
+      // Start with all students
+      let result = [...this.students];
+      console.log(`Starting with ${result.length} students`);
+      
+      // Apply both filters at once to ensure correct results
+      result = result.filter(student => {
+        // Check college filter
+        const collegeMatch = this.collegeFilter === 'all' || student.college === this.collegeFilter;
         
-        const subscaleKey = dimensionMapping[this.selectedDimension];
-        
+        // Check dimension filter if applicable
+        let dimensionMatch = true;
         if (subscaleKey) {
-          console.log(`Filtering by dimension: ${this.selectedDimension} (${subscaleKey})`);
-          
-          // Filter students who are at risk for this specific dimension only
-          result = result.filter(student => {
-            // Check if this specific dimension is at risk
-            const score = student.subscales[subscaleKey] * 7; // Scale to 7-49 range
-            const isAtRisk = score <= this.riskThresholds.q1;
-            
-            console.log(`${student.name} (${student.id}): ${subscaleKey} score = ${score}, at risk: ${isAtRisk}`);
-            
-            return isAtRisk;
-          });
-          
-          // Log the filtered students for debugging
-          console.log(`After dimension filter: ${result.length} students at risk for ${this.selectedDimension}`);
-          console.log(`Students at risk for ${this.selectedDimension} in ${this.collegeFilter}:`, 
-            result.map(s => `${s.name} (${s.id})`));
+          const score = student.subscales[subscaleKey] * 7; // Scale to 7-49 range
+          dimensionMatch = score <= this.riskThresholds.q1;
+          console.log(`${student.name} (${student.college}): ${subscaleKey}=${score}, at risk: ${dimensionMatch}`);
         }
+        
+        const shouldInclude = collegeMatch && dimensionMatch;
+        return shouldInclude;
+      });
+      
+      console.log(`RESULT: ${result.length} students match criteria`);
+      if (result.length > 0) {
+        console.log('Filtered students:', result.map(s => `${s.name} (${s.college})`));
+      } else {
+        console.log('No students match the criteria');
       }
       
       this.filteredStudents = result;
@@ -613,7 +686,11 @@ export default {
   },
   watch: {
     collegeFilter() {
-      this.filterStudents();
+      if (this.selectedDimension) {
+        this.filterByDimensionAndCollege();
+      } else {
+        this.filterStudents();
+      }
     },
     sectionFilter() {
       this.filterStudents();

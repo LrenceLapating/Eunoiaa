@@ -144,34 +144,34 @@ export default {
       assessments: [
         {
           id: 1,
-          name: 'End of Semester Assessment',
+          name: 'Semester Start Assessment',
           targetGroup: 'All Colleges',
-          date: '2023-12-15',
-          recipients: 971,
-          completion: 85,
+          date: '2024-06-10',
+          recipients: 12,
+          completion: 100,
           colleges: [
-            { code: 'CCS', name: 'College of Computer Studies', recipients: 245, completion: 88, completed: 216, incomplete: 29 },
-            { code: 'CN', name: 'College of Nursing', recipients: 189, completion: 82, completed: 155, incomplete: 34 },
-            { code: 'CBA', name: 'College of Business Administration', recipients: 156, completion: 79, completed: 123, incomplete: 33 },
-            { code: 'COE', name: 'College of Engineering', recipients: 203, completion: 91, completed: 185, incomplete: 18 },
-            { code: 'CAS', name: 'College of Arts and Sciences', recipients: 178, completion: 81, completed: 144, incomplete: 34 }
+            { code: 'CCS', name: 'College of Computer Studies', recipients: 5, completion: 100, completed: 5, incomplete: 0 },
+            { code: 'CN', name: 'College of Nursing', recipients: 1, completion: 100, completed: 1, incomplete: 0 },
+            { code: 'COE', name: 'College of Engineering', recipients: 2, completion: 100, completed: 2, incomplete: 0 },
+            { code: 'CBA', name: 'College of Business Administration', recipients: 2, completion: 100, completed: 2, incomplete: 0 },
+            { code: 'CAS', name: 'College of Arts and Sciences', recipients: 2, completion: 100, completed: 2, incomplete: 0 }
           ],
-          totalCompleted: 823,
-          totalIncomplete: 148
+          totalCompleted: 12,
+          totalIncomplete: 0
         },
         {
           id: 2,
           name: 'Mid-term Evaluation',
           targetGroup: 'CCS, COE',
           date: '2023-10-20',
-          recipients: 448,
-          completion: 90,
+          recipients: 4,
+          completion: 100,
           colleges: [
-            { code: 'CCS', name: 'College of Computer Studies', recipients: 245, completion: 92, completed: 225, incomplete: 20 },
-            { code: 'COE', name: 'College of Engineering', recipients: 203, completion: 88, completed: 179, incomplete: 24 }
+            { code: 'CCS', name: 'College of Computer Studies', recipients: 3, completion: 100, completed: 3, incomplete: 0 },
+            { code: 'COE', name: 'College of Engineering', recipients: 1, completion: 100, completed: 1, incomplete: 0 }
           ],
-          totalCompleted: 404,
-          totalIncomplete: 44
+          totalCompleted: 4,
+          totalIncomplete: 0
         },
         {
           id: 3,
