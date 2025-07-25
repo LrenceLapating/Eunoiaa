@@ -23,17 +23,11 @@
 
     <!-- View Selection Tabs -->
     <div class="view-tabs">
-      <div class="tab-option" :class="{ 'active': currentView === 'student' }" @click="currentView = 'student'">
+      <div class="tab-option active">
         <div class="radio-circle">
-          <div class="radio-inner" v-if="currentView === 'student'"></div>
+          <div class="radio-inner"></div>
         </div>
         <span>Student View</span>
-      </div>
-      <div class="tab-option" :class="{ 'active': currentView === 'college' }" @click="currentView = 'college'">
-        <div class="radio-circle">
-          <div class="radio-inner" v-if="currentView === 'college'"></div>
-        </div>
-        <span>College Summary</span>
       </div>
     </div>
 
@@ -755,6 +749,10 @@ export default {
   margin-right: 30px;
   cursor: pointer;
   user-select: none;
+}
+
+.tab-option.active {
+  /* Remove the border-bottom and padding-bottom */
 }
 
 .radio-circle {

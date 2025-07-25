@@ -127,8 +127,15 @@
 
       <!-- Dashboard Content -->
       <div class="content-container">
+        <!-- Dashboard Views -->
+        <RyffScoring v-if="currentView === 'ryffScoring'" />
+        <BulkAssessment v-else-if="currentView === 'bulkAssessment'" />
+        <AutoReminders v-else-if="currentView === 'autoReminders'" />
+        <AccountManagement v-else-if="currentView === 'status'" />
+        <CollegeView v-else-if="currentView === 'guidance'" />
+        
         <!-- Main Dashboard View -->
-        <div v-if="currentView === 'dashboard'">
+        <div v-else>
           <div class="dashboard-header">
             <div class="filter-section">
               <div class="filter-group">
@@ -351,21 +358,21 @@
 
 <script>
 import SimpleRyffChart from '../Shared/SimpleRyffChart.vue'
+import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
-import RyffScoring from './RyffScoring.vue'
+import AccountManagement from './AccountManagement.vue'
 import CollegeView from './CollegeView.vue'
-import AssessmentStatus from './AssessmentStatus.vue'
 
 export default {
   name: 'CounselorDashboard',
   components: {
     SimpleRyffChart,
+    RyffScoring,
     BulkAssessment,
     AutoReminders,
-    RyffScoring,
-    CollegeView,
-    AssessmentStatus
+    AccountManagement,
+    CollegeView
   },
   data() {
     return {
