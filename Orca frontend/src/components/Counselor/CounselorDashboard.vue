@@ -3,7 +3,7 @@
     <!-- Left Sidebar -->
     <aside class="sidebar">
       <div class="logo-container">
-        <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=O" alt="ORCA Logo">
+        <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
         <div class="logo-text">
           <h1>Ryff PWB</h1>
           <p>Counselor Portal</p>
@@ -621,6 +621,7 @@ export default {
   },
   methods: {
     goToLanding() {
+      localStorage.removeItem('orca_logged_in');
       this.$emit('switch-to-landing');
     },
     toggleSubmenu(menu) {

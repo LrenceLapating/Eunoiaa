@@ -13,12 +13,12 @@
     <div class="login-left fade-in">
       <div class="login-form">
         <div class="logo" style="margin-bottom: 30px;">
-          <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=O" alt="ORCA Logo">
-          <h1>ORCA</h1>
+          <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
+          <h1>EUNOIA</h1>
         </div>
         
         <h2>Welcome back</h2>
-        <p>Sign in to access your ORCA dashboard and continue your psychological well-being journey.</p>
+        <p>Sign in to access your EUNOIA dashboard and continue your psychological well-being journey.</p>
         
         <form @submit.prevent="handleSubmit">
           <div class="notification" v-if="showNotification">
@@ -94,7 +94,7 @@
         </div>
         <div class="logo-container">
           <div class="logo-animation">
-            <img src="https://via.placeholder.com/120x120/00b3b0/ffffff?text=ORCA" alt="ORCA">
+            <img src="https://via.placeholder.com/120x120/00b3b0/ffffff?text=EUNOIA" alt="EUNOIA">
           </div>
         </div>
       </div>
@@ -128,14 +128,16 @@ export default {
       console.log('Login attempt with:', this.email);
       
       // Temporary counselor login check
-      if (this.email === 'counselor@orca.edu' && this.password === 'counselor123') {
-        // Redirect to counselor dashboard
+      if (this.email === 'counselor@eunoia.edu' && this.password === 'counselor123') {
+        localStorage.setItem('eunoia_logged_in', 'true');
+        localStorage.setItem('eunoia_user_type', 'counselor');
         this.$emit('counselor-login');
+      } else if (this.email === 'student@eunoia.edu' && this.password === 'student123') {
+        localStorage.setItem('eunoia_user_type', 'student');
+        this.$emit('student-login');
       } else if (this.email && this.password) {
-        // For student/employee login (to be implemented)
-        console.log('Regular user login attempt');
-        // Show notification instead of alert
-        this.notificationMessage = 'Login functionality will be available in future updates. Try counselor@orca.edu / counselor123 for demo access.';
+        // For other logins (to be implemented)
+        this.notificationMessage = 'Login functionality will be available in future updates. Try counselor@eunoia.edu / counselor123 or student@eunoia.edu / student123 for demo access.';
         this.showNotification = true;
       }
     },

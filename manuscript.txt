@@ -3,7 +3,8 @@ Father Selga St, Davao City
 College of Computer Studies
 
 
-ORCA – Optimized Ryff-scale Computation & Analysis
+EUNOIA: An AI-Powered System for Psychological Well-Being Assessment Using the Ryff Scale
+
 
 
 
@@ -39,27 +40,28 @@ Marc Laurence Lapating
 July 2025
 
 TABLE OF CONTENTS
-Introduction										2
-	Objectives									7
+Introduction										3
+	Objectives									8
 Methods and Materials								9
 	Research Design								9
 	Software Development Life Cycle 						10
 	Ryff Scale of Psychological Well-being				          	11
-	Conceptual Framework							12
-Design Procedure									14
-	System Architecture								14
-	Agile Sprint Breakdown							15
-	Tools and Technologies							17
-	Development and Testing							17
-	Ethical Consideration								18
-Testing Procedure									18
-	Black Box Testing								18
-	White Box Testing								19
-	Target Users and Selection Criteria						19
-	Testing Environment and Task Execution					20
-	Quantitative and Qualitative Metrics						21
-	Ethical Considerations							21
-References										22
+	Conceptual Framework							13
+	Computation and Detection Model for At-Risk Student			15
+	Identification of At-Risk Students						16
+Design Procedure									17
+	System Architecture								17
+	Agile Sprint Breakdown							17
+	Tools and Technologies							19
+	Deployment, Testing, and Future Enhancements				20
+	Ethical Consideration								20
+Testing Procedure									21
+	Target Users and Selection Criteria						22
+	Testing Environment and Task Execution					22
+	Quantitative Metrics for Evaluation						23
+	Ethical Considerations							24
+	Project Work Plan								24
+References										24
 
 
 
@@ -71,43 +73,48 @@ References										22
 
 
 
-Introduction 
-Psychological well-being (PWB) assessments are standardized self-report instruments that measure positive dimensions of mental health, for example, feelings of contentment, life satisfaction, and sense of purpose [1] [2]. In educational settings, PWB assessments are used to screen and monitor students’ mental health and to guide support interventions, since higher levels of well-being are associated with better academic and social outcomes[3].
 
-Several colleges and universities worldwide have implemented formal well-being assessments using instruments like Ryff’s scale, the PERMA Profiler, Flourishing Scale, WHO-5, GMWP, and SWISS. For instance, Nottingham Trent University (UK) is surveying undergraduate and postgraduate students with the WHO-5 index to monitor campus well-being. This quick five-item measure is valued for its high reliability and ease of use, helping institutions like NTU track student mental health trends over time and intervene early where needed [4]. In the USA, the American College Health Association’s national college health survey (ACHA-NCHA III) includes Diener’s 8-item Flourishing Scale to measure psychological well-being among students. A related institutional framework developed by ACHA uses psychometrically tested instruments to benchmark well-being at the campus level, informing health-promoting strategies aligned with global frameworks like the Okanagan Charter [5]. Seligman’s PERMA Profiler has been administered on a large scale in Mexico to 23,723 university students and 2,783 faculty/staff. The instrument has demonstrated robust internal consistency and cross-cultural validity, offering rich multidimensional insights into domains like positive emotion, engagement, and accomplishment [6]. The Glasgow Motivation and Wellbeing Profile (GMWP) is used in Scottish schools to engage children and young people in reflecting on motivation and well-being. Though not formally validated, the GMWP is grounded in Self-Determination Theory and is effective as a reflective and formative tool in educational settings, guiding student-teacher conversations [7]. Butler University (Indiana, USA) developed and uses the SWISS (Student Well-being Institutional Support Survey) to assess how well institutions support student well-being. Designed from extensive research and piloted at multiple universities, SWISS enables institutions to gather actionable insights into areas like mental health, belonging, and basic needs, influencing policy and support systems on campus[8].
+Introduction
+Psychological Well-Being (PWB) is commonly defined as the combination of feeling good and functioning well in life[36]. For example, the World Health Organization defines positive mental health as a state that “allows individuals to realise their abilities, cope with the normal stresses of life, work productively and fruitfully, and make a contribution to their community”[35]. By this view, PWB is the foundation of everyday functioning. When people have high PWB, they tend to enjoy life, manage stress well, maintain satisfying relationships, and pursue meaningful goals. In everyday life, high PWB is linked to better emotional health, greater resilience, and general life satisfaction[36].
 
-In the Philippines, De La Salle University Manila, which administered the PERMA Profiler via survey to its incoming graduate students, found that in a pilot sample of 117 new graduate students, overall well-being scores fell within the “normal functioning” range (M = 7.68, SD = 1.28). Results were explicitly used to guide program development to encourage a flourishing graduate school experience [9]. Southern Luzon State University (Quezon Province), which integrated Ryff’s PWB scale as pre/post tests in a personal-social wellness curriculum for first-year college students, demonstrated statistically significant gains across all six dimensions of psychological well-being autonomy, environmental mastery, personal growth, positive relations, purpose in life, and self-acceptance and validating the module’s evidence-based effectiveness(CVI ~0.92) and internal consistency (Cronbach’s α ~0.96) [10].
+In educational settings, PWB assessments are used to screen and monitor students’ mental health and to guide support interventions, since higher levels of well-being are associated with better academic and social outcomes[3]. Students with higher psychological well-being typically learn more effectively and cope better with academic pressures. Research among medical students found that those reporting high PWB and satisfaction also tended to have very good academic performance, along with adaptive (problem-solving) coping strategies[37]. Similarly, PWB matters greatly in the workplace. Employees who enjoy good psychological health characterized by positive emotions, a sense of meaning, and low chronic stress generally perform better on the job. Surveys confirm that workers highly value employer support for well-being, for example, 92% of U.S. workers said it is very or somewhat important to be in an organization that values their emotional and psychological well-being[38]. Empirical studies back this up. One analysis of organizational data found that psychological well-being is a key predictor of employee productivity, often the biggest predictor of self-reported work performance[39]. In practice, people with high PWB show greater engagement and creativity, and they are less prone to stress-related absences. Conversely, chronic stress and low well-being are linked to poorer concentration, lower productivity, and higher turnover. In summary, PWB underpins both academic achievement (for students) and work performance (for employees). It also supports emotional health broadly, helping to buffer against depression or anxiety[36].
 
-	Paper surveys are inexpensive and familiar but require manual data entry and often suffer from missing responses. In contrast, web‐based administration permits rapid data collection and low cost and has been shown to yield higher completion rates and fewer missing items than paper surveys [11]. Short self-report scales (like the five-item WHO-5) minimize respondent burden and are extremely quick to complete and score [12]. Interview-based or telephone administration (possible with tools like the Flourishing Scale) allows clarification of questions but is labor-intensive and may introduce interviewer bias [13]. Automated systems or mobile apps (as used by SWISS) provide real-time analytics and benchmarking [8] but require technical infrastructure and user compliance. In sum, online surveys and brief scales maximize efficiency and completeness [11][12], whereas in-person methods can improve data quality at a greater cost.
+Ryff’s (1989) Psychological Well-Being (PWB) scale is grounded in eudaimonic theory and assesses six dimensions (Autonomy, Environmental Mastery, Personal Growth, Positive Relations, Purpose in Life, Self-Acceptance)[19]. Seligman’s PERMA Profiler (Butler & Kern, 2016) is a 15-item multidimensional measure of flourishing based on the “PERMA” model (Positive Emotion, Engagement, Relationships, Meaning, Accomplishment, plus optional Health)[39]. In adult and adolescent samples, it has shown strong reliability and evidence of convergent validity with related well-being constructs[40]. Diener’s Flourishing Scale is an 8-item single-factor measure of psychosocial well-being (eudaimonic functioning: e.g., purpose, relationships, optimism). It yields a global “flourishing” score and has demonstrated high internal consistency and good convergent validity with life satisfaction and affect[41]. The WHO-5 Well-Being Index is a very brief (5-item) WHO measure of current subjective well-being (positive mood/vitality)[42] .The Glasgow Motivation and Wellbeing Profile (GMWP) is a 20-item school-based self-report (tied to Self-Determination Theory) for children/young people, focusing on motivation and sense of well-being in learning contexts. It is used by educators for monitoring student engagement and well-being but is explicitly noted as a non-validated practitioner tool[7]. The SWISS (Student Well-being Institutional Support Survey) is an institutional-level survey (derived from higher-ed research) capturing college students’ perceptions of how well their university supports various well-being domains. SWISS provides campus-wide, actionable data it measures institutional support, not individual well-being, and, as a proprietary assessment, does not report traditional psychometric reliability/validity statistics in the public literature[8].
+
+Several colleges and universities worldwide have implemented formal well-being assessments using instruments like Ryff’s scale, the PERMA Profiler, Flourishing Scale, WHO-5, GMWP, and SWISS. For instance, Nottingham Trent University (UK) is surveying undergraduate and postgraduate students with the WHO-5 Index to monitor the well-being of students within the campus. This quick five-item measure is valued for its high reliability and ease of use, helping institutions like NTU track student mental health trends over time and intervene early where needed[4]. In the USA, the American College Health Association’s national college health survey (ACHA-NCHA III) includes Diener’s 8-item Flourishing Scale to measure psychological well-being among students. A related institutional framework developed by ACHA uses psychometrically tested instruments to benchmark well-being at the campus level, informing health-promoting strategies aligned with global frameworks like the Okanagan Charter [5]. Seligman’s PERMA Profiler has been administered on a large scale in Mexico to 23,723 university students and 2,783 faculty/staff. The instrument has demonstrated robust internal consistency and cross-cultural validity, offering rich multidimensional insights into domains like positive emotion, engagement, and accomplishment [6]. The Glasgow Motivation and Wellbeing Profile (GMWP) is used in Scottish schools to engage children and young people in reflecting on motivation and well-being. Though not formally validated, the GMWP is grounded in Self-Determination Theory and is effective as a reflective and formative tool in educational settings, guiding student-teacher conversations [7]. Butler University (Indiana, USA) developed and uses the SWISS (Student Well-being Institutional Support Survey) to assess how well institutions support student well-being. Designed from extensive research and piloted at multiple universities, SWISS enables institutions to gather actionable insights into areas like mental health, belonging, and basic needs, influencing policy and support systems on campus[8].
+
+In the Philippines, De La Salle University Manila, which administered the PERMA Profiler via survey to its incoming graduate students, found that in a pilot sample of 117 new graduate students, overall well-being scores fell within the “normal functioning” range (M = 7.68, SD = 1.28). Results were explicitly used to guide program development to encourage a flourishing graduate school experience [9]. Southern Luzon State University (Quezon Province), which integrated Ryff Scales of Psychological Well-Being as pre/post tests in a personal-social wellness curriculum for first-year college students, demonstrated statistically significant gains across all six dimensions of psychological well-being autonomy, environmental mastery, personal growth, positive relations, purpose in life, and self-acceptance and validating the module’s evidence-based effectiveness(CVI ~0.92) and internal consistency (Cronbach’s α ~0.96) [10]. In total, 12 higher education institutions in the Philippines have publicly documented the use of Ryff’s Psychological Well-Being Scale in research studies, theses, or program evaluations[43–53]. 
+	
+
+	Compared to other PWB measures, Ryff Scales of Psychological Well-Being uniquely targets deep, purpose-driven facets of well-being. For example, Ryff’s purpose in life dimension explicitly assesses whether an individual “feels there is meaning to present and past life” and has “goals and directedness” [25]. In contrast, the WHO-5 is a very brief mood screener (five items about feeling cheerful, calm, etc.) [26] that does not probe life purpose at all. The 8-item Flourishing Scale (used by ACHA) yields a single score representing overall psychological resources [5],  but lacks subscales for growth or autonomy. Seligman’s PERMA-Profiler covers meaning and accomplishment but emphasizes subjective flourishing in the moment [9]. The GMWP and SWISS do not measure individual eudaimonic well-being; GMWP (20 items) is designed for children’s motivation and affect, and SWISS assesses perceptions of institutional support for well-being [7][8]. A key advantage of Ryff Scales of Psychological Well-Being is its focus on purpose-driven well-being: it explicitly measures Purpose in Life as a core factor [16]. This makes Ryff’s scale especially suitable for assessing how education fosters meaningful growth, beyond just happiness. Its multiple subscales allow nuanced profiling of well-being (e.g., identifying a student strong in engagement but low in self-acceptance) that shorter tools do not provide.
+
+Paper surveys are preferred due to their ease and low cost, but require manual data entry and higher missing response rates. Web-based surveys offer rapid, low-cost data collection, automated entry, higher completion rates, and fewer missing items.[11].Short self-report scales (like the five-item WHO-5) minimize respondent burden and are extremely quick to complete and score [12]. Interview-based or telephone administration (possible with tools like the Flourishing Scale) allows clarification of questions but is labor-intensive and may introduce interviewer bias [13]. Automated systems or mobile apps (as used by SWISS) provide real-time analytics and benchmarking [8] but require technical infrastructure and user compliance. In sum, online surveys and brief scales maximize efficiency and completeness [11][12], whereas in-person methods can improve data quality at a greater cost.
 
 Regularly assessing psychological well-being is essential in schools because PWB strongly affects learning and campus life. Students with higher well-being generally engage more in class and perform better academically. For instance, research shows that positive well-being is a significant component of students' academic achievement and that students with higher PWB tend to use more effective study strategies and report greater success [14]. Conversely, unmanaged stress or distress can lead to burnout, poor grades, and dropouts. By measuring PWB over time, educators can identify at-risk groups and tailor support. One study recommends routine in-class well-being screenings so colleges can track changing stress levels and provide targeted interventions for vulnerable students [15]. On an institutional level, well-being data informs planning that campuses can allocate counseling resources, design prevention programs, or modify policies based on the findings. Indeed, experts note that campus-wide well-being surveys enable a “data-driven, comprehensive” approach to student health and allow universities to benchmark their students’ wellness against peer institutions [4][15]. In essence, embedding PWB assessment in education systems helps protect student mental health, boosts engagement and achievement, and guides effective institutional support.
 
-Carol Ryff’s Psychological Well-Being Scale (1989) is a theory-driven measure of eudaimonic well-being [16]. It defines well-being in terms of six core dimensions: Autonomy (self-determination), Environmental Mastery, Personal Growth, Positive Relations, Purpose in Life, and Self-Acceptance [16]. The original scale had 84 items (12–14 items per subscale), later shortened to 54-, 42-, and even 18-item versions for practical use [18]. In validation studies, the Ryff scales show good internal consistency and capture distinct facets of flourishing [16]. Because the model is rooted in eudaimonic theory, it explicitly measures constructs like meaning, growth, and authenticity [16]. Critics note that some subscales correlate strongly (e.g., environmental mastery with purpose), but overall, the six-factor model is supported across cultures[16].
+Carol Ryff’s Psychological Well-Being Scale (1989) is a theory-driven measure of eudaimonic well-being [16]. It defines well-being in terms of six core dimensions: Autonomy (self-determination), Environmental Mastery, Personal Growth, Positive Relations, Purpose in Life, and Self-Acceptance [16]. The original scale had 84 items (12–14 items per subscale), later shortened to 54-, 42-, and even 18-item versions for practical use [18]. In validation studies, the Ryff Scales of Psychological Well-Being show good internal consistency and capture distinct facets of flourishing [16]. Because the model is rooted in eudaimonic theory, it explicitly measures constructs like meaning, growth, and authenticity [16]. Critics note that some subscales correlate strongly (e.g., environmental mastery with purpose), but overall, the six-factor model is supported across cultures[16]. The eudaimonic model (as in Ryff’s theory) defines well-being as realizing one’s potential, finding meaning, and living authentically. The hedonic model defines well-being as pleasure attainment and pain avoidance, essentially subjective happiness (life satisfaction and positive affect). Mixed or integrative models, like Seligman’s PERMA framework, combine both: e.g., Positive Emotion (hedonic) plus Meaning/Purpose and Engagement (eudaimonic) [24]. 
 
-The eudaimonic model (as in Ryff’s theory) defines well-being as realizing one’s potential, finding meaning, and living authentically. The hedonic model defines well-being as pleasure attainment and pain avoidance – essentially subjective happiness (life satisfaction and positive affect). Mixed or integrative models, like Seligman’s PERMA framework, combine both: e.g., Positive Emotion (hedonic) plus Meaning/Purpose and Engagement (eudaimonic) [24]. In practice, hedonic measures (WHO-5) emphasize mood and satisfaction, whereas eudaimonic measures (Ryff) emphasize growth and purpose. Flourishing models often blend these; for instance, Diener’s Flourishing Scale taps meaning and optimism (eudaimonic) along with social well-being[13].
-
-Compared to other PWB measures, Ryff’s scale uniquely targets deep, purpose-driven facets of well-being. For example, Ryff’s purpose in life dimension explicitly assesses whether an individual “feels there is meaning to present and past life” and has “goals and directedness” [25]. In contrast, the WHO-5 is a very brief mood screener (five items about feeling cheerful, calm, etc.) [26] that does not probe life purpose at all. The 8-item Flourishing Scale (used by ACHA) yields a single score representing overall psychological resources [5],  but lacks subscales for growth or autonomy. Seligman’s PERMA-Profiler covers meaning and accomplishment but emphasizes subjective flourishing in the moment [9]. The GMWP and SWISS do not measure individual eudaimonic well-being; GMWP (20 items) is designed for children’s motivation and affect, and SWISS assesses perceptions of institutional support for well-being [7][8]. A key advantage of Ryff’s instrument is its focus on purpose-driven well-being: it explicitly measures Purpose in Life as a core factor [16]. This makes Ryff’s scale especially suitable for assessing how education fosters meaningful growth, beyond just happiness. Its multiple subscales allow nuanced profiling of well-being (e.g., identifying a student strong in engagement but low in self-acceptance) that shorter tools do not provide.
-
-Currently, Ryff’s scale is typically administered as a straightforward questionnaire, which has practical limitations. The commonly used shorter forms (18 items) reduce respondent burden but sacrifice some reliability, while the full 42-, 54- or 84-item versions (which yield higher internal consistency) are time-consuming to complete [27]. Ryff provides no standard cut-off scores, so practitioners have no built-in threshold for “low” vs “high” well-being; they must arbitrarily split scores into quartiles or similar groups [27]. Scoring is also manual: each negatively worded item must be reverse-coded before summing to get subscale totals [27]. These factors, lengthy forms, manual scoring, and no normative benchmarks, make the current Ryff administration cumbersome in institutional settings, highlighting the need for more efficient or automated solutions. 
-In the interview, the institution currently faces a significant gap in its ability to assess and support the psychological well-being of its students and employees. At present, there is no standardized, systematic, or automated tool in place to evaluate mental health across the institution. Both the Human Resources and Guidance Offices operate without a scalable framework, and psychological support is typically reactive and offered only when individuals are referred or issues are already apparent. Additionally, the HR department lacks an in-house mental health practitioner, further limiting proactive engagement. Despite the availability of validated tools like the Ryff Scales of Psychological Well-being, these frameworks remain underutilized and have yet to be integrated into essential processes such as student assessments or employment exams.
-There is a growing need for an integrated, automated, and scalable digital platform to assess psychological well-being in educational settings using validated tools such as Ryff’s Psychological Well-Being (PWB) Scale. Despite its consistent psychometric robustness across various cultural contexts, including Spain, China, and the Philippines, the scale is often implemented through manual or semi-digital methods that require considerable time and expertise for data analysis and interpretation [19][16][17]. These traditional approaches frequently rely on paper-based surveys or static online forms and depend heavily on statistical software like SPSS or AMOS for manual computation, thereby limiting the scalability of interventions and delaying feedback to students and educators [20]. Compounding this issue, students often experience survey fatigue, which undermines data quality and engagement, particularly when faced with lengthy assessments or repeated prompts[21][22]. Meanwhile, school counselors are overwhelmed by increasing caseloads and constrained by fragmented, inconsistent screening protocols, which compromise their ability to offer timely and targeted support [23]. Although recent efforts have introduced digital mental health tools such as the MOLÉ platform by [22] and the stepped-care system "Smooth Sailing" by [23], these solutions often lack real-time interpretive capabilities, adaptive item delivery, or institutional integration beyond isolated deployments [22][23]. This presents a clear opportunity to develop a next-generation platform that not only automates scoring and feedback but also incorporates advanced analytical frameworks like Compositional Data Analysis (CoDA) to interpret well-being in a more nuanced and proportional manner[19]. By streamlining data collection, reducing manual workloads, and generating timely insights, such a system could enhance both the responsiveness and reach of mental health initiatives in schools and universities.
-This situation presents a valuable opportunity for improvement through the implementation of the Ryff tool within the institution. By institutionalizing this assessment, enhanced with AI-driven interpretation and personalized recommendations, the institution can adopt a more structured, data-informed approach to mental health support. The digital nature of the system introduces efficiency and accessibility, allowing it to be used at scale or in individualized cases. Moreover, the Ryff model’s focus on self-acceptance, purpose in life, and personal growth aligns closely with both academic and professional development objectives. For employees, this could foster greater motivation and resilience, while for students, it promotes a more holistic, engaged, and meaningful educational experience.
-Based on the identified needs in the literature particularly the issues of manual workload, survey fatigue, lack of real-time feedback, and limited interpretive capacity of current psychological well-being (PWB) assessment tools[21][22][19], the proposed solution is the development of ORCA a web-based, adaptive system that integrates Ryff’s multidimensional Psychological Well-Being framework and introduces a modernized, automated infrastructure for administering, analyzing, and responding to well-being assessments in educational settings.
-ORCA addresses key challenges in psychological well-being (PWB) assessment by using modular, adaptive surveys with progress tracking to reduce fatigue, a method supported by usability research in educational and digital health contexts[21]. It employs Compositional Data Analysis (CoDA) to produce proportion-based metrics like PR1, PR2, and GISPW, offering a richer interpretation of Ryff’s well-being framework[19]. Integrated into learning management systems like Moodle, ORCA automates scoring and streamlines workflows, drawing on the success of the MOLÉ platform at MSU-IIT [22]. It also features a digital triage system modeled after the “Smooth Sailing” intervention, which enhances early detection and counselor efficiency[23].
-ORCA offers transformative benefits at both the individual and institutional levels within the education sector. For students, the system provides personalized insights into their psychological well-being, helping them recognize strengths and address challenges early, ultimately improving focus, resilience, and academic performance. Teachers and school staff, who are often excluded from traditional mental health assessments, gain access to consistent and meaningful evaluations of their well-being. This enables them to manage stress, prevent burnout, and maintain a healthier work-life balance. School counselors and psychologists benefit significantly from the automation of scoring and interpretation processes, allowing them to dedicate more time to high-priority cases and deliver targeted support where it’s most needed. Meanwhile, administrators and educational leaders can utilize real-time, data-driven insights to inform institutional policies, allocate resources more effectively, and implement proactive well-being strategies across departments. 
-At the industry level, schools and universities are empowered with a centralized, scalable platform that standardizes psychological assessment practices across units, bridging the gap between departments like counseling, faculty development, and student services. Districts and educational systems can adopt ORCA for region-wide well-being monitoring, enabling early intervention and equitable support for diverse communities. Additionally, policymakers and educational researchers can leverage anonymized data trends to shape evidence-based policies and mental health programs. In essence, ORCA contributes to the well-being of individuals while advancing institutional capacity for data-informed, equitable, and sustainable mental health support in education.
+Currently, Ryff Scales of Psychological Well-Being is typically administered as a straightforward questionnaire, which has practical limitations. The commonly used shorter forms (18 items) reduce respondent burden but sacrifice some reliability, while the full 42-, 54- or 84-item versions (which yield higher internal consistency) are time-consuming to complete [27]. Ryff provides no standard cut-off scores, so practitioners have no built-in threshold for “low” vs “high” well-being; they must arbitrarily split scores into quartiles or similar groups [27]. Scoring is also manual: each negatively worded item must be reverse-coded before summing to get subscale totals [27]. These factors, lengthy forms, manual scoring, and no normative benchmarks, make the current Ryff administration cumbersome in institutional settings, highlighting the need for more efficient or automated solutions. 
+In the interview, the institution currently faces a significant gap in its ability to assess and support the psychological well-being of its students and employees. At present, there is no standardized, systematic, or automated tool in place to evaluate mental health across the institution. Both the Human Resources and Guidance Offices operate without a scalable framework, and psychological support is typically reactive and offered only when individuals are referred or issues are already apparent. Additionally, the HR department lacks an in-house mental health practitioner, further limiting proactive engagement. Despite the availability of validated tools like the Ryff Scales of Psychological Well-Being, these frameworks remain underutilized and have yet to be integrated into essential processes such as student assessments or employment exams.
+There is a growing need for an integrated, automated, and scalable digital platform to assess psychological well-being in educational settings using validated tools such as Ryff Scales of Psychological Well-Being. Despite its consistent psychometric robustness across various cultural contexts, including Spain, China, and the Philippines, the scale is often implemented through manual or semi-digital methods that require considerable time and expertise for data analysis and interpretation [19][16][17]. These traditional approaches frequently rely on paper-based surveys or static online forms and depend heavily on statistical software like SPSS or AMOS for manual computation, thereby limiting the scalability of interventions and delaying feedback to students and educators [20]. Compounding this issue, students often experience survey fatigue, which undermines data quality and engagement, particularly when faced with lengthy assessments or repeated prompts[21][22]. Meanwhile, school counselors are overwhelmed by increasing caseloads and constrained by fragmented, inconsistent screening protocols, which compromise their ability to offer timely and targeted support [23]. Although recent efforts have introduced digital mental health tools such as the MOLÉ platform by [22] and the stepped-care system "Smooth Sailing" by [23], these solutions often lack real-time interpretive capabilities, adaptive item delivery, or institutional integration beyond isolated deployments [22][23]. 
+In alignment with global development priorities, this study supports the United Nations Sustainable Development Goals (UN SDGs), particularly Goal 3: Good Health and Well-being and Goal 4: Quality Education. The EUNOIA platform enhances access to psychological well-being assessments and encourages early intervention in academic settings, promoting holistic student development and creating inclusive, health-oriented educational environments.
+The Ryff Scales of Psychological Well-Being can improve mental health support by institutionalizing assessment, enhancing AI interpretation, and providing personalized recommendations. This digital system offers efficiency and accessibility, allowing for individualized cases. It focuses on self-acceptance aligns with academic and professional development objectives, fostering motivation and resilience for employees and promoting a holistic educational experience for students.
+Based on the identified needs in the literature particularly the issues of manual workload, survey fatigue, lack of real-time feedback, and limited interpretive capacity of current psychological well-being (PWB) assessment tools[21][22][19], the proposed solution is the development of EUNOIA a web-based, adaptive system that integrates Ryff’s multidimensional Psychological Well-Being framework and introduces a modernized, automated infrastructure for administering, analyzing, and responding to well-being assessments in educational settings.
+EUNOIA addresses key challenges in psychological well-being (PWB) assessment by using modular, adaptive surveys with progress tracking to reduce fatigue, a method supported by usability research in educational and digital health contexts[21]. It employs Compositional Data Analysis (CoDA) to produce proportion-based metrics like PR1, PR2, and GISPW, offering a richer interpretation of Ryff Scales of Psychological Well-Being framework[19]. Integrated into learning management systems like Moodle, EUNOIA automates scoring and streamlines workflows, drawing on the success of the MOLÉ platform at MSU-IIT [22]. 
+EUNOIA is a system that offers personalized psychological well-being insights for students and counselors. It automates assessments, prioritizes high-need cases, and provides real-time insights for administrators and educational leaders. This system enhances student focus, resilience, and academic performance, guiding policy decisions and optimizing resource allocation.
 Objectives
-To develop and implement ORCA, a digital assistive platform for administration, scoring, and analysis of the Ryff PWB Assessment, as well as the integration of AI-supported interpretation and feedback. The specific objectives of the study are as follows:
-Design and develop a user-friendly, fully digitized platform for administering multiple versions (42-, 54-, and 84-item) of the Ryff Psychological Well-Being Scale, incorporating adaptive testing to reduce user fatigue.
+To develop and implement EUNOIA, a digital assistive platform for administration, scoring, and analysis of the Ryff Scales of Psychological Well-Being, as well as the integration of AI-supported interpretation and feedback. The specific objectives of the study are as follows:
+Design and develop a user-friendly, fully digitized platform for administering multiple versions (42-, 54-, and 84-item) of the Ryff Scales of Psychological Well-Being, incorporating adaptive testing to reduce user fatigue.
 
 
-Automate scoring and subscale computations with algorithms that handle reverse scoring, generate personalized summaries and deliver plain-language interpretations.
+Automate scoring and subscale computations with algorithms that handle reverse scoring, generate personalized summaries, and deliver plain-language interpretations.
 
 
 Integrate AI-driven feedback and risk detection systems to alert users and counselors about potential well-being concerns and provide targeted recommendations.
 
 
 Develop real-time dashboards and visual analytics tailored for different institutional stakeholders to enable trend analysis by demographic groups, user roles, and time frames.
+
 
 
 
@@ -151,10 +158,11 @@ The study implemented the Action Research Method as its research methodology, wh
 
 
 Figure 1. Action Research Diagram
-Plan - In each iteration of the planning phase, the researchers conducted collaborative discussions to identify issues surrounding the manual and fragmented administration of the Ryff Psychological Well-Being (PWB) Scale within educational institutions. These discussions involved various stakeholders, including guidance counselors and college students, to co-design a digital solution that could streamline well-being assessment processes. As a result, the idea for ORCA (Optimized Ryff-scale Computation & Analysis) was conceptualized. ORCA is a centralized, AI-powered platform designed to automate the administration, scoring, analysis, interpretation, and feedback mechanisms of the Ryff PWB Scale. The collaboration helped refine ORCA’s design, ensuring it met the practical and psychological needs of both test takers and providers.
-Act - During this phase, the ORCA platform was developed and deployed within the educational setting. The system was implemented as a pilot intervention to replace manual methods of assessing psychological well-being. ORCA was used to administer the Ryff PWB Scale to student participants, and its AI capabilities enabled real-time scoring, secure data processing, and personalized feedback. The implementation also included onboarding sessions for guidance counselors and HR personnel to ensure they could effectively use the platform for monitoring and intervention.
-Observe - This phase involved systematic observation of ORCA’s implementation and its reception by users. The research team collected both qualitative and quantitative data through pre- and post-assessments using the Ryff PWB Scale, system logs, user experience surveys, and observational checklists. The objective was to evaluate ORCA’s usability, accuracy, and impact on the efficiency and effectiveness of psychological well-being assessments within the institution.
-Reflect - After data collection, the researchers conducted reflective analyses to interpret findings and evaluate ORCA’s overall performance. The team discussed whether the platform successfully addressed the problems identified in the planning phase and assessed improvements in psychological assessment outcomes. Key insights from the reflection phase helped determine the strengths and limitations of ORCA and informed decisions about further iterations or enhancements. If necessary, the cycle was repeated to implement refinements for broader deployment.
+Plan - In each iteration of the planning phase, the researchers conducted collaborative discussions to identify issues surrounding the manual and fragmented administration of the Ryff Psychological Well-Being (PWB) Scale within educational institutions. These discussions involved various stakeholders and guidance counselors to co-design a digital solution that could streamline well-being assessment processes. As a result, the idea for EUNOIA (An AI-Powered System for Psychological Well-Being Assessment Using the Ryff Scale) was conceptualized. EUNOIA is a centralized, AI-powered platform designed to optimize the administration, scoring, analysis, and automate the interpretation and feedback mechanisms of the Ryff Scales of Psychological Well-Being. The collaboration helped refine EUNOIA’s design, ensuring it met the practical and psychological needs of both test takers and providers.
+Act - During this phase, the EUNOIA platform will be developed and deployed within the educational setting. The system will be implemented as a pilot intervention to augment manual methods of assessing psychological well-being. EUNOIA will be used to administer the Ryff Scales of Psychological Well-Being to student participants, and its AI capabilities will enable real-time scoring, secure data processing, and personalized feedback. The implementation will also include onboarding sessions for guidance counselors to ensure it can effectively use the platform for monitoring and intervention. 
+
+Observe - This phase will involve systematic observation of EUNOIA’s implementation and its reception by users. The research team will collect quantitative data through pre- and post-assessments using the Ryff Scales of Psychological Well-Being, system logs, user experience surveys, and observational checklists. The objective will be to evaluate EUNOIA’s usability, accuracy, and impact on the efficiency and effectiveness of psychological well-being assessments within the institution.
+Reflect - After data collection, the researchers will conduct reflective analyses to interpret findings and evaluate EUNOIA’s overall performance. The team will discuss whether the platform successfully addresses the problems identified in the planning phase and will assess improvements in psychological assessment outcomes. Key insights from the reflection phase will help determine the strengths and limitations of EUNOIA and will inform decisions about further iterations or enhancements. If necessary, the cycle will be repeated to implement refinements for broader deployment.
 
 Software Development Life Cycle
 
@@ -165,17 +173,19 @@ Software Development Life Cycle
 
 
 Figure 2. Agile Model
-This project will focus on the development and deployment of ORCA (Optimized Ryff-scale Computation & Analysis), a centralized, AI-powered digital platform designed to fully automate the administration, scoring, analysis, interpretation, and feedback of the Ryff Psychological Well-Being (PWB) Scale within educational institutions. The primary objective of this project is to replace current manual and fragmented assessment methods by providing a scalable, secure, and real-time system that delivers actionable insights. ORCA aims to support both test takers (students and employees) and test providers (guidance counselors and HR personnel) by enabling efficient monitoring, interpretation, and well-being interventions across the institution.
+This project will focus on the development and deployment of EUNOIA, a centralized, AI-powered digital platform designed to fully automate the administration, scoring, analysis, interpretation, and feedback of the Ryff Scales of Psychological Well-Being within educational institutions. The primary objective of this project is to replace current manual and fragmented assessment methods by providing a scalable, secure, and real-time system that delivers actionable insights. EUNOIA aims to support test takers (students) and test providers (guidance counselors) by enabling efficient monitoring, interpretation, and well-being interventions across the institution.
 
 The researchers implemented a Software Development Life Cycle, the Agile Model will be utilized. Agile is well-suited for this project as it emphasizes iterative progress, close collaboration with stakeholders, and continuous refinement of system features. The development will be organized into multiple sprints, each lasting a fixed period and focused on delivering a working subset of system functionality.
 
+
 Core Agile practices such as sprint planning, daily stand-up meetings, sprint reviews, and retrospectives will be implemented to guide the process. These activities will allow the development team to respond quickly to feedback, detect issues early, and ensure that the system evolves in alignment with stakeholder needs. A product backlog, consisting of prioritized features and tasks derived from stakeholder inputs, will be maintained and regularly updated.
 
-Initial user stories and requirements will be based on a comprehensive review of the literature and an initial key informant interview conducted with a guidance counselor. This interview explored current practices, challenges in administering the Ryff PWB Scale, and expectations for an improved digital solution. Insights from this consultation informed the system’s preliminary scope and feature set. Participants were selected using purposive sampling, a non-probability sampling technique in which individuals are deliberately chosen for their relevance to the research objectives. In this case, guidance counselors and HR personnel were identified due to their direct involvement in administering psychological assessments and supporting well-being initiatives within educational institutions.
+Initial user stories and system requirements were informed by a comprehensive literature review and a key informant interview with a guidance counselor. This interview focused on current practices, challenges in administering the Ryff Psychological Well-Being (PWB) Scale, and expectations for an improved digital solution. The insights gathered helped shape the preliminary scope and feature set of EUNOIA. The study used purposive sampling to select participants, with guidance counselors being the primary target due to their involvement in student psychological assessments and well-being initiatives. EUNOIA is designed to be scalable, with future iterations incorporating features tailored to teachers, staff, and other employees as the system evolves.
 
-To further refine ORCA’s design, particularly in the context of employee well-being monitoring, the researchers will conduct an additional key informant interview with a representative from the Human Resources (HR) department. This forthcoming consultation will capture the specific workflows, expectations, and challenges faced by HR personnel when supporting faculty and staff mental health and well-being. Data from this interview will directly inform the ongoing development of the system, contributing to backlog updates and sprint planning in alignment with Agile principles.
+To support this broader vision, a follow-up key informant interview will be conducted with a Human Resources (HR) representative. This interview will explore workflows, expectations, and challenges related to monitoring and supporting employee mental health. Insights will feed into backlog refinement and sprint planning, aligning with Agile development principles and ensuring the system remains adaptable to the needs of the entire educational community
 Ryff Scales of Psychological Well-Being 
-The Ryff Scales of Psychological Well-Being is a widely used set of self-report instruments designed to assess six distinct dimensions of human well-being: autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance. These scales function by asking respondents to rate their agreement with a series of positively and negatively worded statements, typically using a Likert-type scale ranging from 1 (strongly disagree) to 6 or 7 (strongly agree). There are several versions of the scale, including the 84-item long form, 54-item medium form, 42-item short form, and 18-item ultra-short form. Each version contains an equal number of items per subscale (e.g., 7 items per domain in the 42-item version), allowing researchers to assess specific areas of psychological functioning [30].
+The Ryff Scales of Psychological Well-Being is a widely used set of self-report instruments designed to assess six distinct dimensions of human well-being: autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance. Self-acceptance is a positive attitude towards oneself, acknowledging strengths and weaknesses, and maintaining a positive view of one's past. Positive relationships with others demonstrate the ability to form trust and empathy. Autonomy involves self-determination and resistance to societal pressures. Environmental mastery involves managing life situations effectively and aligning with values. Purpose in life signifies meaningful goals and direction, while personal growth involves continuous development, openness to new experiences, and increased self-awareness and effectiveness over time. [27]. These scales function by asking respondents to rate their agreement with a series of positively and negatively worded statements, typically using a Likert-type scale ranging from 1 (strongly disagree) to 6 (strongly agree). There are several versions of the scale, including the 84-item long form, 54-item medium form, 42-item short form, and 18-item ultra-short form. Each version contains an equal number of items per subscale (e.g., 7 items per domain in the 42-item version), allowing researchers to assess specific areas of psychological functioning [30]. According to Ryff Carol, the 84-item version is the most robust and extensively validated, offering high internal consistency across subscales. The 42-item version maintains acceptable reliability while reducing participant burden. Both methods align with literature best practices and practical feasibility. Both versions are recommended for research use.
+The Ryff Scales have consistently demonstrated strong psychometric properties, with reliability varying by version. The 84-item form, which includes 14 items per domain, yields high internal consistency, typically with Cronbach’s alpha values between .83 and .93, making it suitable for in-depth research and formal evaluation [54]. In comparison, the more concise 42-item version (7 items per domain) offers acceptable reliability, generally ranging from .70 to .85 in both adult and student samples [55][56]. Although slightly less robust, the 42-item form is widely accepted due to its balance between psychometric soundness and reduced participant burden. Notably, these reliability scores exceed the commonly accepted minimum threshold of α ≥ .70 for internal consistency in psychological assessment tools [57], supporting their continued use in both clinical and academic settings.
 Table 1: Versions of the Ryff PWB Scale [30]
 Version
 Items per Subscale
@@ -193,43 +203,97 @@ Total Items
 3
 18
 
+In educational contexts, the choice between the 84-item and 42-item versions of the Ryff PWB Scale depends on the research purpose, assessment frequency, and available time. The 84-item scale is recommended for high-stakes applications such as formal research, capstone projects, or program evaluations where maximum reliability and detailed assessment are critical. Meanwhile, the 42-item version is often preferred for routine monitoring, classroom surveys, or repeated assessments, particularly when minimizing fatigue and maintaining student engagement is necessary. It provides full coverage of all six well-being dimensions while reducing administration time, making it practical for larger student populations. Although the 42-item version offers slightly lower internal consistency, its efficiency and broad applicability make it the most commonly used version in academic settings [27].
 For higher scores to reliably reflect better psychological well-being, researchers must first reverse-score the negatively phrased items before computing scores for the Ryff Scales.  Following this, each of the six subscales' results is averaged or totaled.  For instance, each domain in the 42-item version has a possible score between 7 and 42. A higher score on that subscale indicates a greater presence of a particular well-being component.  It is possible to compute an overall psychological well-being score by adding up or averaging all of the subscales, although this method works best with longer versions of the scale and is not advised for ultra-short versions because of its lower dependability [29].
 The interpretation of results depends on the context and purpose of the assessment. Subscale scores can highlight strengths or areas needing improvement in an individual's psychological profile, while total scores (if calculated) offer a global index of well-being. Researchers may also use percentile cutoffs or quartile distributions to categorize individuals' well-being levels relative to a population [31]. The Ryff Scales have demonstrated high internal consistency (Cronbach’s α ranging from .86 to .93) and moderate-to-high test-retest reliability, especially in the longer versions, supporting their use in both clinical and research settings [32].
 Conceptual Framework
-Figure 3: Conceptual Framework of ORCA
-Figure 3 presents the architecture of ORCA (Optimized Response for Counseling and Assessment), a system designed to facilitate early detection and intervention for psychological well-being challenges using the Ryff Psychological Well-Being (PWB) Scale. The process begins when a Test Provider (such as a guidance counselor or HR representative) initiates an assessment or when a Test Taker (such as a student or employee) accesses the platform to complete the Ryff PWB assessment, which may include 42, 54, or 84 items depending on the selected version. Upon completion, the responses are transmitted via the front-end interface, developed using Vue.js, to the back-end server, built using Express.js and Node.js, which efficiently handles API requests, server-side logic, and communication with the database. This server processes the data and interacts with ORCA’s AI-powered analysis engine. The data analysis layer utilizes Pandas, NumPy, and PyCoDA to process responses and apply Compositional Data Analysis (CoDA), while a dedicated ML/NLP module, powered by the OpenAI GPT-4 API or a fine-tuned large language model (LLM), generates personalized interpretations and draft intervention suggestions. These outputs are returned to the back-end and presented via the front-end interface for review by the Test Provider, ensuring that professional oversight is maintained before any feedback is delivered. Once approved, the finalized well-being feedback is shared with the Test Taker. The system enforces role-based access control, ensuring that Test Providers and Test Takers view content appropriate to their roles. All data is securely stored in either a PostgreSQL, depending on the structured or semi-structured nature of the data. By combining a modern web interface, a robust back-end infrastructure, advanced statistical processing, and AI-powered interpretation, ORCA delivers scalable, timely, and ethically grounded psychological well-being support suitable for both educational and workplace environments.
+Figure 3: Conceptual Framework of EUNOIA
+Figure 3 presents the architecture of EUNOIA (An AI-Powered System for Psychological Well-Being Assessment Using the Ryff Scale), a system designed to facilitate early detection and intervention for psychological well-being challenges using the Ryff Psychological Well-Being (PWB) Scale. The process begins when a Test Provider (such as a guidance counselor) initiates an assessment or when a Test Taker (such as a student) accesses the platform to complete the Ryff Scales of Psychological Well-Being, which may include 42 and 84 items depending on the selected version. Upon completion, the responses are transmitted via the front-end interface, developed using Vue.js, to the back-end server, which is built using Express.js and Node.js. This server efficiently handles API requests, server-side logic, and communication with the database. This server processes the data and interacts with EUNOIA’s AI-powered analysis engine. The EUNOIA system uses a data analysis layer to calculate user responses and categorize scores into psychological well-being levels using the tertile method (At Risk, Moderate, Healthy). A dedicated AI component uses natural language processing to generate personalized feedback, score interpretations, and initial intervention suggestions. Future iterations may incorporate a custom-trained AI model for context-aware and localized feedback. The outputs are returned to the back-end for review by the Test Provider, ensuring professional oversight before feedback is delivered. These outputs are returned to the back-end and presented via the front-end interface for review by the Test Provider, ensuring that professional oversight is maintained before any feedback is delivered. Once approved, the finalized well-being feedback is shared with the Test Taker. The system enforces role-based access control, ensuring that Test Providers and Test Takers view content appropriate to their roles. All data is securely stored in either PostgreSQL, depending on the structured or semi-structured nature of the data. By combining a modern web interface, a robust back-end infrastructure, advanced statistical processing, and AI-powered interpretation, EUNOIA delivers scalable, timely, and ethically grounded psychological well-being support suitable for both educational and workplace environments.
+Model
+Accuracy (Correct Answers)
+Completeness (Comprehensive Answers)
+Mean Likert-style Score
+Comments
+GPT-4 (ChatGPT-4)
+~92.5%
+~83%
+3.73	(accuracy),
+4.05
+(completeness)
+Top performer across evaluations; best accuracy and completeness overall.
+GPT-3.5
+~92.5%
+~75.4%
+Not	explicitly given
+Very strong; nearly matches GPT-4	inaccuracy but slightly less comprehensive.
+
+
+Gemini (Advanced)
+~86–87%
+~68.6%
+Lower	than GPT-4 (e.g. < 3.73)
+Lower accuracy and completeness than both GPT models.
+
+ 			Table 2: AI Models for Likert-Scale Scoring Tasks	
+ 	Recent comparative studies have evaluated the performance of several large language models (LLMs) in medical and information-rich contexts. GPT-4 (ChatGPT-4) emerged as the top performer, achieving an accuracy of approximately 92.5% and completeness of about 83%, with high mean Likert-style scores for both accuracy (3.73) and completeness (4.05) [35]. GPT-3.5 matched GPT-4 in accuracy (~92.5%) but lagged slightly in completeness (~75.4%), suggesting a strong yet less comprehensive performance [35]. Gemini (Advanced) demonstrated lower performance with accuracy in the range of 86–87% and completeness around 68.6%, accompanied by lower subjective ratings than GPT-4 [36]. Meanwhile, Claude 3 Opus had mixed results—though not consistently quantified, it was sometimes rated higher than GPT-4 in terms of relevance and completeness in certain contexts [37]. While these findings indicate strong capabilities across several models, the final selection of an AI system remains open. Additional evaluations are underway, and other models are still being considered to determine the most suitable option for our specific needs and context. In psychological contexts, performance varies as well. LLaMA-3-8B consistently leads in accuracy, achieving up to 91% in emotion classification and 80% in disorder recognition [59]. It earns the highest expert Likert score in counseling response quality, indicating depth, empathy, and specificity. Mistral-7B trails with ~55% classification accuracy and delivers faster but shallower responses [60]. Gemma-3-PT-12B, developed by Google/DeepMind, shows strong general QA performance and benefits from instruction tuning and a large 128K-token context window [61]. Ongoing assessments will help determine the most effective and context-appropriate model for deployment.
+Computation and Detection Model for At-Risk Student
+	The EUNOIA system uses the Ryff Scales of Psychological Well-Being to compute psychological well-being scores and detect at-risk students. It supports both 42-item and 84-item versions and automates the computation pipeline, including reverse scoring, subscale aggregation, and interpretation.
+
+A. Scoring the Ryff Scale
+The Ryff Scales of Psychological Well-Being assess six theoretically grounded dimensions: Autonomy, Environmental Mastery, Personal Growth, Positive Relations with Others, Purpose in Life, and Self-Acceptance. Each subscale consists of either seven items (42-item version) or fourteen items (84-item version), with approximately half of the items in each subscale phrased negatively [27].
+A.1 Reverse Scoring Procedure
+Negatively worded items must be reverse-scored prior to subscale computation. This step ensures that higher numerical responses consistently indicate greater well-being. The formula for reverse scoring (based on a 6-point Likert scale) is as follows:
+Figure 4: Reverse Scoring Formula 
+RS = (Number of scale points + 1) – Respondent’s answer 
 
 
 
 
+For example, if a person gave a value of three in response to one of the negatively worded items, and the scale had seven points, this response would be changed to a value of 5: (7 + 1) – 3 = 5.
+	A.2 Subscale Computation
+After reverse-scoring the necessary items, each subscale score is computed by summing or averaging the item responses that belong to the respective dimension. In the 42-item version, each subscale comprises seven items. For instance, the score for the Autonomy dimension is calculated as:
+Figure 5: Subscale Formula 
+Autonomy Score =i=17Itemi
 
 
+			Higher subscale scores correspond to greater psychological well-being in that dimension. In line with Ryff’s original design, interpretation typically focuses on individual subscale profiles rather than an overall total score, as the six constructs are considered distinct and multidimensional.
+B.  Identification of At-Risk Students
+The EUNOIA platform categorizes students' well-being levels into risk groups using a tertile-based thresholding method, dividing subscale scores into At-Risk, Moderate, and Healthy intervals for early intervention.
+ B.1 Score Range Assumptions
+Each subscale in the 42-item version of the Ryff Scales comprises 7 items, each rated on a Likert scale from 1 to 6. Therefore, subscale scores range from:
+Figure 6:  Subscale Scores Range (42 items).
+Minimum score = 7 and Maximum score = 49
 
 
+ 	B.2 Tertile Classification Method
+The tertile classification method is applied to both the 84-item and 42-item versions of the assessment. To compute the risk categories, the score range is divided into three equal parts using the following formula:
+Table 3:  Tertile Classification and Thresholds (cutoff ranges).
+Interval 
+Tertile Upper Bound
+Tertile Categories
+Score Cut-off’s (42 items)
+Score Cut-off’s (84 items)
+Highest Score − Lowest / 3
+(Lower Bound + Interval ) − 1
+T1:  At-Risk 
+T2:  Moderate  
+T3:  Healthy  
+ 7 to 18
+19 to 30 
+31 to 42
+14 to 36
+37 to 59
+60 to 84
 
 
-
-
-
-
-
-
-
-
-
+This classification method is designed to be both intuitive and adaptive. A student whose subscale score falls within the At Risk (T1) range is flagged for that specific domain of well-being. For example, a student scoring 18 in the "Purpose in Life" subscale would be identified as at risk in that area. Multiple low subscale scores may signal broader psychological vulnerabilities and trigger automated alerts to counselors for timely intervention.
 Design Procedure
-The development of the ORCA system will follow the Agile methodology, organized into multiple time-boxed sprints lasting 1–3 weeks each. Each sprint consists of planning, implementation, testing, and evaluation tasks. This iterative approach allows for continuous feedback, flexibility, and stakeholder involvement throughout the development lifecycle. Roles involved include developers (student proponents), testers, and key stakeholders (guidance counselors and HR personnel).
+The development of the EUNOIA system will follow the Agile methodology, organized into multiple time-boxed sprints lasting 1–3 weeks each. Each sprint consists of planning, implementation, testing, and evaluation tasks. This iterative approach allows for continuous feedback, flexibility, and stakeholder involvement throughout the development lifecycle. Roles involved include developers (student proponents), testers, and key stakeholders (guidance counselors).
 A. System Architecture and Initial Prototype
-	The ORCA system features a robust modular architecture that clearly separates front-end user interactions, back-end logic, AI integration, and secure data storage layers. The initial prototype, developed prior to the formal sprint cycles, includes the core components of the platform: the Ryff Scale interface, role-based layout designs for various users (test takers and test providers), and preliminary navigation flow. While this prototype currently operates with dummy data and lacks full functionality (interface elements are visually active but not yet connected to underlying logic or database functions), it has served as a foundational visual reference for consultations and early feedback sessions, alongside detailed wireframes and mockups illustrating the user experience across all system roles.
-
-To ensure comprehensive system design and documentation, the following supporting design artifacts will be finalized and included in the thesis documentation:
-
-Data Flow Diagram (DFD): Illustrates the logical flow of data within the system.
-Entity-Relationship Diagram (ERD): Details the database structure and relationships between data entities.
-System Architecture Diagram: Depicts the relationships and interactions among system components.
+	The EUNOIA system is built on a robust modular architecture that distinctly separates front-end user interfaces, back-end logic, AI integration, and secure data storage, ensuring scalability and maintainability. The initial prototype developed before formal sprint cycles includes core platform components such as the Ryff Scale interface, role-based layouts for both test takers and providers, and a preliminary navigation structure. Though it currently functions with dummy data and lacks full backend integration, it has provided a valuable visual reference during early consultations and feedback sessions, supported by wireframes and mockups that map the user experience across different roles. To complement the system design and ensure thorough documentation in the thesis, finalized supporting artifacts will include a Data Flow Diagram (DFD) to represent data movement, an Entity-Relationship Diagram (ERD) outlining the database schema, and a System Architecture Diagram detailing interactions among system modules.
 B. Agile Sprint Breakdown and Development Timeline
-The development of the ORCA system is meticulously planned across a series of sprints, as detailed below. This iterative approach allows for continuous refinement and adaptation based on feedback.
-Table 2. Agile Sprint Breakdown and Development Timeline for ORCA System
+The development of the EUNOIA system is meticulously planned across a series of sprints, as detailed below. This iterative approach allows for continuous refinement and adaptation based on feedback.
+Table 4. Agile Sprint Breakdown and Development Timeline for EUNOIA System
 Phase
 Week(s)
 Activities
@@ -239,13 +303,11 @@ Week 1–3 (Summer)
 - Proposal writing
 - UI prototyping using Vue.js
 - Hardcoded pages for: 
-Admin 
-Test Taker (Student) 
-Test Provider (Guidance Counselor)
-- Partial UI for:
-Test Taker (Employee)
-Test Provider (HR)- Initial mock navigation and layout
+●	Admin 
+●	Test Taker (Student) 
+●	Test Provider (Guidance Counselor)
 - Set up version control (Git + GitHub)
+- Identifying AI model for Interpretation and AI libraries for data analyzation
 In Progress
 Sprint 1: Environment Setup
 Week 1
@@ -256,8 +318,8 @@ Planned (Start of Capstone 2)
 Sprint 2: UI Integration
 Week 2
 - Refactor and finalize existing UIs
-Employee view
-HR view
+Student view
+Guidance view
 - Add dynamic Vue routing
 - Set up basic page navigation
 In progress (refining)
@@ -267,7 +329,7 @@ Week 3-4
 - Connect front-end to backend
 - Establish database schema with Supabase/PostgreSQL
 Planned
-Sprint 4: Test Delivery
+Sprint 4: Security Layer
 Week 5
 - Implement role-based access control
 - Enable role-based routing after login
@@ -280,7 +342,9 @@ Week 6-8
 - Prototype AI logic with dummy data (e.g., pattern detection)
 - Display feedback summary
 Planned
-Sprint 6: Security Layer
+Sprint 6: Test Delivery
+
+
 Week 9
 - Implement the dynamic Ryff Scale questionnaire form
 - Store responses in the database
@@ -293,7 +357,7 @@ Week 10 - 11
 Planned
 Sprint 8: User Acceptance Testing (UAT)
 Week 12 - 13
-- Conduct user-based usability tests (Guidance, HR, Students)
+- Conduct user-based usability tests (Guidance and Students)
 - Collect feedback (satisfaction, navigation issues)
 Planned
 Sprint 9: Post-UAT Refinements
@@ -316,7 +380,7 @@ Week 17 +
 Planned
 
 C. Tools and Technologies
-A carefully selected set of tools and technologies supports the sprint-based Agile development process of ORCA, enabling effective collaboration, version control, prototyping, and project tracking.
+A carefully selected set of tools and technologies supports the sprint-based Agile development process of EUNOIA, enabling effective collaboration, version control, prototyping, and project tracking.
 Programming Languages: JavaScript serves as the core language for both front-end and back-end components, ensuring consistency and streamlined integration.
 Frameworks:
 B.1 Front-end: HTML, CSS, and Vue.js are used for developing an accessible, responsive, and component-based user interface.
@@ -326,32 +390,23 @@ Version Control: Git is employed for tracking code changes, with GitHub serving 
 Integrated Development Environment (IDE): Cursor is the primary IDE utilized throughout all development sprints.
 Project Management Tool: Notion is used for organizing project workflows, documenting development progress, facilitating sprint planning, task assignment, milestone tracking, and integrating development notes in a centralized workspace.
 Communication Platforms: Google Meet / Messenger are used for regular team consultations, feedback collection, and progress alignment during each sprint cycle.
-AI Libraries (Planned for Future Integration): While not in the initial prototype, future iterations may explore Scikit-learn and TensorFlow for predictive models, automated risk assessment, and personalized well-being feedback.
+AI Model Integration (Planned): A large language model (LLM) will be integrated to analyze user scores and automatically generate personalized interpretations and initial interventions. This AI model is currently under evaluation to ensure optimal performance and alignment with the system’s goals. No external libraries will be used for data analysis, only the LLM will handle interpretation based on processed input..
 D. Deployment, Testing, and Future Enhancements
-The ORCA system will be deployed on a cloud-based infrastructure to ensure scalability and accessibility. A rigorous User Acceptance Test (UAT) and pilot test will be conducted in a selected academic institution. During these phases, both quantitative data (e.g., completion time, response rates) and qualitative data (e.g., user satisfaction, feedback clarity) will be collected and analyzed using purposive sampling. This ensures feedback is obtained from test takers (students and employees) and test providers (guidance counselors and HR) whose roles align with the system's intended use cases, providing authentic and practical insights into the platform's effectiveness.
-Following deployment, the researchers will implement continuous monitoring procedures for system performance and error tracking. User feedback from the UAT and pilot phases will directly guide subsequent system enhancements and feature updates. Plans for future expansion, such as integration with school counseling services and broader institutional adoption, will also be developed.
+The EUNOIA system will be deployed on a cloud-based infrastructure to ensure scalability and accessibility. A rigorous User Acceptance Test (UAT) and pilot test will be conducted in a selected academic institution. During these phases, the study will collect and analyze quantitative data like completion time, task success rates, and system usage frequency, using a standardized questionnaire to assess user satisfaction, ease of use, and system feedback clarity. Participants will include students, guidance counselors selected through purposive sampling, ensuring alignment with the system’s intended user groups. Quantitative results will provide objective insights into the platform’s usability and effectiveness..
+Following deployment, the researchers will implement continuous monitoring procedures for system performance and error tracking. User feedback from the UAT and pilot phases will directly guide subsequent system enhancements and feature updates. Plans for future expansion, such as integration with school counseling services and broader institutional adoption, will also be developed based on the quantitative evaluation outcomes.
+
+
 E. Ethical Considerations and Data Security
-Throughout the development and implementation of the ORCA platform, all procedures will strictly comply with ethical standards and institutional data privacy regulations. Informed consent will be obtained from all participants involved in the pilot testing. The system will incorporate robust security measures including role-based access control, data encryption, and anonymization techniques to protect user information. While test providers (guidance counselors and HR) will have access to identifiable data for monitoring and support, all data used for research or policy reporting will be anonymized to maintain confidentiality and uphold ethical integrity.
+Throughout the development and implementation of the EUNOIA platform, all procedures will strictly comply with ethical standards and institutional data privacy regulations. Informed consent will be obtained from all participants involved in the pilot testing. The system will incorporate robust security measures including role-based access control, data encryption, and anonymization techniques to protect user information. While test providers (guidance counselors) will have access to identifiable data for monitoring and support, all data used for research or policy reporting will be anonymized to maintain confidentiality and uphold ethical integrity.
 Testing Procedure
-To ensure the ORCA (Optimized Ryff-scale Computation & Analysis) system effectively achieves its objectives – particularly in digitizing, automating, and enhancing the administration and interpretation of the Ryff Psychological Well-Being Scale a comprehensive and structured testing plan will be implemented. This plan combines both Black Box Testing and White Box Testing to thoroughly evaluate the system's external functionality (user experience) and its internal logic (technical robustness). This dual approach ensures the platform functions as intended, meets stakeholder needs, and adheres to both technical and user-centered performance standards.
-A. Black Box Testing: User-Centric Validation
-This will assess the system's functionality, usability, and overall user experience without requiring knowledge of the internal codebase. This approach validates that all user-facing components perform according to specified requirements, ensuring ORCA is intuitive, user-friendly, and aligned with the needs of its intended users: students, employees, guidance counselors, and HR personnel.
-Key focus areas for Black Box Testing include:
-Adaptive Ryff Scale Questionnaire: Evaluating the completion flow, adaptive response handling, and features designed to reduce user fatigue (e.g., progress indicators, optional breaks).
-Automated Scoring and AI-Generated Feedback: Assessing the accuracy, contextual relevance, clarity, and appropriateness of the feedback for different user types (students, guidance counselors, HR personnel).
-User Dashboards: Verifying the accuracy of data visualization, user-friendliness, and consistency of layout across different roles (test takers, counselors, admins).
-Admin Panel and Reporting Tools: Examining the effectiveness of data aggregation, demographic filtering, and the accessibility and security of risk reports and analytics for counselors and HR personnel.
-B. White Box Testing: Internal Logic and Security Validation
-This will be conducted by the development team to meticulously examine the internal logic, code execution paths, and overall system reliability. This ensures the application performs correctly at the code and logic level, guaranteeing technical robustness, efficiency, and security in preparation for institutional deployment.
-Areas of evaluation for White Box Testing include:
-Scoring Algorithms: Verifying the correctness of reverse scoring implementation, subscale computations, and alignment with Ryff’s six psychological well-being dimensions.
-Adaptive Questioning Modules: Confirming the logical flow and accurate condition handling in modules that dynamically adapt based on user responses.
-Backend Responsiveness and Performance: Assessing page loading times, database response rates, and server reliability under simulated load conditions using internal testing tools.
-Security Mechanisms: Reviewing the implementation of encryption protocols, authentication procedures, and role-based access privileges to ensure data privacy and compliance.
-To ensure the ORCA platform functions reliably and effectively for all users, its core components will undergo systematic testing. This includes the Adaptive Questionnaire Engine, which will be thoroughly tested for correct logic flow, adaptive response handling, and user experience enhancements. The Scoring Algorithm will be rigorously verified to ensure accurate implementation of all Ryff scale computations. The AI-generated feedback System will be evaluated for its contextual relevance, clarity, and appropriateness for various user groups. User Dashboards will be assessed for data visualization accuracy, user-friendliness, and consistent layout across different roles. Finally, the Admin Panel and Reporting Tools will be examined for their effectiveness in data aggregation, demographic filtering, and the enforcement of secure, role-based access controls.
+To ensure the EUNOIA (An AI-Powered System for Psychological Well-Being Assessment Using the Ryff Scale) system effectively achieves its objectives, particularly in digitizing, automating, and enhancing the administration and interpretation of the Ryff Scale of Psychological Well-Being, a comprehensive and structured testing plan will be implemented. This plan combines both Black Box Testing and White Box Testing to thoroughly evaluate the system's external functionality (user experience) and its internal logic (technical robustness). This dual approach ensures the platform functions as intended, meets stakeholder needs, and adheres to both technical and user-centered performance standards.
+Black Box Testing will be employed to assess the functionality of EUNOIA from a user's perspective, without examining the code inside. The testing will focus on the main system parts, including the Adaptive Ryff Scale Questionnaire, automated scoring, AI-generated feedback, counselor dashboard, and reporting tools. The questionnaire will be tested for its smoothness, response to different answers, and effectiveness in reducing tiredness. The questions will be written in simple, friendly language for easy understanding. Automated scoring and AI-generated feedback will be tested for accuracy, ease of use, and usefulness for different users. Counselor dashboard will be tested for clarity, ease of navigation, and consistency. The reporting tools will be reviewed for data collection, filtering, and secure access.
+The development team will conduct White Box Testing to thoroughly examine the system's functionality, including its code, logic, and operation. This will ensure the system is reliable, efficient, and secure before its use in a real institution. The team will review scoring algorithms to ensure correct reverse scoring, subscale calculations, and alignment with Ryff's six well-being areas. The adaptive questioning modules will be tested to ensure they follow the correct logic and adapt smoothly to user responses. The team will also assess the system's speed and responsiveness, including page loading, database response, and server stability. Additionally, the testing will cover security features like encryption, user logins, and role-based access to protect personal data and follow privacy rules.
+The Unified Theory of Acceptance and Use of Technology (UTAUT) questionnaire will be used to evaluate (student and counselor) as user acceptance of a new technology platform, EUNOIA. The questionnaire assesses four key constructs: performance expectancy, effort expectancy, social influence, and facilitating conditions. The data will be analyzed using a Likert scale to determine behavioral intention to use the system and its effectiveness in meeting user expectations. The results will guide system refinements and support decisions for broader institutional adoption. The UTAUT framework combines rigorous system-level testing with quantitative user feedback, ensuring reliable evaluation of technical soundness and user acceptance.
+
 C. Target Testers and Selection Criteria
-To ensure ORCA functions effectively for all intended users, a representative group of testers will be selected from key stakeholder roles. This includes end-users like students, alongside personnel who will interpret and manage results, such as guidance counselors and HR officers. Internal testers from the development team will also participate to validate technical performance.	
-Table 2. Target Testers and Selection Criteria
+To ensure EUNOIA functions effectively for all intended users, a representative group of testers will be selected from key stakeholder roles. This includes end-users like students, alongside personnel who will interpret and manage results, such as guidance counselors. Internal testers from the development team will also participate to validate technical performance.	
+Table 5. Target Testers and Selection Criteria
 User Group
 Role in Testing
 Estimated Participants
@@ -361,32 +416,16 @@ Primary test takers (usability, feedback interpretation)
 Guidance Counselors
 Evaluators of result interpretation and dashboard features
 2–3
-HR Officers
-Evaluators for faculty/staff well-being modules
-1–2
 Development Team
 Internal testers for code logic and backend processes
 2–3
 
-Selection Criteria
-College Students: Must be actively enrolled in an academic program and have prior experience with digital survey tools.
-Guidance Counselors: Must have relevant experience in psychological assessments or student support services.
-All participants must voluntarily consent to testing and understand the purpose and scope of their participation.
+The selection criteria for participants are as follows: College students must be actively enrolled in an academic program and should possess prior experience with digital survey tools to ensure familiarity with the testing format. Guidance counselors must have relevant experience in psychological assessments or student support services, demonstrating their capability to provide informed insights. Additionally, all participants are required to voluntarily consent to the testing process and must fully understand the purpose and scope of their participation to ensure ethical standards are upheld.
 D. Testing Environment and Task Execution
-Testing will be conducted in both controlled and naturalistic environments to simulate real-world usage scenarios:
-In-Person Testing: Will take place in a school setting (e.g., computer laboratory or designated testing room) to allow for direct observation and immediate feedback collection.
-Remote Testing: Participants will access the system via personal devices to assess system performance, compatibility, and user accessibility in everyday environments.
-Approximately 50-100 college students, 1-2 HR Officers, and 2–3 guidance counselors will participate in structured testing sessions. Each participant will perform the following tasks:
-Log in to the system using assigned credentials.
-Complete a Ryff-based questionnaire (42-, 54-, or 84-item version).
-Review personalized AI-generated feedback.
-Interact with dashboards or result displays.
-Complete a usability and satisfaction survey.
-Post-test data will be collected to evaluate ease of use, clarity of content, relevance of feedback, and overall user experience. This phase aims to validate the system’s usability, engagement, and the practicality of its interpretation mechanisms.
-E. Quantitative and Qualitative Metrics for Evaluation
-To comprehensively assess the performance and usability of the ORCA platform, both quantitative and qualitative metrics will be employed. These metrics are designed to measure system reliability, user satisfaction, functional correctness, and overall effectiveness in delivering psychological well-being insights, ensuring a balanced evaluation from both a system performance and user-centered perspective
-.
-Table 3: Quantitative and Qualitative Metrics for Evaluating System Effectiveness
+Testing will be conducted in both controlled and naturalistic environments to replicate real-world usage scenarios and assess system effectiveness under varying conditions. In-person testing will occur within a school setting, such as a computer laboratory or designated testing room, allowing for direct observation and immediate feedback collection. Approximately 50–100 college students, along with 2–3 guidance counselors, will participate in structured testing sessions. During these sessions, each participant will perform a series of tasks: logging into the system using assigned credentials, completing a Ryff-based questionnaire (either the 42 and 84 item version), reviewing personalized AI-generated feedback, interacting with dashboards or result displays, and completing a usability and satisfaction survey. To evaluate technology acceptance, participants will also answer a standardized UTAUT-based questionnaire assessing performance expectancy, effort expectancy, social influence, and facilitating conditions. Post-test data will be collected to assess the system’s ease of use, content clarity, feedback relevance, and overall user experience. This testing phase is designed to validate the system’s usability, user engagement, and the practicality of its interpretation mechanisms in supporting meaningful psychological insights.
+E. Quantitative Metrics for Evaluation
+The EUNOIA platform will be evaluated using quantitative metrics to measure system reliability, user satisfaction, functional correctness, and effectiveness in providing psychological well-being insights. A standardized post-use questionnaire, incorporating constructs from the Unified Theory of Acceptance and Use of Technology (UTAUT), will be used to evaluate user perceptions, ensuring an objective evaluation of system functionality and user acceptance from a data-driven perspective.
+Table 6:  Quantitative Metrics for Evaluating System Effectiveness 
 Evaluation Criterion
 Target Benchmark
 Functional accuracy rate
@@ -401,6 +440,8 @@ Bug or error rate
 < 5% during testing
 Security compliance
 Full adherence to privacy and access protocols
+UTAUT acceptance rating
+≥ 4.0 / 5 average across core constructs (PE, EE, SI, FC)
 
 F. Ethical Considerations
 All testing activities will be conducted in strict accordance with ethical standards and institutional guidelines. Informed consent will be obtained from all participants, and all test data will be anonymized to protect individual privacy. The platform will implement role-based access control, data encryption, and audit trails to ensure the secure handling of sensitive information. Ethical clearance from the relevant institutional review board will be sought prior to commencing any testing activities.
@@ -462,7 +503,7 @@ References
 
 [24] Ryan, R. M., & Deci, E. L. (2001). On Happiness and Human Potentials: A review of Research on Hedonic and Eudaimonic Well-Being. Annual Review of Psychology, 52(1), 141–166. https://doi.org/10.1146/annurev.psych.52.1.141
 
-[25] Admin. (2018, July 2). Ryff Scales of Psychological Well-Being | Wabash National Study. Center of Inquiry at Wabash College. https://centerofinquiry.org/uncategorized/ryff-scales-of-psychological-well-being/#:~:text=Purpose%20in%20life
+[25] Admin. (2018, July 2).  | Wabash National Study. Center of Inquiry at Wabash College. https://centerofinquiry.org/uncategorized/ryff-scales-of-psychological-well-being/#:~:text=Purpose%20in%20life
 
 [26] Gallemit, I. M. J. S., Mordeno, I. G., Simon, P. D., & Ferolino, M. a. L. (2024). Assessing the psychometric properties of the World Health Organization -five well-being index (WHO-5) in Filipino samples amid the COVID-19 pandemic. BMC Psychology, 12(1). https://doi.org/10.1186/s40359-024-01941-0
 
@@ -482,7 +523,59 @@ References
 
 [34] Larman, C.L. (2003) Agile and iterative development: A manager’s guide | guide books | ACM Digital Library, Agile and Iterative Development: A Manager’s Guide. Available at: https://dl.acm.org/doi/10.5555/861501 (Accessed: 14 June 2025). 
 
+[35]Tennant, R., Hiller, L., Fishwick, R., Platt, S., Joseph, S., Weich, S., Parkinson, J., Secker, J., & Stewart-Brown, S. (2007). The Warwick-Edinburgh Mental Well-being Scale (WEMWBS): development and UK validation. Health and Quality of Life Outcomes, 5(1). https://doi.org/10.1186/1477-7525-5-63
 
+[36] Wan, J., Wee, L. H., Siau, C. S., & Wong, Y. H. (2025). Psychological well-being and its associated factors among university students in Sichuan, China. Frontiers in Psychology, 16. https://doi.org/10.3389/fpsyg.2025.1473871
+
+[37] Relationship between academic performance, psychological well-being, and coping strategies in medical students. (2013). PubMed. https://pubmed.ncbi.nlm.nih.gov/24646930/#:~:text=Conclusions%3A%20%20Student%20academic%20performance,and%20coping%20with%20stressful%20situations
+
+[38] 2023 Work in America Survey. (n.d.). https://www.wpchange.org/resources/2023-work-in-america-survey#:~:text=%2A%2092,them%20to%20work%20for%20an
+
+[39] Questionnaires. (n.d.). Peggy’s Website. https://www.peggykern.org/questionnaires.html#:~:text=,through%20the%20%2029%20Authentic
+
+[40] Ryan, J., Curtis, R., Olds, T., Edney, S., Vandelanotte, C., Plotnikoff, R., & Maher, C. (2019). Psychometric properties of the PERMA Profiler for measuring wellbeing in Australian adults. PLoS ONE, 14(12), e0225932. https://doi.org/10.1371/journal.pone.0225932
+
+[41] Flourishing Scale (FS). (2025, June 6). NovoPsych. https://novopsych.com/assessments/well-being/flourishing-scale-fs/#:~:text=The%20FS%20has%20demonstrated%20strong,Caetano%2C%202013%3B%20Sumi%2C%202014
+
+[42] The World Health Organisation- Five Well-Being Index (WHO-5). (n.d.). https://www.corc.uk.net/outcome-measures-guidance/directory-of-outcome-measures/the-world-health-organisation-five-well-being-index-who-5/#:~:text=Psychometric%20properties
+
+[43]	Cabrera, N. G. A., Daya, N. H. D., & Echague, N. N. P. (2020). Psychological Well-Being of College Students: Validation of the Personal-Social Responsibility and Wellness Module. Journal of Educational and Human Resource Development (JEHRD), 8, 59–70. https://doi.org/10.61569/yj2zry18
+
+[44]	Sablaon, C. M., & Madrigal, D. V. (2021). Adolescent Psychological Well-Being: The Case of Filipino Catholic High School Students with Absentee Parents. Philippine Social Science Journal, 4(1), 31–41. https://doi.org/10.52006/main.v4i1.322
+
+[45] 	Villarosa, J., & Ganotice, F. (2018). Construct validation of Ryff’s psychological well-being scale: evidence from Filipino teachers in the Philippines. Philippine Journal of Psychology, 51(1). https://doi.org/10.31710/pjp/0051.01.01
+
+[46] 	Gordon, J. A., & Gordon, J. A. (2024, August 4). Psychologically sound, academically round: Psychological Well-being as a predictor of academic success of college students - the IAFOR Research Archive. The IAFOR Research Archive -. https://papers.iafor.org/submission79471/
+
+[47] 	Perez, Jeannie. (2012). Gender Difference in Psychological Well-being among Filipino College Student Samples. 10.13140/RG.2.2.28271.25766.
+
+[48] 	Tus, Jhoselle. “The Psychological Well-Being and Academic Performance of Filipino Freshmen Tertiary Students amidst the New Normal of Education.” Figshare.com, 16 Dec. 2021, figshare.com/articles/journal_contribution/The_Psychological_Well-Being_and_Academic_Performance_of_Filipino_Freshmen_Tertiary_Students_Amidst_the_New_Normal_of_Education/17237468, https://doi.org/10.6084/m9.figshare.17237468.v1.
+
+[49] 	Arnel Salvador Violago, and Frederick Edward. “Psychological Well-Being of Junior High School Teachers.” Cognizance Journal, vol. 3, no. 6, 30 June 2023, pp. 103–129, https://doi.org/10.47760/cognizance.2023.v03i06.008. Accessed 24 Nov. 2023.
+
+[50] 	“PHILIPPINES and CAVITE STATE UNIVERSITY - Proceedings - Digital Repository Warmadewa Universit.” 123dok.com, 2015, 123dok.com/id/article/philippines-and-cavite-state-university.10533458?utm_source=chatgpt.com#google_vignette. Accessed 17 July 2025.
+
+[51] 	Arsenio, John Glenn, et al. “Studocu.” Studocu, 2023, www.studocu.com/ph/document/university-of-antique/statistics-and-computer-application/our-psychological-well-being-researh-paper/68408211?utm_source=chatgpt.com. Accessed 17 July 2025.
+
+[52] 	Article, Myra, et al. “PSYCHOLOGICAL WELL-BEING and COPING STRATEGIES of SELECTED WOMEN DEPRIVED of LIBERTY: A BASIS for MINDFULNESS EMPOWERMENT PROGRAM.” JOURNAL of SOCIAL HEALTH, vol. 3, no. 2, 2020, socialhealthjournal.ust.edu.ph/wp-content/uploads/2020/08/1-7-Article-1_JOSHV312.pdf.
+
+[53] 	Sidayen, Jemabel, and Frederick Fabellon. Unleash the Warrior in You: A Mixed Method Study on the Psychological Well Being of Student Athletes from the University of the East.
+
+[54]	Henn, C. M., Hill, C., & Jorgensen, L. I. (n.d.). SciELO - Scientific Electronic Library Online. Scielo.org.za. https://scielo.org.za/
+[55]	Manchiraju, S. (2020). Psychometric evaluation of the Ryff’s Scale of psychological wellbeing in self-identified American entrepreneurs. Journal of Business Venturing Insights, 14, e00204. https://doi.org/10.1016/j.jbvi.2020.e00204
+[56]	Shahidi, M., French, F., Mahnaz Shojaee, & Bellido-Zanin, G. (2019). Predicting Students’ Psychological Well-Being through Different Types of Loneliness. ResearchGate, 7(1), 8–17. https://doi.org/10.5923/j.ijcp.20190701.02
+[57]	Tavakol, M., & Dennick, R. (2011). Making Sense of Cronbach’s Alpha. International Journal of Medical Education, 2(2), 53–55. https://doi.org/10.5116/ijme.4dfb.8dfd
+[59] Kermani, A., Perez-Rosas, V., & Metsis, V. (2025). A Systematic Evaluation of LLM Strategies for Mental Health Text Analysis: Fine-tuning vs. Prompt Engineering vs. RAG. ArXiv.org. https://arxiv.org/abs/2503.24307
+[60] [Literature Review] A Comprehensive Evaluation of Large Language Models on Mental Illnesses. (2024). Themoonlight.io. https://www.themoonlight.io/en/review/a-comprehensive-evaluation-of-large-language-models-on-mental-illnesses
+[61] Rasola, M., & Möttönen, M. (2024). Autonomous quantum heat engine based on non-Markovian dynamics of an optomechanical Hamiltonian. Scientific Reports, 14(1). https://doi.org/10.1038/s41598-024-59881-z
+
+
+
+
+‌
+
+
+‌
 
 
 

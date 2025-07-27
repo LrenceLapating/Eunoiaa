@@ -4,8 +4,8 @@
     <header id="header">
         <div class="container header-container">
             <div class="logo">
-                <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=O" alt="ORCA Logo">
-                <h1>ORCA</h1>
+                <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
+                <h1>EUNOIA</h1>
             </div>
             <nav>
                 <ul>
@@ -32,8 +32,8 @@
         </div>
         <div class="container hero-content">
             <div class="hero-text fade-in">
-                <h2>Optimized <span class="text-primary">Ryff-scale</span> Computation & Analysis</h2>
-                <p>ORCA streamlines psychological well-being evaluation using the validated Ryff Scale, providing real-time insights and personalized feedback for educational institutions.</p>
+                <h2>An AI-Powered System for <span class="text-primary">Psychological Well-Being</span> Assessment</h2>
+                <p>EUNOIA streamlines psychological well-being evaluation using the validated Ryff Scale, providing real-time insights and personalized feedback for educational institutions.</p>
                 <div class="hero-buttons">
                     <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                     <a href="#features" class="cta-button-outline">Explore Features</a>
@@ -98,7 +98,7 @@
         <div class="container">
             <div class="section-title">
                 <h3>Choose Your Assessment</h3>
-                <p>ORCA offers multiple versions of the validated Ryff Scale to meet different needs</p>
+                <p>EUNOIA offers multiple versions of the validated Ryff Scale to meet different needs</p>
             </div>
             <div class="assessment-cards">
                 <div class="assessment-card fade-in">
@@ -151,7 +151,7 @@
         <div class="container">
             <div class="section-title">
                 <h3 class="reveal-text">Key Features</h3>
-                <p class="reveal-text">ORCA transforms psychological well-being assessment through automation and AI-powered analysis</p>
+                <p class="reveal-text">EUNOIA transforms psychological well-being assessment through automation and AI-powered analysis</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card tilt-card fade-in">
@@ -211,7 +211,7 @@
         <div class="container">
             <div class="section-title">
                 <h3>Tailored for Every User</h3>
-                <p>ORCA provides specialized experiences for different roles in your institution</p>
+                <p>EUNOIA provides specialized experiences for different roles in your institution</p>
             </div>
             <div class="roles-container">
                 <div class="role-card slide-in-left">
@@ -307,7 +307,7 @@
     <section class="how-it-works" id="how-it-works">
         <div class="container">
             <div class="section-title">
-                <h3>How ORCA Works</h3>
+                <h3>How EUNOIA Works</h3>
                 <p>A simple process that transforms psychological assessment in your institution</p>
             </div>
             <div class="steps-container">
@@ -335,7 +335,7 @@
                     <div class="step-number">3</div>
                     <div class="step-content">
                         <h4>Automated Analysis</h4>
-                        <p>ORCA processes responses using advanced algorithms and Compositional Data Analysis (CoDA) to generate nuanced well-being profiles.</p>
+                        <p>EUNOIA processes responses using advanced algorithms and Compositional Data Analysis (CoDA) to generate nuanced well-being profiles.</p>
                         <div class="step-icon">
                             <i class="fas fa-cogs"></i>
                         </div>
@@ -370,13 +370,13 @@
         <div class="container">
             <div class="section-title">
                 <h3>Research-Based Approach</h3>
-                <p>ORCA is built on Carol Ryff's validated six-dimensional model of psychological well-being</p>
+                <p>EUNOIA is built on Carol Ryff's validated six-dimensional model of psychological well-being</p>
             </div>
             <div class="research-content">
                 <div class="research-text slide-in-left">
                     <h4>The Ryff Scale</h4>
                     <p>The Ryff Scales of Psychological Well-Being is a theoretically grounded instrument that specifically focuses on measuring multiple facets of psychological well-being. These facets include the six distinct dimensions of autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance.</p>
-                    <p>ORCA transforms traditional assessment methods through automation, AI-powered interpretation, and user-centered design while maintaining the psychometric integrity of the original scale.</p>
+                    <p>EUNOIA transforms traditional assessment methods through automation, AI-powered interpretation, and user-centered design while maintaining the psychometric integrity of the original scale.</p>
                     <div class="research-stats">
                         <div class="research-stat">
                             <div class="stat-number">0.86-0.93</div>
@@ -486,7 +486,7 @@
                     <div class="training-panel active" id="counselors-panel">
                         <div class="training-panel-content">
                             <h4>Counselor Training Program</h4>
-                            <p>Our comprehensive training program equips counselors with the skills to effectively use ORCA for psychological well-being assessment and intervention planning.</p>
+                            <p>Our comprehensive training program equips counselors with the skills to effectively use EUNOIA for psychological well-being assessment and intervention planning.</p>
                             
                             <div class="training-modules">
                                 <div class="training-module">
@@ -523,7 +523,7 @@
                                     </div>
                                     <div class="module-content">
                                         <h5>Dashboard Mastery</h5>
-                                        <p>Master the ORCA dashboard to analyze individual and group trends, generate reports, and track interventions.</p>
+                                        <p>Master the EUNOIA dashboard to analyze individual and group trends, generate reports, and track interventions.</p>
                                         <div class="module-meta">
                                             <span><i class="fas fa-clock"></i> 3 hours</span>
                                             <span><i class="fas fa-certificate"></i> Certificate</span>
@@ -539,7 +539,7 @@
                     <div class="training-panel" id="hr-panel">
                         <div class="training-panel-content">
                             <h4>HR Professional Training Program</h4>
-                            <p>Equip your HR team with the knowledge and tools to implement ORCA for employee well-being monitoring and workplace wellness initiatives.</p>
+                            <p>Equip your HR team with the knowledge and tools to implement EUNOIA for employee well-being monitoring and workplace wellness initiatives.</p>
                             
                             <div class="training-modules">
                                 <div class="training-module">
@@ -598,12 +598,12 @@
         <div class="container">
             <div class="about-content">
                 <div class="about-image scale-in">
-                    <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Team working on ORCA">
+                    <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80" alt="Team working on EUNOIA">
                 </div>
                 <div class="about-text fade-in">
-                    <h3>About ORCA</h3>
-                    <p>ORCA (Optimized Ryff-scale Computation & Analysis) was developed by a team of researchers and developers from the University of the Immaculate Conception to address the growing need for efficient, accurate psychological well-being assessment in educational settings.</p>
-                    <p>Built on Carol Ryff's validated six-dimensional model of psychological well-being, ORCA transforms traditional assessment methods through automation, AI-powered interpretation, and user-centered design.</p>
+                    <h3>About EUNOIA</h3>
+                    <p>EUNOIA (An AI-Powered System for Psychological Well-Being Assessment Using the Ryff Scale) was developed by a team of researchers and developers from the University of the Immaculate Conception to address the growing need for efficient, accurate, and scalable psychological well-being assessment in educational settings.</p>
+                    <p>Built on Carol Ryff's validated six-dimensional model of psychological well-being, EUNOIA transforms traditional assessment methods through automation, AI-powered interpretation, and user-centered design.</p>
                     <p>Our mission is to make psychological well-being assessment more accessible, actionable, and integrated into educational support systems, ultimately contributing to healthier, more resilient academic communities.</p>
                 </div>
             </div>
@@ -624,7 +624,7 @@
         </div>
         <div class="container">
             <h3 class="glowing-text">Ready to Transform Psychological Well-being Assessment?</h3>
-            <p>Join educational institutions already using ORCA to support student and employee psychological well-being with data-driven insights.</p>
+            <p>Join educational institutions already using EUNOIA to support student and employee psychological well-being with data-driven insights.</p>
             <div class="cta-buttons">
                 <a @click="navigateToLogin" class="cta-button-white animated-button">Start Assessment</a>
             </div>
@@ -636,7 +636,7 @@
         <div class="container">
             <div class="section-title">
                 <h3>Get In Touch</h3>
-                <p>Have questions about ORCA? Reach out to our team for more information</p>
+                <p>Have questions about EUNOIA? Reach out to our team for more information</p>
             </div>
             <div class="contact-container">
                 <div class="contact-info fade-in">
@@ -652,7 +652,7 @@
                             <i class="fas fa-envelope"></i>
                         </div>
                         <h4>Email Us</h4>
-                        <p>info@orca-wellbeing.com<br>support@orca-wellbeing.com</p>
+                        <p>info@eunoia-wellbeing.com<br>support@eunoia-wellbeing.com</p>
                     </div>
                     <div class="contact-card">
                         <div class="contact-icon">
@@ -694,8 +694,8 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-column">
-                    <h4>ORCA</h4>
-                    <p>Optimized Ryff-scale Computation & Analysis</p>
+                    <h4>EUNOIA</h4>
+                    <p>An AI-Powered System for Psychological Well-Being Assessment Using the Ryff Scale</p>
                     <div class="social-links">
                         <a href="#"><i class="fab fa-facebook-f"></i></a>
                         <a href="#"><i class="fab fa-twitter"></i></a>
@@ -724,14 +724,14 @@
                 <div class="footer-column">
                     <h4>Contact</h4>
                     <ul>
-                        <li><a href="mailto:info@orca-wellbeing.com">info@orca-wellbeing.com</a></li>
+                        <li><a href="mailto:info@eunoia-wellbeing.com">info@eunoia-wellbeing.com</a></li>
                         <li><a href="tel:+6382123456">+63 (82) 123 4567</a></li>
                         <li><a href="https://maps.google.com/?q=Father+Selga+St,+Davao+City">Father Selga St, Davao City</a></li>
                     </ul>
                 </div>
             </div>
             <div class="copyright">
-                <p>&copy; {{ new Date().getFullYear() }} ORCA. All rights reserved. University of the Immaculate Conception</p>
+                <p>&copy; {{ new Date().getFullYear() }} EUNOIA. All rights reserved. University of the Immaculate Conception</p>
             </div>
         </div>
     </footer>

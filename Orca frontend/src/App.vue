@@ -1,25 +1,48 @@
 <template>
   <LandingPage v-if="currentPage === 'landing'" @navigate-to-login="currentPage = 'login'" />
-  <Login v-else-if="currentPage === 'login'" @switch-to-landing="currentPage = 'landing'" @counselor-login="currentPage = 'counselor'" />
+  <Login v-else-if="currentPage === 'login'" @switch-to-landing="currentPage = 'landing'" @counselor-login="currentPage = 'counselor'" @student-login="currentPage = 'student'" />
   <CounselorDashboard v-else-if="currentPage === 'counselor'" @switch-to-landing="currentPage = 'landing'" />
+  <StudentDashboard v-else-if="currentPage === 'student'" />
 </template>
 
 <script>
 import LandingPage from './components/Main/LandingPage.vue'
 import Login from './components/Main/Login.vue'
 import CounselorDashboard from './components/Counselor/CounselorDashboard.vue'
+import StudentDashboard from './components/Student/StudentDashboard.vue'
 
 export default {
   name: 'App',
   components: {
     LandingPage,
     Login,
-    CounselorDashboard
+    CounselorDashboard,
+    StudentDashboard
   },
   data() {
-    return {
-      currentPage: 'landing'
-    }
+    let userType = localStorage.getItem('eunoia_user_type');
+    let loggedIn = localStorage.getItem('eunoia_logged_in') === 'true';
+    let currentPage = 'landing';
+    if (userType === 'counselor' && loggedIn) currentPage = 'counselor';
+    else if (userType === 'student') currentPage = 'student';
+    return { currentPage };
+  },
+  mounted() {
+    // Listen for login/logout events to update localStorage
+    this.$on && this.$on('counselor-login', () => {
+      localStorage.setItem('eunoia_logged_in', 'true');
+      localStorage.setItem('eunoia_user_type', 'counselor');
+      this.currentPage = 'counselor';
+    });
+    this.$on && this.$on('student-login', () => {
+      localStorage.setItem('eunoia_user_type', 'student');
+      this.currentPage = 'student';
+    });
+    this.$on && this.$on('switch-to-landing', () => {
+      localStorage.removeItem('eunoia_logged_in');
+      localStorage.removeItem('eunoia_user_type');
+      this.currentPage = 'landing';
+    });
   }
 }
 </script>
