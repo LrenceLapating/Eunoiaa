@@ -316,7 +316,7 @@
         <college-view v-if="currentView === 'guidance'" :students="students" />
 
         <!-- Assessment Status View -->
-        <assessment-status v-if="currentView === 'status'" />
+        <AccountManagement v-if="currentView === 'status'" />
       </div>
 
       <!-- Dimension Details Modal -->
