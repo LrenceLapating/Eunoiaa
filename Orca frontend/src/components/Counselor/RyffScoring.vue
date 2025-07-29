@@ -98,16 +98,16 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="student in filteredStudents" :key="student.id" class="student-row">
+          <tr v-for="(student, index) in filteredStudents" :key="student?.id || index" class="student-row">
             <td>
               <div class="student-info">
-                <span class="student-name">{{ student.name }}</span>
-                <span class="student-id">{{ student.id }}</span>
+                <span class="student-name">{{ student?.name || 'N/A' }}</span>
+                <span class="student-id">{{ student?.id || 'N/A' }}</span>
               </div>
             </td>
-            <td>{{ student.college }}</td>
-            <td>{{ student.section }}</td>
-            <td>{{ student.submissionDate }}</td>
+            <td>{{ student?.college || 'N/A' }}</td>
+            <td>{{ student?.section || 'N/A' }}</td>
+            <td>{{ student?.submissionDate || 'N/A' }}</td>
             <td>
               <span class="score">{{ calculateOverallScore(student) }}</span>
             </td>
@@ -118,9 +118,9 @@
                 </span>
                 <div class="risk-scores">
                   <div 
-                    v-for="(score, subscale) in student.subscales" 
+                    v-for="(score, subscale) in (student?.subscales || {})" 
                     :key="subscale"
-                    v-if="isAtRisk(score * 7)"
+                    v-if="score !== undefined && isAtRisk(score * 7)"
                     class="risk-dimension-container"
                   >
                     <div class="risk-dimension-score">
@@ -154,14 +154,14 @@
         <div class="modal-body" v-if="selectedStudent">
           <div class="student-details-header">
             <div class="student-profile">
-              <h4>{{ selectedStudent.name }}</h4>
-              <p>{{ selectedStudent.id }} • {{ selectedStudent.college }} • {{ selectedStudent.section }}</p>
+            <h4>{{ selectedStudent?.name || 'N/A' }}</h4>
+            <p>{{ selectedStudent?.id || 'N/A' }} • {{ selectedStudent?.college || 'N/A' }} • {{ selectedStudent?.section || 'N/A' }}</p>
+          </div>
+          <div class="assessment-info">
+            <div class="info-item">
+              <span class="info-label">Submission Date:</span>
+              <span class="info-value">{{ selectedStudent?.submissionDate || 'N/A' }}</span>
             </div>
-            <div class="assessment-info">
-              <div class="info-item">
-                <span class="info-label">Submission Date:</span>
-                <span class="info-value">{{ selectedStudent.submissionDate }}</span>
-              </div>
               <div class="info-item">
                 <span class="info-label">Overall Score:</span>
                 <span class="info-value score">{{ calculateOverallScore(selectedStudent) }}</span>
@@ -181,23 +181,23 @@
             <div class="subscale-grid">
               <div 
                 class="subscale-item" 
-                v-for="(score, subscale) in selectedStudent.subscales" 
+                v-for="(score, subscale) in (selectedStudent?.subscales || {})" 
                 :key="subscale"
-                :class="{ 'at-risk': isAtRisk(score * 7) }"
+                :class="{ 'at-risk': score !== undefined && isAtRisk(score * 7) }"
               >
                 <div class="subscale-header">
                   <span class="subscale-name">{{ formatSubscaleName(subscale) }}</span>
-                  <span class="subscale-score">{{ Math.round(score * 7) }}/49</span>
+                  <span class="subscale-score">{{ score !== undefined ? Math.round(score * 7) : 'N/A' }}/49</span>
                 </div>
                 <div class="progress-bar">
                   <div 
                     class="progress-fill" 
-                    :style="{ width: (score*7/49*100) + '%', backgroundColor: getDimensionScoreColor(score*7) }"
+                    :style="score !== undefined ? { width: (score*7/49*100) + '%', backgroundColor: getDimensionScoreColor(score*7) } : { width: '0%' }"
                   ></div>
                 </div>
                 <div class="risk-status">
-                  <span :class="getDimensionRiskClass(score*7)">
-                    {{ getDimensionRiskLabel(score*7) }}
+                  <span :class="score !== undefined ? getDimensionRiskClass(score*7) : 'no-data'">
+                    {{ score !== undefined ? getDimensionRiskLabel(score*7) : 'No Data' }}
                   </span>
                 </div>
               </div>
@@ -219,6 +219,15 @@
 </template>
 
 <script>
+import {
+  calculateOverallScore,
+  getDimensionRiskLevel,
+  getAtRiskDimensions,
+  getAtRiskDimensionsCount,
+  hasAnyRiskDimension,
+  formatDimensionName
+} from '../Shared/RyffScoringUtils';
+
 export default {
   name: 'RyffScoring',
   props: {
@@ -229,6 +238,10 @@ export default {
     selectedCollege: {
       type: String,
       default: 'all'
+    },
+    students: {
+      type: Array,
+      required: true
     }
   },
   data() {
@@ -242,190 +255,6 @@ export default {
       sortDirection: 'desc',
       showDetailsModal: false,
       selectedStudent: null,
-      // Use the same student data as in the dashboard
-      students: [
-        {
-          id: 'ST12347',
-          name: 'Mike Johnson',
-          college: 'CCS',
-          section: 'BSIT1A',
-          submissionDate: '2024-06-08',
-          subscales: {
-            autonomy: 2.4, // Scaled to 7-49: 17 (at risk)
-            environmentalMastery: 5.0, // 35 (definitely not at risk)
-            personalGrowth: 3.5, // 25
-            positiveRelations: 3.1, // 22
-            purposeInLife: 3.4, // 24
-            selfAcceptance: 2.9  // 20
-          }
-        },
-        {
-          id: 'ST12348',
-          name: 'Sarah Williams',
-          college: 'CCS',
-          section: 'BSCS3A',
-          submissionDate: '2024-06-07',
-          subscales: {
-            autonomy: 2.0, // 14 (at risk)
-            environmentalMastery: 5.0, // 35 (definitely not at risk)
-            personalGrowth: 3.0, // 21
-            positiveRelations: 2.0, // 14 (at risk)
-            purposeInLife: 2.6, // 18 (at risk)
-            selfAcceptance: 2.9  // 20
-          }
-        },
-        {
-          id: 'ST12353',
-          name: 'Kevin Wong',
-          college: 'CCS',
-          section: 'BSIT3A',
-          submissionDate: '2024-06-02',
-          subscales: {
-            autonomy: 2.4, // 17 (at risk)
-            environmentalMastery: 2.0, // 14 (definitely at risk) - only this CCS student is at risk for EM
-            personalGrowth: 2.9, // 20
-            positiveRelations: 2.5, // 18 (at risk)
-            purposeInLife: 2.5, // 18 (at risk)
-            selfAcceptance: 2.4  // 17 (at risk)
-          }
-        },
-        {
-          id: 'ST12351',
-          name: 'Robert Brown',
-          college: 'COE',
-          section: 'BSCE3B',
-          submissionDate: '2024-06-04',
-          subscales: {
-            autonomy: 2.3, // 16 (at risk)
-            environmentalMastery: 3.5, // 25
-            personalGrowth: 3.4, // 24
-            positiveRelations: 3.3, // 23
-            purposeInLife: 2.3, // 16 (at risk)
-            selfAcceptance: 3.4  // 24
-          }
-        },
-        {
-          id: 'ST12355',
-          name: 'Sophia Garcia',
-          college: 'CAS',
-          section: 'BSPS2B',
-          submissionDate: '2024-06-03',
-          subscales: {
-            autonomy: 2.2, // 15 (at risk)
-            environmentalMastery: 3.4, // 24
-            personalGrowth: 2.4, // 17 (at risk)
-            positiveRelations: 3.4, // 24
-            purposeInLife: 3.2, // 22
-            selfAcceptance: 3.4  // 24
-          }
-        },
-        {
-          id: 'ST12356',
-          name: 'Alex Thompson',
-          college: 'CBA',
-          section: 'BSBA3A',
-          submissionDate: '2024-06-02',
-          subscales: {
-            autonomy: 3.3, // 23
-            environmentalMastery: 2.2, // 15 (at risk)
-            personalGrowth: 3.2, // 22
-            positiveRelations: 3.4, // 24
-            purposeInLife: 3.3, // 23
-            selfAcceptance: 2.3  // 16 (at risk)
-          }
-        },
-        {
-          id: 'ST12354',
-          name: 'Jessica Martin',
-          college: 'CN',
-          section: 'BSCS2B',
-          submissionDate: '2024-06-01',
-          subscales: {
-            autonomy: 3.5, // 25
-            environmentalMastery: 2.3, // 16 (at risk)
-            personalGrowth: 3.5, // 25
-            positiveRelations: 2.4, // 17 (at risk)
-            purposeInLife: 3.6, // 25
-            selfAcceptance: 2.2  // 15 (at risk)
-          }
-        },
-        // Healthy students with no risk dimensions
-        {
-          id: 'ST12360',
-          name: 'Emily Chen',
-          college: 'CCS',
-          section: 'BSCS4A',
-          submissionDate: '2024-06-09',
-          subscales: {
-            autonomy: 5.6, // 39 (healthy)
-            environmentalMastery: 5.8, // 41 (healthy)
-            personalGrowth: 6.0, // 42 (healthy)
-            positiveRelations: 5.7, // 40 (healthy)
-            purposeInLife: 5.9, // 41 (healthy)
-            selfAcceptance: 5.8  // 41 (healthy)
-          }
-        },
-        {
-          id: 'ST12361',
-          name: 'David Park',
-          college: 'CCS',
-          section: 'BSIT4A',
-          submissionDate: '2024-06-08',
-          subscales: {
-            autonomy: 5.4, // 38 (healthy)
-            environmentalMastery: 5.5, // 39 (healthy)
-            personalGrowth: 5.7, // 40 (healthy)
-            positiveRelations: 5.9, // 41 (healthy)
-            purposeInLife: 5.8, // 41 (healthy)
-            selfAcceptance: 5.6  // 39 (healthy)
-          }
-        },
-        {
-          id: 'ST12362',
-          name: 'Maria Rodriguez',
-          college: 'COE',
-          section: 'BSCE4A',
-          submissionDate: '2024-06-07',
-          subscales: {
-            autonomy: 5.7, // 40 (healthy)
-            environmentalMastery: 5.9, // 41 (healthy)
-            personalGrowth: 5.8, // 41 (healthy)
-            positiveRelations: 6.0, // 42 (healthy)
-            purposeInLife: 5.7, // 40 (healthy)
-            selfAcceptance: 5.9  // 41 (healthy)
-          }
-        },
-        {
-          id: 'ST12363',
-          name: 'James Wilson',
-          college: 'CBA',
-          section: 'BSBA4A',
-          submissionDate: '2024-06-06',
-          subscales: {
-            autonomy: 5.5, // 39 (healthy)
-            environmentalMastery: 5.6, // 39 (healthy)
-            personalGrowth: 5.9, // 41 (healthy)
-            positiveRelations: 5.8, // 41 (healthy)
-            purposeInLife: 5.6, // 39 (healthy)
-            selfAcceptance: 5.7  // 40 (healthy)
-          }
-        },
-        {
-          id: 'ST12364',
-          name: 'Olivia Lee',
-          college: 'CAS',
-          section: 'BSPS4A',
-          submissionDate: '2024-06-05',
-          subscales: {
-            autonomy: 5.8, // 41 (healthy)
-            environmentalMastery: 5.7, // 40 (healthy)
-            personalGrowth: 5.6, // 39 (healthy)
-            positiveRelations: 5.5, // 39 (healthy)
-            purposeInLife: 5.9, // 41 (healthy)
-            selfAcceptance: 5.8  // 41 (healthy)
-          }
-        }
-      ],
       filteredStudents: [],
       // Use the same risk threshold as the dashboard
       riskThresholds: {
@@ -435,20 +264,13 @@ export default {
     };
   },
   created() {
-    console.log("RyffScoring component created with props:", {
-      selectedDimension: this.selectedDimension,
-      selectedCollege: this.selectedCollege
-    });
+    // Initialize filteredStudents with the prop data
+    this.filteredStudents = [...this.students];
     
     // Apply filters from props if they exist
     if (this.selectedDimension || this.selectedCollege !== 'all') {
-      // Set the college filter from the prop
       this.collegeFilter = this.selectedCollege;
-      
-      // Force the filterByDimensionAndCollege method to run
-      this.$nextTick(() => {
-        this.filterByDimensionAndCollege();
-      });
+      this.filterByDimensionAndCollege();
     } else {
       this.filterStudents();
     }
@@ -464,9 +286,12 @@ export default {
   methods: {
     // Calculate overall score as sum of all dimension scores (scaled from 0-5 to 7-49)
     calculateOverallScore(student) {
+      if (!student || !student.subscales) return 0;
       let total = 0;
       for (const subscale in student.subscales) {
-        total += Math.round(student.subscales[subscale] * 7);
+        if (student.subscales[subscale] !== undefined) {
+          total += Math.round(student.subscales[subscale] * 7);
+        }
       }
       return total;
     },
@@ -478,8 +303,9 @@ export default {
     
     // Check if student has any at-risk dimensions
     hasAnyRiskDimension(student) {
+      if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (this.isAtRisk(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale] * 7)) {
           return true;
         }
       }
@@ -488,9 +314,10 @@ export default {
     
     // Get count of at-risk dimensions
     getAtRiskDimensionsCount(student) {
+      if (!student || !student.subscales) return 0;
       let count = 0;
       for (const subscale in student.subscales) {
-        if (this.isAtRisk(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale] * 7)) {
           count++;
         }
       }
@@ -551,11 +378,13 @@ export default {
       // Apply search filter
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
-        result = result.filter(student => 
-          student.name.toLowerCase().includes(query) || 
-          student.id.toLowerCase().includes(query) || 
-          student.section.toLowerCase().includes(query)
-        );
+        result = result.filter(student => {
+          if (!student) return false;
+          const name = student.name?.toLowerCase() || '';
+          const id = student.id?.toLowerCase() || '';
+          const section = student.section?.toLowerCase() || '';
+          return name.includes(query) || id.includes(query) || section.includes(query);
+        });
       }
       
       // Apply sorting
@@ -607,15 +436,19 @@ export default {
       
       // Apply both filters at once to ensure correct results
       result = result.filter(student => {
+        if (!student || !student.subscales) return false;
+
         // Check college filter
         const collegeMatch = this.collegeFilter === 'all' || student.college === this.collegeFilter;
         
         // Check dimension filter if applicable
         let dimensionMatch = true;
-        if (subscaleKey) {
+        if (subscaleKey && student.subscales[subscaleKey] !== undefined) {
           const score = student.subscales[subscaleKey] * 7; // Scale to 7-49 range
           dimensionMatch = score <= this.riskThresholds.q1;
           console.log(`${student.name} (${student.college}): ${subscaleKey}=${score}, at risk: ${dimensionMatch}`);
+        } else if (subscaleKey) {
+          dimensionMatch = false;
         }
         
         const shouldInclude = collegeMatch && dimensionMatch;
@@ -1326,4 +1159,4 @@ export default {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>

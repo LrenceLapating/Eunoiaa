@@ -3,6 +3,11 @@
     <h2>College Summary</h2>
     <p>View and analyze assessment results by college.</p>
     
+    <div v-if="error" class="error-message">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ error }}
+    </div>
+    
     <div class="college-stats-grid">
       <div class="college-stat-card" v-for="(college, index) in colleges" :key="index">
         <div class="college-header">
@@ -34,114 +39,89 @@
 </template>
 
 <script>
+import {
+  formatDimensionName,
+  getDimensionColor,
+  calculateCollegeStats,
+  ryffDimensions
+} from '../Shared/RyffScoringUtils';
+
 export default {
   name: 'CollegeView',
+  props: {
+    students: {
+      type: Array,
+      required: true
+    }
+  },
   data() {
     return {
-      colleges: [
-        {
-          name: 'College of Computer Studies',
-          code: 'CCS',
-          students: 5,
-          avgScore: 132,
-          atRisk: 3,
-          dimensions: {
-            autonomy: { score: 72 },
-            environmentalMastery: { score: 84 },
-            personalGrowth: { score: 79 },
-            positiveRelations: { score: 76 },
-            purposeInLife: { score: 81 },
-            selfAcceptance: { score: 75 }
-          }
-        },
-        {
-          name: 'College of Nursing',
-          code: 'CN',
-          students: 1,
-          avgScore: 118,
-          atRisk: 1,
-          dimensions: {
-            autonomy: { score: 85 },
-            environmentalMastery: { score: 68 },
-            personalGrowth: { score: 83 },
-            positiveRelations: { score: 71 },
-            purposeInLife: { score: 87 },
-            selfAcceptance: { score: 65 }
-          }
-        },
-        {
-          name: 'College of Engineering',
-          code: 'COE',
-          students: 2,
-          avgScore: 126,
-          atRisk: 1,
-          dimensions: {
-            autonomy: { score: 69 },
-            environmentalMastery: { score: 82 },
-            personalGrowth: { score: 83 },
-            positiveRelations: { score: 80 },
-            purposeInLife: { score: 70 },
-            selfAcceptance: { score: 84 }
-          }
-        },
-        {
-          name: 'College of Business Administration',
-          code: 'CBA',
-          students: 2,
-          avgScore: 129,
-          atRisk: 1,
-          dimensions: {
-            autonomy: { score: 80 },
-            environmentalMastery: { score: 70 },
-            personalGrowth: { score: 82 },
-            positiveRelations: { score: 85 },
-            purposeInLife: { score: 79 },
-            selfAcceptance: { score: 72 }
-          }
-        },
-        {
-          name: 'College of Arts and Sciences',
-          code: 'CAS',
-          students: 2,
-          avgScore: 124,
-          atRisk: 1,
-          dimensions: {
-            autonomy: { score: 68 },
-            environmentalMastery: { score: 79 },
-            personalGrowth: { score: 73 },
-            positiveRelations: { score: 78 },
-            purposeInLife: { score: 82 },
-            selfAcceptance: { score: 84 }
-          }
+      error: null
+    };
+  },
+  computed: {
+    colleges() {
+      try {
+        if (!this.students || !Array.isArray(this.students)) {
+          console.warn('Invalid or missing students data');
+          return this.getDefaultCollegeData();
         }
-      ]
+
+        const stats = calculateCollegeStats(this.students);
+        const collegeData = [
+          { name: 'College of Computer Studies', code: 'CCS' },
+          { name: 'College of Nursing', code: 'CN' },
+          { name: 'College of Engineering', code: 'COE' },
+          { name: 'College of Business Administration', code: 'CBA' },
+          { name: 'College of Arts and Sciences', code: 'CAS' }
+        ];
+
+        return collegeData.map(college => ({
+          ...college,
+          students: stats[college.code]?.students || 0,
+          avgScore: stats[college.code]?.avgScore || 0,
+          atRisk: stats[college.code]?.atRisk || 0,
+          dimensions: stats[college.code]?.dimensions || this.getDefaultDimensions()
+        })).filter(college => college.students > 0); // Remove colleges with no data
+      } catch (err) {
+        console.error('Error calculating college stats:', err);
+        this.error = 'Error loading college statistics';
+        return this.getDefaultCollegeData();
+      }
     }
   },
   methods: {
     formatDimName(name) {
-      switch(name) {
-        case 'autonomy': return 'Autonomy';
-        case 'environmentalMastery': return 'Env. Mastery';
-        case 'personalGrowth': return 'Personal Growth';
-        case 'positiveRelations': return 'Positive Relations';
-        case 'purposeInLife': return 'Purpose in Life';
-        case 'selfAcceptance': return 'Self-Acceptance';
-        default: return name;
-      }
+      return formatDimensionName(name);
     },
     getDimensionColor(name) {
-      const colors = {
-        autonomy: '#4caf50',
-        environmentalMastery: '#2196f3',
-        personalGrowth: '#9c27b0',
-        positiveRelations: '#ff9800',
-        purposeInLife: '#f44336',
-        selfAcceptance: '#607d8b'
-      };
-      return colors[name] || '#00b3b0';
+      return getDimensionColor(name);
+    },
+    getDefaultDimensions() {
+      return ryffDimensions.reduce((acc, dim) => {
+        acc[dim] = { score: 0 };
+        return acc;
+      }, {});
+    },
+    getDefaultCollegeData() {
+      const collegeData = [
+        { name: 'College of Computer Studies', code: 'CCS' },
+        { name: 'College of Nursing', code: 'CN' },
+        { name: 'College of Engineering', code: 'COE' },
+        { name: 'College of Business Administration', code: 'CBA' },
+        { name: 'College of Arts and Sciences', code: 'CAS' }
+      ];
+      
+      return collegeData.map(college => ({
+        ...college,
+        students: 0,
+        avgScore: 0,
+        atRisk: 0,
+        dimensions: this.getDefaultDimensions()
+      }));
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -264,4 +244,20 @@ p {
   color: #1a2e35;
   text-align: right;
 }
-</style> 
+
+.error-message {
+  background-color: #fee;
+  color: #c00;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.error-message i {
+  font-size: 16px;
+}
+</style>

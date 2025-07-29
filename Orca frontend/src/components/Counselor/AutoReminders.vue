@@ -1,5 +1,10 @@
 <template>
   <div class="auto-reminders-container">
+    <div v-if="error" class="error-message">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ error }}
+    </div>
+
     <!-- Configuration Section -->
     <div class="config-section">
       <div class="section-header">
@@ -130,6 +135,7 @@ export default {
   name: 'AutoReminders',
   data() {
     return {
+      error: null,
       autoRemindersEnabled: true,
       timeInterval: '3',
       maxReminders: '3',
@@ -165,27 +171,71 @@ export default {
     };
   },
   methods: {
-    saveConfiguration() {
-      this.showToast = true;
-      this.toastMessage = 'Reminder configuration saved successfully!';
-      
-      setTimeout(() => {
-        this.showToast = false;
-      }, 3000);
+    validateConfiguration() {
+      if (!this.reminderTemplate.trim()) {
+        this.error = 'Reminder template cannot be empty';
+        return false;
+      }
+      if (!this.reminderTemplate.includes('[Name]')) {
+        this.error = 'Reminder template must include [Name] placeholder';
+        return false;
+      }
+      this.error = null;
+      return true;
     },
-    testReminder() {
-      this.showToast = true;
-      this.toastMessage = 'Test reminder sent to your email!';
-      
-      setTimeout(() => {
-        this.showToast = false;
-      }, 3000);
+    async saveConfiguration() {
+      try {
+        if (!this.validateConfiguration()) return;
+
+        // Here you would typically make an API call to save the configuration
+        this.showToast = true;
+        this.toastMessage = 'Reminder configuration saved successfully!';
+        
+        setTimeout(() => {
+          this.showToast = false;
+        }, 3000);
+      } catch (err) {
+        console.error('Error saving configuration:', err);
+        this.error = 'Failed to save reminder configuration';
+      }
+    },
+    async testReminder() {
+      try {
+        if (!this.validateConfiguration()) return;
+
+        // Here you would typically make an API call to send a test reminder
+        this.showToast = true;
+        this.toastMessage = 'Test reminder sent to your email!';
+        
+        setTimeout(() => {
+          this.showToast = false;
+        }, 3000);
+      } catch (err) {
+        console.error('Error sending test reminder:', err);
+        this.error = 'Failed to send test reminder';
+      }
     }
   }
 };
 </script>
 
 <style scoped>
+.error-message {
+  background-color: #fee;
+  color: #c00;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.error-message i {
+  font-size: 16px;
+}
+
 .auto-reminders-container {
   background-color: #f5f5f5;
   padding: 20px;
@@ -560,4 +610,4 @@ input:checked + .slider:before {
     margin-top: 15px;
   }
 }
-</style> 
+</style>

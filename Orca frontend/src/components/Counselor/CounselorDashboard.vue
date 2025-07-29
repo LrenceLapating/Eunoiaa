@@ -5,7 +5,7 @@
       <div class="logo-container">
         <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
         <div class="logo-text">
-          <h1>Ryff PWB</h1>
+          <h1>EUNOIA</h1>
           <p>Counselor Portal</p>
         </div>
       </div>
@@ -93,7 +93,7 @@
             </a>
           </li>
           <li class="logout-item">
-            <a @click="goToLanding" class="menu-item">
+            <a @click="logout" class="menu-item">
               <div class="menu-icon logout-icon">
               <i class="fas fa-sign-out-alt"></i>
               </div>
@@ -127,15 +127,9 @@
 
       <!-- Dashboard Content -->
       <div class="content-container">
-        <!-- Dashboard Views -->
-        <RyffScoring v-if="currentView === 'ryffScoring'" />
-        <BulkAssessment v-else-if="currentView === 'bulkAssessment'" />
-        <AutoReminders v-else-if="currentView === 'autoReminders'" />
-        <AccountManagement v-else-if="currentView === 'status'" />
-        <CollegeView v-else-if="currentView === 'guidance'" />
         
         <!-- Main Dashboard View -->
-        <div v-else>
+        <div v-if="currentView === 'dashboard'">
           <div class="dashboard-header">
             <div class="filter-section">
               <div class="filter-group">
@@ -315,10 +309,11 @@
         <ryff-scoring v-if="currentView === 'ryffScoring'" 
                      :selected-dimension="selectedRiskDimension" 
                      :selected-college="selectedRiskCollege"
+                     :students="students"
                      @clear-risk-filters="clearRiskFilters" />
 
         <!-- Guidance Feedback View -->
-        <college-view v-if="currentView === 'guidance'" />
+        <college-view v-if="currentView === 'guidance'" :students="students" />
 
         <!-- Assessment Status View -->
         <assessment-status v-if="currentView === 'status'" />
@@ -363,6 +358,7 @@ import BulkAssessment from './BulkAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
 import AccountManagement from './AccountManagement.vue'
 import CollegeView from './CollegeView.vue'
+import { calculateCollegeStats } from '../Shared/RyffScoringUtils'
 
 export default {
   name: 'CounselorDashboard',
@@ -398,6 +394,85 @@ export default {
             positiveRelations: 3.1, // 22
             purposeInLife: 3.4, // 24
             selfAcceptance: 2.9  // 20
+          }
+        },
+        // Add more students for CN college to ensure adequate representation
+        {
+          id: 'ST12365',
+          name: 'Lisa Wang',
+          college: 'CN',
+          section: 'BSN3A',
+          submissionDate: '2024-06-10',
+          subscales: {
+            autonomy: 4.2, // 29 (moderate)
+            environmentalMastery: 4.5, // 32 (moderate)
+            personalGrowth: 4.8, // 34 (moderate)
+            positiveRelations: 4.1, // 29 (moderate)
+            purposeInLife: 4.3, // 30 (moderate)
+            selfAcceptance: 4.6  // 32 (moderate)
+          }
+        },
+        {
+          id: 'ST12366',
+          name: 'Michael Torres',
+          college: 'CN',
+          section: 'BSN4A',
+          submissionDate: '2024-06-09',
+          subscales: {
+            autonomy: 5.1, // 36 (healthy)
+            environmentalMastery: 5.3, // 37 (healthy)
+            personalGrowth: 5.5, // 39 (healthy)
+            positiveRelations: 5.2, // 36 (healthy)
+            purposeInLife: 5.4, // 38 (healthy)
+            selfAcceptance: 5.0  // 35 (healthy)
+          }
+        },
+        // Add more students for CBA college
+        {
+          id: 'ST12367',
+          name: 'Rachel Green',
+          college: 'CBA',
+          section: 'BSBA2A',
+          submissionDate: '2024-06-08',
+          subscales: {
+            autonomy: 4.0, // 28 (moderate)
+            environmentalMastery: 4.2, // 29 (moderate)
+            personalGrowth: 4.4, // 31 (moderate)
+            positiveRelations: 4.1, // 29 (moderate)
+            purposeInLife: 4.3, // 30 (moderate)
+            selfAcceptance: 4.0  // 28 (moderate)
+          }
+        },
+        // Add more students for CAS college
+        {
+          id: 'ST12368',
+          name: 'Daniel Kim',
+          college: 'CAS',
+          section: 'BSPS3A',
+          submissionDate: '2024-06-07',
+          subscales: {
+            autonomy: 4.1, // 29 (moderate)
+            environmentalMastery: 4.3, // 30 (moderate)
+            personalGrowth: 4.6, // 32 (moderate)
+            positiveRelations: 4.2, // 29 (moderate)
+            purposeInLife: 4.4, // 31 (moderate)
+            selfAcceptance: 4.1  // 29 (moderate)
+          }
+        },
+        // Add more students for COE college
+        {
+          id: 'ST12369',
+          name: 'Amanda Davis',
+          college: 'COE',
+          section: 'BSCE2A',
+          submissionDate: '2024-06-06',
+          subscales: {
+            autonomy: 4.3, // 30 (moderate)
+            environmentalMastery: 4.5, // 32 (moderate)
+            personalGrowth: 4.7, // 33 (moderate)
+            positiveRelations: 4.4, // 31 (moderate)
+            purposeInLife: 4.6, // 32 (moderate)
+            selfAcceptance: 4.3  // 30 (moderate)
           }
         },
         {
@@ -620,8 +695,9 @@ export default {
     }
   },
   methods: {
-    goToLanding() {
-      localStorage.removeItem('orca_logged_in');
+    logout() {
+      localStorage.removeItem('eunoia_logged_in');
+      localStorage.removeItem('eunoia_user_type');
       this.$emit('switch-to-landing');
     },
     toggleSubmenu(menu) {
@@ -2373,4 +2449,4 @@ export default {
   font-size: 0.85rem;
   color: var(--text-light);
 }
-</style> 
+</style>

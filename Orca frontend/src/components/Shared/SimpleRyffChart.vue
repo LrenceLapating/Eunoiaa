@@ -6,38 +6,28 @@
 
 <script>
 import Chart from 'chart.js/auto';
+import {
+  ryffDimensions,
+  formatDimensionName,
+  getDimensionColor,
+  calculateCollegeStats
+} from './RyffScoringUtils';
 
 export default {
   name: 'SimpleRyffChart',
   props: {
-    // Add props to receive student data from parent component
     studentData: {
       type: Array,
-      default: () => []
+      required: true
     }
   },
   data() {
     return {
       chart: null,
       colleges: ['CCS', 'CN', 'CBA', 'COE', 'CAS'],
-      subscales: [
-        'Autonomy', 
-        'Environmental Mastery', 
-        'Personal Growth', 
-        'Positive Relations', 
-        'Purpose in Life', 
-        'Self-Acceptance'
-      ],
-      // This will be calculated from actual student data
+      subscales: ryffDimensions.map(formatDimensionName),
       scores: {},
-      colors: [
-        'rgba(244, 67, 54, 0.7)',
-        'rgba(33, 150, 243, 0.7)',
-        'rgba(26, 46, 53, 0.7)',
-        'rgba(255, 193, 7, 0.7)',
-        'rgba(255, 152, 0, 0.7)',
-        'rgba(233, 30, 99, 0.7)'
-      ]
+      colors: ryffDimensions.map(dim => getDimensionColor(dim))
     };
   },
   mounted() {
@@ -266,4 +256,4 @@ export default {
   height: 400px;
   position: relative;
 }
-</style> 
+</style>

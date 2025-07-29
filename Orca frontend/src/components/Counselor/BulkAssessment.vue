@@ -28,6 +28,11 @@
                    
     <!-- Assessment Form -->
     <div class="assessment-form-card" v-if="currentView === 'form'">
+      <div v-if="error" class="error-message">
+        <i class="fas fa-exclamation-circle"></i>
+        {{ error }}
+      </div>
+
       <div class="form-group">
         <label for="assessment-name">Assessment Name</label>
         <input 
@@ -161,7 +166,7 @@
           <button class="secondary-button" @click="previewAssessment">
             <i class="fas fa-eye"></i> Preview
           </button>
-          <button class="primary-button" @click="sendAssessment" :disabled="isSending">
+          <button class="primary-button" @click="previewAssessment" :disabled="isSending">
             <i class="fas fa-paper-plane"></i> {{ isSending ? 'Sending...' : 'Send Now' }}
           </button>
         </div>
@@ -248,6 +253,7 @@ export default {
       filteredSections: {},
       assessmentName: '',
       selectAllColleges: false,
+      error: null,
       colleges: [
         { name: 'CCS', selected: false },
         { name: 'CN', selected: false },
@@ -317,6 +323,38 @@ export default {
         total += (college.years.first + college.years.second + college.years.third + college.years.fourth) * 35;
       });
       return total;
+    }
+  },
+  methods: {
+    getDefaultScheduledDate() {
+      const now = new Date();
+      now.setDate(now.getDate() + 1); // Default to tomorrow
+      now.setHours(9, 0, 0, 0); // Default to 9:00 AM
+      return now.toISOString().slice(0, 16); // Format for datetime-local
+    },
+    toggleAllColleges() {
+      this.colleges.forEach(college => {
+        college.selected = this.selectAllColleges;
+        
+        // Apply default filters when selecting
+        if (college.selected && !this.collegeFilters[college.name]) {
+          this.collegeFilters[college.name] = {
+            department: college.name,
+            customized: false,
+            yearCounts: {
+              first: 8,
+              second: 8,
+              third: 8,
+              fourth: 8
+            },
+            totalSections: 32,
+            totalStudents: 32 * 35 // 35 students per section
+          };
+        } else if (!college.selected) {
+          // Remove filters when deselecting
+          delete this.collegeFilters[college.name];
+        }
+      });
     }
   },
   methods: {
@@ -420,11 +458,6 @@ export default {
         this.showPreview = true;
       }
     },
-    sendAssessment() {
-      if (this.validate()) {
-        this.showPreview = true;
-      }
-    },
     confirmSend() {
       this.isSending = true;
       // Simulate API call
@@ -487,6 +520,22 @@ export default {
 </script>
 
 <style scoped>
+.error-message {
+  background-color: #fee;
+  color: #c00;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.error-message i {
+  font-size: 16px;
+}
+
 .bulk-assessment-container {
   background-color: var(--gray);
   padding: 20px;
@@ -1029,4 +1078,4 @@ textarea.form-control {
     justify-content: flex-end;
   }
 }
-</style> 
+</style>
