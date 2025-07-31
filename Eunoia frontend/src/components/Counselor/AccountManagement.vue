@@ -15,14 +15,14 @@
                   style="display:none" 
                   @change="handleFileUpload"
                 />
-                <button class="upload-btn" @click="$refs.fileInput.click()">
+                <button class="upload-btn" @click="showUploadModal = true">
                   <i class="fas fa-upload"></i> Upload CSV
                 </button>
                 <button class="template-btn" @click="downloadTemplate">
                   <i class="fas fa-download"></i> Download Template
                 </button>
               </div>
-              <span class="format-text">Format: Name, Section, Department, ID Number, Email</span>
+              <span class="format-text">Format: Name, Section, Department, ID Number, Email, Year Level</span>
             </div>
           </div>
           
@@ -75,6 +75,7 @@
                 <th>Section</th>
                 <th>ID Number</th>
                 <th>Email</th>
+                <th>Year Level</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -84,6 +85,7 @@
                 <td>{{ user.section }}</td>
                 <td>{{ user.id }}</td>
                 <td>{{ user.email }}</td>
+                <td>{{ user.yearLevel }}</td>
                 <td class="actions-cell">
                   <button class="edit-btn" title="Edit User">
                     <i class="fas fa-edit"></i>
@@ -98,6 +100,49 @@
         </div>
       </div>
     </transition>
+
+    <!-- Upload CSV Modal -->
+    <div v-if="showUploadModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Upload Student Accounts CSV</h3>
+          <button class="close-modal" @click="showUploadModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="semester-select">Select Semester:</label>
+            <select id="semester-select" v-model="selectedSemester">
+              <option :value="null" disabled>Select a semester</option>
+              <option v-for="sem in semesters" :key="sem" :value="sem">{{ sem }}</option>
+            </select>
+          </div>
+          <div 
+            class="drop-area"
+            @dragover.prevent="dragOverHandler"
+            @dragleave.prevent="dragLeaveHandler"
+            @drop.prevent="dropHandler"
+            @click="triggerFileInput"
+          >
+            <input 
+              type="file" 
+              ref="modalFileInput" 
+              accept=".csv" 
+              style="display:none" 
+              @change="handleModalFileUpload"
+            />
+            <p>Drag & Drop your CSV file here, or click to select</p>
+            <p class="file-name" v-if="uploadedFileName">{{ uploadedFileName }}</p>
+          </div>
+          <p class="format-text">Format: Name, Section, Department, ID Number, Email, Year Level</p>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showUploadModal = false">Cancel</button>
+          <button class="submit-btn" @click="confirmUpload" :disabled="!uploadedFile || !selectedSemester">Upload</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -115,21 +160,43 @@ export default {
         icon: 'fas fa-check-circle'
       },
       departments: [
-        { name: 'CCS', users: 7 },
-        { name: 'CN', users: 1 },
-        { name: 'COE', users: 2 },
+        { name: 'CCS', users: 5 },
+        { name: 'CN', users: 3 },
+        { name: 'COE', users: 3 },
         { name: 'CBA', users: 2 },
         { name: 'CAS', users: 2 }
       ],
       users: [
-        { name: 'John Doe', section: 'BSIT3A', id: '2020-10001', email: 'john.doe@example.com', college: 'CCS' },
-        { name: 'Jane Smith', section: 'BSIT3A', id: '2020-10002', email: 'jane.smith@example.com', college: 'CCS' },
-        { name: 'Mike Johnson', section: 'BSCS2B', id: '2021-10003', email: 'mike.johnson@example.com', college: 'CCS' },
-        { name: 'Sarah Wilson', section: 'Faculty', id: 'F-2018-001', email: 'sarah.wilson@example.com', college: 'CCS' },
-        { name: 'Tom Brown', section: 'BSIT4A', id: '2019-10005', email: 'tom.brown@example.com', college: 'CCS' },
-        { name: 'Lisa Davis', section: 'BSCS1A', id: '2022-10006', email: 'lisa.davis@example.com', college: 'CCS' },
-        { name: 'Emma Taylor', section: 'BSIT2B', id: '2021-10008', email: 'emma.taylor@example.com', college: 'CCS' }
-      ]
+        // CCS Students (5 total)
+        { name: 'Mike Johnson', section: 'BSIT1A', id: 'ST12347', email: 'mike.johnson@example.com', college: 'CCS', yearLevel: '1st Year' },
+        { name: 'Sarah Williams', section: 'BSCS3A', id: 'ST12348', email: 'sarah.williams@example.com', college: 'CCS', yearLevel: '3rd Year' },
+        { name: 'Kevin Wong', section: 'BSIT3A', id: 'ST12353', email: 'kevin.wong@example.com', college: 'CCS', yearLevel: '3rd Year' },
+        { name: 'Emily Chen', section: 'BSCS4A', id: 'ST12360', email: 'emily.chen@example.com', college: 'CCS', yearLevel: '4th Year' },
+        { name: 'David Park', section: 'BSIT4A', id: 'ST12361', email: 'david.park@example.com', college: 'CCS', yearLevel: '4th Year' },
+        
+        // CN Students (3 total)
+        { name: 'Lisa Wang', section: 'BSN3A', id: 'ST12365', email: 'lisa.wang@example.com', college: 'CN', yearLevel: '3rd Year' },
+        { name: 'Michael Torres', section: 'BSN4A', id: 'ST12366', email: 'michael.torres@example.com', college: 'CN', yearLevel: '4th Year' },
+        { name: 'Jessica Martin', section: 'BSCS2B', id: 'ST12354', email: 'jessica.martin@example.com', college: 'CN', yearLevel: '2nd Year' },
+        
+        // COE Students (3 total)
+        { name: 'Amanda Davis', section: 'BSCE2A', id: 'ST12369', email: 'amanda.davis@example.com', college: 'COE', yearLevel: '2nd Year' },
+        { name: 'Robert Brown', section: 'BSCE3B', id: 'ST12351', email: 'robert.brown@example.com', college: 'COE', yearLevel: '3rd Year' },
+        { name: 'Maria Rodriguez', section: 'BSCE4A', id: 'ST12362', email: 'maria.rodriguez@example.com', college: 'COE', yearLevel: '4th Year' },
+        
+        // CBA Students (2 total)
+        { name: 'Rachel Green', section: 'BSBA2A', id: 'ST12367', email: 'rachel.green@example.com', college: 'CBA', yearLevel: '2nd Year' },
+        { name: 'James Wilson', section: 'BSBA4A', id: 'ST12363', email: 'james.wilson@example.com', college: 'CBA', yearLevel: '4th Year' },
+        
+        // CAS Students (2 total)
+        { name: 'Daniel Kim', section: 'BSPS3A', id: 'ST12368', email: 'daniel.kim@example.com', college: 'CAS', yearLevel: '3rd Year' },
+        { name: 'Olivia Lee', section: 'BSPS4A', id: 'ST12364', email: 'olivia.lee@example.com', college: 'CAS', yearLevel: '4th Year' }
+      ],
+      showUploadModal: false,
+      selectedSemester: null,
+      semesters: ['1st Semester', '2nd Semester', 'Summer'],
+      uploadedFile: null,
+      uploadedFileName: ''
     }
   },
   computed: {
@@ -187,7 +254,7 @@ export default {
       
       // Get header row and check format
       const headers = lines[0].split(',').map(header => header.trim());
-      const requiredHeaders = ['Name', 'Section', 'Department', 'ID Number', 'Email'];
+      const requiredHeaders = ['Name', 'Section', 'Department', 'ID Number', 'Email', 'Year Level'];
       
       // Check if all required headers are present
       const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
@@ -202,6 +269,7 @@ export default {
       const departmentIndex = headers.indexOf('Department');
       const idIndex = headers.indexOf('ID Number');
       const emailIndex = headers.indexOf('Email');
+      const yearLevelIndex = headers.indexOf('Year Level');
       
       let newColleges = 0;
       let newUsers = 0;
@@ -220,9 +288,10 @@ export default {
         const department = values[departmentIndex];
         const id = values[idIndex];
         const email = values[emailIndex];
+        const yearLevel = values[yearLevelIndex];
         
         // Skip if any required field is empty
-        if (!name || !section || !department || !id || !email) continue;
+        if (!name || !section || !department || !id || !email || !yearLevel) continue;
         
         // Check if the department exists
         if (!existingDepartments.has(department)) {
@@ -241,7 +310,8 @@ export default {
             section,
             id,
             email,
-            college: department
+            college: department,
+            yearLevel
           });
           
           // Update department user count
@@ -251,8 +321,11 @@ export default {
           }
           
           newUsers++;
-        }
+        };
       }
+      
+      // Emit updated student data to parent
+      this.emitStudentData();
       
       // Show success notification
       let message = '';
@@ -272,8 +345,8 @@ export default {
     
     downloadTemplate() {
       // Create CSV content
-      const headers = 'Name,Section,Department,ID Number,Email';
-      const exampleRow = 'John Doe,BSIT1A,CCS,2023-10001,john.doe@example.com';
+      const headers = 'Name,Section,Department,ID Number,Email,Year Level';
+      const exampleRow = 'John Doe,BSIT1A,CCS,2023-10001,john.doe@example.com,1st Year';
       const csvContent = `${headers}\n${exampleRow}`;
       
       // Create a blob and download link
@@ -302,6 +375,80 @@ export default {
       setTimeout(() => {
         this.notification.show = false;
       }, 5000);
+    },
+    
+    // Modal related methods
+    dragOverHandler(event) {
+      event.currentTarget.classList.add('drag-over');
+    },
+    dragLeaveHandler(event) {
+      event.currentTarget.classList.remove('drag-over');
+    },
+    dropHandler(event) {
+      event.currentTarget.classList.remove('drag-over');
+      const files = event.dataTransfer.files;
+      if (files.length > 0) {
+        this.uploadedFile = files[0];
+        this.uploadedFileName = files[0].name;
+      }
+    },
+    triggerFileInput() {
+      this.$refs.modalFileInput.click();
+    },
+    handleModalFileUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.uploadedFile = file;
+        this.uploadedFileName = file.name;
+      }
+    },
+    confirmUpload() {
+      if (!this.uploadedFile || !this.selectedSemester) {
+        this.showNotification('Please select a semester and upload a CSV file.', 'error', 'fas fa-exclamation-circle');
+        return;
+      }
+
+      // Check if it's a CSV file before processing
+      if (this.uploadedFile.type !== 'text/csv' && !this.uploadedFile.name.endsWith('.csv')) {
+        this.showNotification('Please upload a valid CSV file', 'error', 'fas fa-exclamation-circle');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        this.processCSV(content); // Use the existing processCSV method
+        this.showUploadModal = false;
+        this.uploadedFile = null; // Clear uploaded file state
+        this.uploadedFileName = ''; // Clear uploaded file name state
+        this.selectedSemester = null; // Clear selected semester state
+      };
+      reader.readAsText(this.uploadedFile);
+    },
+    
+    // Emit student data to parent component
+    emitStudentData() {
+      // Transform users data to match the format expected by RyffScoring
+      const studentsWithAssessmentData = this.users.map(user => ({
+        id: user.id,
+        name: user.name,
+        college: user.college,
+        section: user.section,
+        email: user.email,
+        yearLevel: user.yearLevel,
+        submissionDate: '2024-06-08', // Default submission date
+        subscales: {
+          // Default assessment scores - in real app, these would come from actual assessments
+          autonomy: 3.5,
+          environmentalMastery: 4.0,
+          personalGrowth: 3.8,
+          positiveRelations: 3.6,
+          purposeInLife: 3.7,
+          selfAcceptance: 3.9
+        }
+      }));
+      
+      this.$emit('students-updated', studentsWithAssessmentData);
     }
   }
 }
@@ -644,4 +791,226 @@ export default {
     transform: translateY(0);
   }
 }
-</style> 
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 550px;
+  overflow: hidden;
+  animation: fadeInScale 0.3s ease-out forwards;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 25px;
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.4em;
+  color: #333;
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 1.8em;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.close-modal:hover {
+  color: #555;
+}
+
+.modal-body {
+  padding: 25px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #555;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1em;
+  color: #333;
+  background-color: #fff;
+  appearance: none; /* Remove default select arrow */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M7%2010l5%205%205-5H7z%22%2F%3E%3C%2Fsvg%3E');
+  background-repeat: no-repeat;
+  background-position: right 15px top 50%;
+  background-size: 12px;
+}
+
+.drop-area {
+  border: 2px dashed #a0a0a0;
+  border-radius: 10px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  background-color: #f9f9f9;
+  color: #666;
+}
+
+.drop-area:hover,
+.drop-area.drag-over {
+  background-color: #e9f5ff;
+  border-color: #007bff;
+  color: #007bff;
+}
+
+.drop-area p {
+  margin: 0;
+  font-size: 1.1em;
+}
+
+.drop-area .file-name {
+  margin-top: 10px;
+  font-weight: bold;
+  color: #333;
+}
+
+.format-text {
+  margin-top: 20px;
+  font-size: 0.9em;
+  color: #777;
+  text-align: center;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 18px 25px;
+  border-top: 1px solid #eee;
+  background-color: #f5f7fa;
+}
+
+.modal-footer button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.cancel-btn {
+  background-color: #e0e0e0;
+  color: #555;
+  border: none;
+  margin-right: 10px;
+}
+
+.cancel-btn:hover {
+  background-color: #d0d0d0;
+}
+
+.submit-btn {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.submit-btn:disabled {
+  background-color: #a0c8f5;
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .account-management-container {
+    padding: 10px;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search-bar {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .upload-btn {
+    width: 100%;
+  }
+
+  .users-table {
+    overflow-x: auto;
+  }
+
+  .users-table table {
+    min-width: 700px;
+  }
+
+  .notification {
+    width: 90%;
+    left: 5%;
+    transform: translateX(0);
+  }
+
+  .modal-content {
+    width: 95%;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 15px;
+  }
+
+  .drop-area {
+    padding: 25px;
+  }
+}
+</style>

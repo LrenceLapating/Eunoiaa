@@ -23,11 +23,17 @@
 
     <!-- View Selection Tabs -->
     <div class="view-tabs">
-      <div class="tab-option active">
+      <div class="tab-option" :class="{ active: currentTab === 'student' }" @click="currentTab = 'student'">
         <div class="radio-circle">
-          <div class="radio-inner"></div>
+          <div class="radio-inner" v-if="currentTab === 'student'"></div>
         </div>
         <span>Student View</span>
+      </div>
+      <div class="tab-option" :class="{ active: currentTab === 'history' }" @click="currentTab = 'history'">
+        <div class="radio-circle">
+          <div class="radio-inner" v-if="currentTab === 'history'"></div>
+        </div>
+        <span>History View</span>
       </div>
     </div>
 
@@ -78,11 +84,12 @@
     </div>
 
     <!-- Student Data Table -->
-    <div class="data-table-container">
+    <div class="data-table-container" v-if="currentTab === 'student'">
       <table class="data-table">
         <thead>
           <tr>
             <th>Student</th>
+            <th>Student ID</th>
             <th>College</th>
             <th>Section</th>
             <th class="sortable" @click="sortBy('submissionDate')">
@@ -102,9 +109,9 @@
             <td>
               <div class="student-info">
                 <span class="student-name">{{ student?.name || 'N/A' }}</span>
-                <span class="student-id">{{ student?.id || 'N/A' }}</span>
               </div>
             </td>
+            <td class="student-id-cell">{{ student?.id || 'N/A' }}</td>
             <td>{{ student?.college || 'N/A' }}</td>
             <td>{{ student?.section || 'N/A' }}</td>
             <td>{{ student?.submissionDate || 'N/A' }}</td>
@@ -135,6 +142,30 @@
             <td>
               <button class="view-button" @click="viewStudentDetails(student)">
                 <i class="fas fa-eye"></i> View
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- History Data Table -->
+    <div class="data-table-container" v-if="currentTab === 'history'">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student ID</th>
+            <th>Student Name</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(student, index) in filteredStudents" :key="student?.id || index" class="student-row">
+            <td>{{ student?.id || 'N/A' }}</td>
+            <td>{{ student?.name || 'N/A' }}</td>
+            <td>
+              <button class="history-button" @click="viewStudentHistory(student)">
+                <i class="fas fa-history"></i> History
               </button>
             </td>
           </tr>
@@ -205,12 +236,67 @@
           </div>
           
           <div class="action-buttons">
-            <button class="action-btn print-btn">
+            <button class="action-btn print-btn" @click="printStudentReport(selectedStudent)">
               <i class="fas fa-print"></i> Print Report
             </button>
-            <button class="action-btn contact-btn">
+            <button class="action-btn contact-btn" @click="contactStudent(selectedStudent)">
               <i class="fas fa-envelope"></i> Contact Student
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student History Modal -->
+    <div class="modal" v-if="showHistoryModal" @click.self="showHistoryModal = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Student Assessment History</h3>
+          <button class="close-button" @click="showHistoryModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" v-if="selectedStudentForHistory">
+          <div class="student-details-header">
+            <div class="student-info">
+              <h4>{{ selectedStudentForHistory.name }}</h4>
+              <p>ID: {{ selectedStudentForHistory.id }} | College: {{ selectedStudentForHistory.college }} | Section: {{ selectedStudentForHistory.section }}</p>
+            </div>
+          </div>
+          
+          <div class="history-table-container">
+            <h5>Assessment History</h5>
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Assessment Type</th>
+                  <th>Overall Score</th>
+                  <th>Risk Level</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
+                  <td>{{ assessment.submissionDate }}</td>
+                  <td>{{ assessment.assessmentType || 'Ryff PWB (42-item)' }}</td>
+                  <td>{{ calculateAssessmentOverallScore(assessment) }}</td>
+                  <td>
+                    <span class="risk-badge" :class="hasAssessmentRisk(assessment) ? 'high-risk' : 'low-risk'">
+                      {{ hasAssessmentRisk(assessment) ? 'At Risk' : 'Healthy' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="view-details-btn" @click="viewAssessmentDetails(assessment, selectedStudentForHistory)">
+                      <i class="fas fa-eye"></i> View Details
+                    </button>
+                  </td>
+                </tr>
+                <tr class="no-data" v-if="getStudentAssessmentHistory(selectedStudentForHistory).length === 0">
+                  <td colspan="5">No assessment history available</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -246,6 +332,7 @@ export default {
   },
   data() {
     return {
+      currentTab: 'student',
       currentView: 'student',
       searchQuery: '',
       collegeFilter: 'all',
@@ -254,7 +341,9 @@ export default {
       sortField: 'submissionDate',
       sortDirection: 'desc',
       showDetailsModal: false,
+      showHistoryModal: false,
       selectedStudent: null,
+      selectedStudentForHistory: null,
       filteredStudents: [],
       // Use the same risk threshold as the dashboard
       riskThresholds: {
@@ -493,6 +582,155 @@ export default {
     },
     viewStudentDetails(student) {
       this.selectedStudent = student;
+      this.showDetailsModal = true;
+    },
+    viewStudentHistory(student) {
+      this.selectedStudentForHistory = student;
+      this.showHistoryModal = true;
+    },
+    contactStudent(student) {
+      if (!student) {
+        console.error('No student data provided');
+        alert('Error: No student data available');
+        return;
+      }
+      
+      console.log('Contacting student:', student);
+      
+      const studentEmail = this.getStudentEmail(student);
+      console.log('Student email:', studentEmail);
+      
+      const subject = encodeURIComponent(`Follow-up on Your Well-being Assessment - ${student.name}`);
+      
+      const body = encodeURIComponent(
+        `Dear ${student.name},\n\n` +
+        `I hope this email finds you well. I am reaching out regarding your recent psychological well-being assessment submission.\n\n` +
+        `Student Details:\n` +
+        `- Name: ${student.name}\n` +
+        `- Student ID: ${student.id}\n` +
+        `- College: ${student.college}\n` +
+        `- Section: ${student.section}\n` +
+        `- Assessment Date: ${student.submissionDate}\n\n` +
+        `Please feel free to reach out if you have any questions or would like to discuss your results.\n\n` +
+        `Best regards,\n` +
+        `Counseling Services`
+      );
+      
+      // Open Gmail directly with pre-filled compose window
+      const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studentEmail)}&su=${subject}&body=${body}`;
+      console.log('Opening Gmail compose:', gmailComposeUrl);
+      
+      try {
+        // Open Gmail compose in a new tab
+        window.open(gmailComposeUrl, '_blank');
+      } catch (error) {
+        console.error('Error opening Gmail:', error);
+        // Fallback to mailto if Gmail URL fails
+        const mailtoLink = `mailto:${studentEmail}?subject=${subject}&body=${body}`;
+        const link = document.createElement('a');
+        link.href = mailtoLink;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    },
+    getStudentEmail(student) {
+      // First, try to get email directly from student data (from AccountManagement)
+      if (student.email) {
+        return student.email;
+      }
+      
+      // Fallback: create dynamic email map from current students prop
+      const studentEmailMap = {};
+      this.students.forEach(s => {
+        if (s.email) {
+          studentEmailMap[s.id] = s.email;
+        }
+      });
+      
+      // Try to get email from the dynamic map
+      if (studentEmailMap[student.id]) {
+        return studentEmailMap[student.id];
+      }
+      
+      // Fallback: generate email based on name if not found in map
+      const emailDomain = '@student.university.edu';
+      const emailPrefix = student.name.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z.]/g, '');
+      return emailPrefix + emailDomain;
+    },
+    // Print student report - navigate to Reports with pre-selected student
+    printStudentReport(student) {
+      if (!student) {
+        console.error('No student data provided for report generation');
+        alert('Error: No student data available for report generation');
+        return;
+      }
+      
+      console.log('Generating report for student:', student);
+      
+      // Close the modal first
+      this.showDetailsModal = false;
+      
+      // Emit event to parent component to navigate to Reports with pre-selected student
+      this.$emit('navigate-to-reports', {
+        student: student,
+        reportType: 'individual'
+      });
+    },
+    
+    // Get assessment history for a student
+    getStudentAssessmentHistory(student) {
+      if (!student || !student.assessmentHistory) {
+        // Fallback: create single assessment from current data
+        return [{
+          submissionDate: student?.submissionDate || 'N/A',
+          assessmentType: 'Ryff PWB (42-item)',
+          subscales: student?.subscales || {}
+        }];
+      }
+      return student.assessmentHistory;
+    },
+    
+    // Calculate overall score for a specific assessment
+    calculateAssessmentOverallScore(assessment) {
+      if (!assessment || !assessment.subscales) return 0;
+      let total = 0;
+      let count = 0;
+      
+      Object.values(assessment.subscales).forEach(score => {
+        if (score !== undefined && score !== null) {
+          total += score * 7; // Scale from 1-5 to 7-35
+          count++;
+        }
+      });
+      
+      return count > 0 ? Math.round(total / count) : 0;
+    },
+    
+    // Check if an assessment has any risk dimensions
+    hasAssessmentRisk(assessment) {
+      if (!assessment || !assessment.subscales) return false;
+      
+      return Object.values(assessment.subscales).some(score => {
+        if (score === undefined || score === null) return false;
+        const scaledScore = score * 7; // Scale to 7-49 range
+        return scaledScore <= this.riskThresholds.q1;
+      });
+    },
+    
+    // View details for a specific assessment
+    viewAssessmentDetails(assessment, student) {
+      // Create a temporary student object with the selected assessment data
+      const assessmentStudent = {
+        ...student,
+        submissionDate: assessment.submissionDate,
+        subscales: assessment.subscales
+      };
+      
+      // Close history modal and show details modal
+      this.showHistoryModal = false;
+      this.selectedStudent = assessmentStudent;
       this.showDetailsModal = true;
     },
     // Reset filters
@@ -1159,4 +1397,171 @@ export default {
     grid-template-columns: 1fr;
   }
 }
+
+/* Student ID Column Styles */
+.student-id-cell {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: left;
+  vertical-align: middle;
+  padding: 12px 8px;
+}
+
+/* History Button Styles */
+.history-button {
+  background: linear-gradient(135deg, #00b3b0 0%, #009491 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 179, 176, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.history-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.history-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 179, 176, 0.4);
+  background: linear-gradient(135deg, #009491 0%, #007a77 100%);
+}
+
+.history-button:hover::before {
+  left: 100%;
+}
+
+.history-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 179, 176, 0.3);
+}
+
+.history-button i {
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.history-button:hover i {
+  transform: scale(1.1);
+}
+
+/* History Modal Styles */
+.history-table-container {
+  margin-top: 20px;
+}
+
+.history-table-container h5 {
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.history-table th,
+.history-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.history-table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+}
+
+.history-table td {
+  font-size: 13px;
+  color: #666;
+}
+
+.history-table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.risk-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.risk-badge.high-risk {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+.risk-badge.low-risk {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.view-details-btn {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.2s;
+}
+
+.view-details-btn:hover {
+  background-color: #45a049;
+}
+
+.view-details-btn i {
+  font-size: 10px;
+}
+
+.no-data {
+  text-align: center;
+  font-style: italic;
+  color: #999;
+}
+
+/* Tab styling improvements */
+.tab-option {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-option:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
 </style>

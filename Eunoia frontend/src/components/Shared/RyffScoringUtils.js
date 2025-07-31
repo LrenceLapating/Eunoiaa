@@ -99,7 +99,7 @@ export const calculateCollegeStats = (students) => {
   Object.values(collegeStats).forEach(stats => {
     stats.avgScore = Math.round(stats.totalScore / stats.students);
     Object.values(stats.dimensions).forEach(dim => {
-      dim.score = Math.round((dim.total / dim.count) * 100 / 49); // Convert to percentage
+      dim.score = Math.round(dim.total / dim.count); // Keep as whole numbers out of 7
     });
   });
   

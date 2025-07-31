@@ -133,10 +133,7 @@
             <input type="radio" id="items-84" value="84" v-model="selectedVersion">
             <label for="items-84">84 items (Complete version)</label>
           </div>
-          <div class="radio-option">
-            <input type="radio" id="items-54" value="54" v-model="selectedVersion">
-            <label for="items-54">54 items (Medium version)</label>
-          </div>
+
           <div class="radio-option">
             <input type="radio" id="items-42" value="42" v-model="selectedVersion">
             <label for="items-42">42 items (Brief version)</label>
@@ -246,7 +243,7 @@ export default {
   },
   data() {
     return {
-      currentView: 'versions', // Start with versions view
+      currentView: 'form', // Start with create form view
       showCollegeFilter: false,
       currentCollege: null,
       collegeFilters: {}, // Stores customization info for each college
@@ -500,7 +497,7 @@ export default {
       this.colleges.forEach(college => college.selected = false);
       this.scheduleOption = 'now';
       this.scheduledDate = this.getDefaultScheduledDate();
-      this.selectedVersion = '54'; // Default to medium version
+      this.selectedVersion = '42'; // Default to brief version
       this.customMessage = 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.';
       
       // Switch to form view
@@ -563,11 +560,10 @@ export default {
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.action-button:hover, .action-button.active {
-  background-color: #f5f5f5;
-  border-color: #d0d0d0;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+.action-button:hover {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  opacity: 0.9;
 }
 
 .action-button.active {

@@ -1,103 +1,105 @@
 <template>
   <div class="dashboard-container">
     <!-- Left Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ 'sidebar-collapsed': !sidebarExpanded }" 
+           @mouseenter="sidebarExpanded = true" 
+           @mouseleave="sidebarExpanded = false">
       <div class="logo-container">
         <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
-        <div class="logo-text">
+        <div class="logo-text" v-show="sidebarExpanded">
           <h1>EUNOIA</h1>
           <p>Counselor Portal</p>
         </div>
       </div>
       
       <div class="sidebar-menu">
-        <h3>Counselor Menu</h3>
+        <h3 v-show="sidebarExpanded">Counselor Menu</h3>
         <ul>
           <li :class="{ active: currentView === 'dashboard' }">
-            <a @click="currentView = 'dashboard'" class="menu-item">
+            <a @click="currentView = 'dashboard'" class="menu-item" data-tooltip="Dashboard">
               <div class="menu-icon">
               <i class="fas fa-th-large"></i>
               </div>
-              <span>Dashboard</span>
+              <span v-show="sidebarExpanded">Dashboard</span>
             </a>
           </li>
           <li :class="{ active: ['bulkAssessment', 'autoReminders'].includes(currentView) }">
-            <a @click="toggleSubmenu('ryffAssessment')" class="menu-item has-submenu">
+            <a @click="toggleSubmenu('ryffAssessment')" class="menu-item has-submenu" data-tooltip="Test Management">
               <div class="menu-icon">
               <i class="fas fa-chart-bar"></i>
               </div>
-              <span>Test Management</span>
-              <i class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }"></i>
+              <span v-show="sidebarExpanded">Test Management</span>
+              <i v-show="sidebarExpanded" class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }"></i>
             </a>
-            <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' }">
+            <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' && sidebarExpanded }">
               <li :class="{ active: currentView === 'bulkAssessment' }">
                 <a @click="currentView = 'bulkAssessment'" class="submenu-item">
                   <i class="fas fa-users"></i>
-                  <span>Bulk Assessment</span>
+                  <span v-show="sidebarExpanded">Bulk Assessment</span>
                 </a>
               </li>
               <li :class="{ active: currentView === 'autoReminders' }">
                 <a @click="currentView = 'autoReminders'" class="submenu-item">
                   <i class="fas fa-bell"></i>
-                  <span>Auto-Reminders</span>
+                  <span v-show="sidebarExpanded">Auto-Reminders</span>
                 </a>
               </li>
             </ul>
           </li>
           <!-- New Results Dropdown -->
           <li :class="{ active: ['ryffScoring', 'guidance'].includes(currentView) }">
-            <a @click="toggleSubmenu('results')" class="menu-item has-submenu">
+            <a @click="toggleSubmenu('results')" class="menu-item has-submenu" data-tooltip="Results">
               <div class="menu-icon">
                 <i class="fas fa-poll"></i>
               </div>
-              <span>Results</span>
-              <i class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'results' }"></i>
+              <span v-show="sidebarExpanded">Results</span>
+              <i v-show="sidebarExpanded" class="fas fa-chevron-right submenu-arrow" :class="{ 'submenu-open': showSubmenu === 'results' }"></i>
             </a>
-            <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'results' }">
+            <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'results' && sidebarExpanded }">
               <li :class="{ active: currentView === 'ryffScoring' }">
                 <a @click="currentView = 'ryffScoring'" class="submenu-item">
                   <i class="fas fa-calculator"></i>
-                  <span>Students</span>
+                  <span v-show="sidebarExpanded">Students</span>
                 </a>
               </li>
               <li :class="{ active: currentView === 'guidance' }">
                 <a @click="currentView = 'guidance'" class="submenu-item">
                   <i class="fas fa-comment-alt"></i>
-                  <span>College</span>
+                  <span v-show="sidebarExpanded">College</span>
                 </a>
               </li>
             </ul>
           </li>
           <li :class="{ active: currentView === 'status' }">
-            <a @click="currentView = 'status'" class="menu-item">
+            <a @click="currentView = 'status'" class="menu-item" data-tooltip="Account Management">
               <div class="menu-icon">
               <i class="fas fa-signal"></i>
               </div>
-              <span>Account Management</span>
+              <span v-show="sidebarExpanded">Account Management</span>
             </a>
           </li>
           <li :class="{ active: currentView === 'reports' }">
-            <a @click="currentView = 'reports'" class="menu-item">
+            <a @click="currentView = 'reports'" class="menu-item" data-tooltip="Reports">
               <div class="menu-icon">
               <i class="fas fa-file-alt"></i>
               </div>
-              <span>Reports</span>
+              <span v-show="sidebarExpanded">Reports</span>
             </a>
           </li>
           <li :class="{ active: currentView === 'settings' }">
-            <a @click="currentView = 'settings'" class="menu-item">
+            <a @click="currentView = 'settings'" class="menu-item" data-tooltip="Settings">
               <div class="menu-icon">
               <i class="fas fa-cog"></i>
               </div>
-              <span>Settings</span>
+              <span v-show="sidebarExpanded">Settings</span>
             </a>
           </li>
           <li class="logout-item">
-            <a @click="logout" class="menu-item">
+            <a @click="logout" class="menu-item" data-tooltip="Logout">
               <div class="menu-icon logout-icon">
               <i class="fas fa-sign-out-alt"></i>
               </div>
-              <span>Logout</span>
+              <span v-show="sidebarExpanded">Logout</span>
             </a>
           </li>
         </ul>
@@ -105,7 +107,7 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="main-content">
+    <main class="main-content" :class="{ 'content-collapsed': !sidebarExpanded }">
       <!-- Top Navigation Bar -->
       <header class="top-nav">
         <div class="page-title">
@@ -113,15 +115,7 @@
           <p>{{ pageSubtitle }}</p>
         </div>
         <div class="nav-actions">
-          <div class="notifications">
-            <i class="fas fa-bell"></i>
-            <span class="notification-badge">2</span>
-          </div>
-          <div class="user-profile">
-            <div class="user-avatar">
-              <i class="fas fa-user-circle"></i>
-            </div>
-          </div>
+          <!-- Removed notification and profile icons -->
         </div>
       </header>
 
@@ -130,27 +124,7 @@
         
         <!-- Main Dashboard View -->
         <div v-if="currentView === 'dashboard'">
-          <div class="dashboard-header">
-            <div class="filter-section">
-              <div class="filter-group">
-                <div class="filter-label">Academic Period</div>
-                <div class="custom-select-wrapper">
-                  <select v-model="selectedPeriod" class="period-filter" @change="refreshData">
-                    <option value="1-2024">1st Semester 2024-2025</option>
-                    <option value="2-2024">2nd Semester 2024-2025</option>
-                    <option value="1-2025">1st Semester 2025-2026</option>
-                    <option value="2-2025">2nd Semester 2025-2026</option>
-                  </select>
-                  <div class="select-icon">
-                    <i class="fas fa-chevron-down"></i>
-                  </div>
-                </div>
-              </div>
-              <button class="refresh-btn" title="Refresh Data" @click="refreshData">
-                <i class="fas fa-sync-alt"></i>
-              </button>
-            </div>
-          </div>
+
 
           <!-- Metrics Cards -->
           <div class="metrics-row">
@@ -310,13 +284,30 @@
                      :selected-dimension="selectedRiskDimension" 
                      :selected-college="selectedRiskCollege"
                      :students="students"
-                     @clear-risk-filters="clearRiskFilters" />
+                     @clear-risk-filters="clearRiskFilters"
+                     @navigate-to-reports="handleNavigateToReports" />
 
         <!-- Guidance Feedback View -->
-        <college-view v-if="currentView === 'guidance'" :students="students" />
+        <college-view v-if="currentView === 'guidance' && !selectedCollegeDetail" 
+                     :students="students" 
+                     @navigate-to-college="showCollegeDetail" />
+        
+        <!-- College Detail View -->
+        <college-detail v-if="currentView === 'guidance' && selectedCollegeDetail" 
+                       :selected-college="selectedCollegeDetail"
+                       @go-back="hideCollegeDetail" />
 
         <!-- Assessment Status View -->
-        <AccountManagement v-if="currentView === 'status'" />
+        <AccountManagement v-if="currentView === 'status'" @students-updated="updateStudentData" />
+        
+        <!-- Reports View -->
+        <Reports v-if="currentView === 'reports'" 
+                :students="students" 
+                :pre-selected-student="preSelectedStudent"
+                :pre-selected-report-type="preSelectedReportType" />
+        
+        <!-- Settings View -->
+        <Settings v-if="currentView === 'settings'" />
       </div>
 
       <!-- Dimension Details Modal -->
@@ -358,6 +349,9 @@ import BulkAssessment from './BulkAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
 import AccountManagement from './AccountManagement.vue'
 import CollegeView from './CollegeView.vue'
+import CollegeDetail from './CollegeDetail.vue'
+import Reports from './Reports.vue'
+import Settings from './Settings.vue'
 import { calculateCollegeStats } from '../Shared/RyffScoringUtils'
 
 export default {
@@ -368,7 +362,10 @@ export default {
     BulkAssessment,
     AutoReminders,
     AccountManagement,
-    CollegeView
+    CollegeView,
+    CollegeDetail,
+    Reports,
+    Settings
   },
   data() {
     return {
@@ -379,269 +376,12 @@ export default {
       selectedDimension: null,
       selectedRiskDimension: null,
       selectedRiskCollege: 'all',
-      // Sample student data - this would normally come from an API
-      students: [
-        {
-          id: 'ST12347',
-          name: 'Mike Johnson',
-          college: 'CCS',
-          section: 'BSIT1A',
-          submissionDate: '2024-06-08',
-          subscales: {
-            autonomy: 2.4, // Scaled to 7-49: 17 (at risk)
-            environmentalMastery: 5.0, // 35 (definitely not at risk)
-            personalGrowth: 3.5, // 25
-            positiveRelations: 3.1, // 22
-            purposeInLife: 3.4, // 24
-            selfAcceptance: 2.9  // 20
-          }
-        },
-        // Add more students for CN college to ensure adequate representation
-        {
-          id: 'ST12365',
-          name: 'Lisa Wang',
-          college: 'CN',
-          section: 'BSN3A',
-          submissionDate: '2024-06-10',
-          subscales: {
-            autonomy: 4.2, // 29 (moderate)
-            environmentalMastery: 4.5, // 32 (moderate)
-            personalGrowth: 4.8, // 34 (moderate)
-            positiveRelations: 4.1, // 29 (moderate)
-            purposeInLife: 4.3, // 30 (moderate)
-            selfAcceptance: 4.6  // 32 (moderate)
-          }
-        },
-        {
-          id: 'ST12366',
-          name: 'Michael Torres',
-          college: 'CN',
-          section: 'BSN4A',
-          submissionDate: '2024-06-09',
-          subscales: {
-            autonomy: 5.1, // 36 (healthy)
-            environmentalMastery: 5.3, // 37 (healthy)
-            personalGrowth: 5.5, // 39 (healthy)
-            positiveRelations: 5.2, // 36 (healthy)
-            purposeInLife: 5.4, // 38 (healthy)
-            selfAcceptance: 5.0  // 35 (healthy)
-          }
-        },
-        // Add more students for CBA college
-        {
-          id: 'ST12367',
-          name: 'Rachel Green',
-          college: 'CBA',
-          section: 'BSBA2A',
-          submissionDate: '2024-06-08',
-          subscales: {
-            autonomy: 4.0, // 28 (moderate)
-            environmentalMastery: 4.2, // 29 (moderate)
-            personalGrowth: 4.4, // 31 (moderate)
-            positiveRelations: 4.1, // 29 (moderate)
-            purposeInLife: 4.3, // 30 (moderate)
-            selfAcceptance: 4.0  // 28 (moderate)
-          }
-        },
-        // Add more students for CAS college
-        {
-          id: 'ST12368',
-          name: 'Daniel Kim',
-          college: 'CAS',
-          section: 'BSPS3A',
-          submissionDate: '2024-06-07',
-          subscales: {
-            autonomy: 4.1, // 29 (moderate)
-            environmentalMastery: 4.3, // 30 (moderate)
-            personalGrowth: 4.6, // 32 (moderate)
-            positiveRelations: 4.2, // 29 (moderate)
-            purposeInLife: 4.4, // 31 (moderate)
-            selfAcceptance: 4.1  // 29 (moderate)
-          }
-        },
-        // Add more students for COE college
-        {
-          id: 'ST12369',
-          name: 'Amanda Davis',
-          college: 'COE',
-          section: 'BSCE2A',
-          submissionDate: '2024-06-06',
-          subscales: {
-            autonomy: 4.3, // 30 (moderate)
-            environmentalMastery: 4.5, // 32 (moderate)
-            personalGrowth: 4.7, // 33 (moderate)
-            positiveRelations: 4.4, // 31 (moderate)
-            purposeInLife: 4.6, // 32 (moderate)
-            selfAcceptance: 4.3  // 30 (moderate)
-          }
-        },
-        {
-          id: 'ST12348',
-          name: 'Sarah Williams',
-          college: 'CCS',
-          section: 'BSCS3A',
-          submissionDate: '2024-06-07',
-          subscales: {
-            autonomy: 2.0, // 14 (at risk)
-            environmentalMastery: 5.0, // 35 (definitely not at risk)
-            personalGrowth: 3.0, // 21
-            positiveRelations: 2.0, // 14 (at risk)
-            purposeInLife: 2.6, // 18 (at risk)
-            selfAcceptance: 2.9  // 20
-          }
-        },
-        {
-          id: 'ST12353',
-          name: 'Kevin Wong',
-          college: 'CCS',
-          section: 'BSIT3A',
-          submissionDate: '2024-06-02',
-          subscales: {
-            autonomy: 2.4, // 17 (at risk)
-            environmentalMastery: 2.0, // 14 (definitely at risk) - only this CCS student is at risk for EM
-            personalGrowth: 2.9, // 20
-            positiveRelations: 2.5, // 18 (at risk)
-            purposeInLife: 2.5, // 18 (at risk)
-            selfAcceptance: 2.4  // 17 (at risk)
-          }
-        },
-        {
-          id: 'ST12351',
-          name: 'Robert Brown',
-          college: 'COE',
-          section: 'BSCE3B',
-          submissionDate: '2024-06-04',
-          subscales: {
-            autonomy: 2.3, // 16 (at risk)
-            environmentalMastery: 3.5, // 25
-            personalGrowth: 3.4, // 24
-            positiveRelations: 3.3, // 23
-            purposeInLife: 2.3, // 16 (at risk)
-            selfAcceptance: 3.4  // 24
-          }
-        },
-        {
-          id: 'ST12355',
-          name: 'Sophia Garcia',
-          college: 'CAS',
-          section: 'BSPS2B',
-          submissionDate: '2024-06-03',
-          subscales: {
-            autonomy: 2.2, // 15 (at risk)
-            environmentalMastery: 3.4, // 24
-            personalGrowth: 2.4, // 17 (at risk)
-            positiveRelations: 3.4, // 24
-            purposeInLife: 3.2, // 22
-            selfAcceptance: 3.4  // 24
-          }
-        },
-        {
-          id: 'ST12356',
-          name: 'Alex Thompson',
-          college: 'CBA',
-          section: 'BSBA3A',
-          submissionDate: '2024-06-02',
-          subscales: {
-            autonomy: 3.3, // 23
-            environmentalMastery: 2.2, // 15 (at risk)
-            personalGrowth: 3.2, // 22
-            positiveRelations: 3.4, // 24
-            purposeInLife: 3.3, // 23
-            selfAcceptance: 2.3  // 16 (at risk)
-          }
-        },
-        {
-          id: 'ST12354',
-          name: 'Jessica Martin',
-          college: 'CN',
-          section: 'BSCS2B',
-          submissionDate: '2024-06-01',
-          subscales: {
-            autonomy: 3.5, // 25
-            environmentalMastery: 2.3, // 16 (at risk)
-            personalGrowth: 3.5, // 25
-            positiveRelations: 2.4, // 17 (at risk)
-            purposeInLife: 3.6, // 25
-            selfAcceptance: 2.2  // 15 (at risk)
-          }
-        },
-        // Healthy students with no risk dimensions
-        {
-          id: 'ST12360',
-          name: 'Emily Chen',
-          college: 'CCS',
-          section: 'BSCS4A',
-          submissionDate: '2024-06-09',
-          subscales: {
-            autonomy: 5.6, // 39 (healthy)
-            environmentalMastery: 5.8, // 41 (healthy)
-            personalGrowth: 6.0, // 42 (healthy)
-            positiveRelations: 5.7, // 40 (healthy)
-            purposeInLife: 5.9, // 41 (healthy)
-            selfAcceptance: 5.8  // 41 (healthy)
-          }
-        },
-        {
-          id: 'ST12361',
-          name: 'David Park',
-          college: 'CCS',
-          section: 'BSIT4A',
-          submissionDate: '2024-06-08',
-          subscales: {
-            autonomy: 5.4, // 38 (healthy)
-            environmentalMastery: 5.5, // 39 (healthy)
-            personalGrowth: 5.7, // 40 (healthy)
-            positiveRelations: 5.9, // 41 (healthy)
-            purposeInLife: 5.8, // 41 (healthy)
-            selfAcceptance: 5.6  // 39 (healthy)
-          }
-        },
-        {
-          id: 'ST12362',
-          name: 'Maria Rodriguez',
-          college: 'COE',
-          section: 'BSCE4A',
-          submissionDate: '2024-06-07',
-          subscales: {
-            autonomy: 5.7, // 40 (healthy)
-            environmentalMastery: 5.9, // 41 (healthy)
-            personalGrowth: 5.8, // 41 (healthy)
-            positiveRelations: 6.0, // 42 (healthy)
-            purposeInLife: 5.7, // 40 (healthy)
-            selfAcceptance: 5.9  // 41 (healthy)
-          }
-        },
-        {
-          id: 'ST12363',
-          name: 'James Wilson',
-          college: 'CBA',
-          section: 'BSBA4A',
-          submissionDate: '2024-06-06',
-          subscales: {
-            autonomy: 5.5, // 39 (healthy)
-            environmentalMastery: 5.6, // 39 (healthy)
-            personalGrowth: 5.9, // 41 (healthy)
-            positiveRelations: 5.8, // 41 (healthy)
-            purposeInLife: 5.6, // 39 (healthy)
-            selfAcceptance: 5.7  // 40 (healthy)
-          }
-        },
-        {
-          id: 'ST12364',
-          name: 'Olivia Lee',
-          college: 'CAS',
-          section: 'BSPS4A',
-          submissionDate: '2024-06-05',
-          subscales: {
-            autonomy: 5.8, // 41 (healthy)
-            environmentalMastery: 5.7, // 40 (healthy)
-            personalGrowth: 5.6, // 39 (healthy)
-            positiveRelations: 5.5, // 39 (healthy)
-            purposeInLife: 5.9, // 41 (healthy)
-            selfAcceptance: 5.8  // 41 (healthy)
-          }
-        }
-      ],
+      selectedCollegeDetail: null,
+      preSelectedStudent: null,
+      preSelectedReportType: null,
+      sidebarExpanded: false,
+      // Student data - will be populated by initializeStudentData()
+      students: [],
       // Risk threshold - scores at or below this value are considered "at risk"
       riskThreshold: 17,
       // Dimensions will be calculated dynamically
@@ -652,13 +392,22 @@ export default {
         month: 'long', 
         day: 'numeric' 
       }),
-      selectedPeriod: '1-2024',  // default to 1st sem 2024-2025
+
       academicYears: [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
     }
   },
   created() {
+    // Initialize student data immediately
+    this.initializeStudentData();
     // Calculate risk dimensions based on student data
     this.calculateRiskDimensions();
+  },
+  mounted() {
+    // Ensure data is available when components mount
+    if (this.students.length === 0) {
+      this.initializeStudentData();
+      this.calculateRiskDimensions();
+    }
   },
   computed: {
     pageTitle() {
@@ -673,6 +422,8 @@ export default {
           return 'College Summary';
         case 'status':
           return 'Account Management';
+        case 'settings':
+          return 'Settings';
         default:
           return 'Dashboard Overview';
       }
@@ -689,6 +440,8 @@ export default {
           return 'View and analyze assessment results by college';
         case 'status':
           return 'Manage department accounts and user access';
+        case 'settings':
+          return 'Configure system preferences and account settings';
         default:
           return 'Monitor well-being metrics across colleges';
       }
@@ -721,10 +474,19 @@ export default {
       // Log the navigation for debugging
       console.log(`Navigating to students at risk for ${dimensionName} in ${collegeName}`);
     },
+    // Handle navigation to Reports from RyffScoring
+    handleNavigateToReports(data) {
+      console.log('Navigating to Reports with data:', data);
+      
+      // Set the pre-selected student and report type
+      this.preSelectedStudent = data.student;
+      this.preSelectedReportType = data.reportType;
+      
+      // Navigate to reports view
+      this.currentView = 'reports';
+    },
     refreshData() {
-      // Extract semester and year from selectedPeriod
-      const [semester, year] = this.selectedPeriod.split('-');
-      console.log(`Refreshing data for ${semester === '1' ? '1st' : '2nd'} Semester ${year}-${Number(year)+1}`);
+      console.log('Refreshing dashboard data...');
       // Implement actual refresh logic here
     },
     
@@ -732,6 +494,218 @@ export default {
     clearRiskFilters() {
       this.selectedRiskDimension = null;
       this.selectedRiskCollege = 'all';
+    },
+    
+    // Handle navigation to college detail
+    showCollegeDetail(college) {
+      this.selectedCollegeDetail = college;
+    },
+    
+    // Handle back navigation from college detail
+    hideCollegeDetail() {
+      this.selectedCollegeDetail = null;
+    },
+    
+    // Initialize student data with enhanced assessment history
+    initializeStudentData() {
+      // Complete student data matching AccountManagement with varied risk levels
+      const baseStudents = [
+        // CCS Students (5 total)
+        {
+          id: 'ST12347',
+          name: 'Mike Johnson',
+          college: 'CCS',
+          section: 'BSIT1A',
+          email: 'mike.johnson@example.com',
+          yearLevel: '1st Year'
+        },
+        {
+          id: 'ST12348',
+          name: 'Sarah Williams',
+          college: 'CCS',
+          section: 'BSCS3A',
+          email: 'sarah.williams@example.com',
+          yearLevel: '3rd Year'
+        },
+        {
+          id: 'ST12353',
+          name: 'Kevin Wong',
+          college: 'CCS',
+          section: 'BSIT3A',
+          email: 'kevin.wong@example.com',
+          yearLevel: '3rd Year'
+        },
+        {
+          id: 'ST12360',
+          name: 'Emily Chen',
+          college: 'CCS',
+          section: 'BSCS4A',
+          email: 'emily.chen@example.com',
+          yearLevel: '4th Year'
+        },
+        {
+          id: 'ST12361',
+          name: 'David Park',
+          college: 'CCS',
+          section: 'BSIT4A',
+          email: 'david.park@example.com',
+          yearLevel: '4th Year'
+        },
+        
+        // CN Students (3 total)
+        {
+          id: 'ST12365',
+          name: 'Lisa Wang',
+          college: 'CN',
+          section: 'BSN3A',
+          email: 'lisa.wang@example.com',
+          yearLevel: '3rd Year'
+        },
+        {
+          id: 'ST12366',
+          name: 'Michael Torres',
+          college: 'CN',
+          section: 'BSN4A',
+          email: 'michael.torres@example.com',
+          yearLevel: '4th Year'
+        },
+        {
+          id: 'ST12354',
+          name: 'Jessica Martin',
+          college: 'CN',
+          section: 'BSCS2B',
+          email: 'jessica.martin@example.com',
+          yearLevel: '2nd Year'
+        },
+        
+        // COE Students (3 total)
+        {
+          id: 'ST12369',
+          name: 'Amanda Davis',
+          college: 'COE',
+          section: 'BSCE2A',
+          email: 'amanda.davis@example.com',
+          yearLevel: '2nd Year'
+        },
+        {
+          id: 'ST12351',
+          name: 'Robert Brown',
+          college: 'COE',
+          section: 'BSCE3B',
+          email: 'robert.brown@example.com',
+          yearLevel: '3rd Year'
+        },
+        {
+          id: 'ST12362',
+          name: 'Maria Rodriguez',
+          college: 'COE',
+          section: 'BSCE4A',
+          email: 'maria.rodriguez@example.com',
+          yearLevel: '4th Year'
+        },
+        
+        // CBA Students (2 total)
+        {
+          id: 'ST12367',
+          name: 'Rachel Green',
+          college: 'CBA',
+          section: 'BSBA2A',
+          email: 'rachel.green@example.com',
+          yearLevel: '2nd Year'
+        },
+        {
+          id: 'ST12363',
+          name: 'James Wilson',
+          college: 'CBA',
+          section: 'BSBA4A',
+          email: 'james.wilson@example.com',
+          yearLevel: '4th Year'
+        },
+        
+        // CAS Students (2 total)
+        {
+          id: 'ST12368',
+          name: 'Daniel Kim',
+          college: 'CAS',
+          section: 'BSPS3A',
+          email: 'daniel.kim@example.com',
+          yearLevel: '3rd Year'
+        },
+        {
+          id: 'ST12364',
+          name: 'Olivia Lee',
+          college: 'CAS',
+          section: 'BSPS4A',
+          email: 'olivia.lee@example.com',
+          yearLevel: '4th Year'
+        }
+      ];
+
+      // Generate assessment history for each student with varied risk levels
+      this.students = baseStudents.map((student, index) => {
+        const assessmentCount = Math.floor(Math.random() * 3) + 1; // 1-3 assessments
+        const assessments = [];
+        
+        // Define different risk profiles for variety
+        const riskProfiles = [
+          // High risk profile (low scores)
+          { base: 2.2, variation: 0.4 },
+          // Medium-low risk profile
+          { base: 2.8, variation: 0.5 },
+          // Medium risk profile
+          { base: 3.2, variation: 0.6 },
+          // Medium-high profile
+          { base: 3.8, variation: 0.5 },
+          // Low risk profile (high scores)
+          { base: 4.2, variation: 0.4 }
+        ];
+        
+        // Assign risk profile based on student index for variety
+        const profileIndex = index % riskProfiles.length;
+        const profile = riskProfiles[profileIndex];
+        
+        for (let i = 0; i < assessmentCount; i++) {
+          const daysAgo = (i + 1) * 30 + Math.floor(Math.random() * 15); // Spread assessments over months
+          const date = new Date();
+          date.setDate(date.getDate() - daysAgo);
+          
+          // Generate varied scores based on risk profile
+          const timeVariation = (Math.random() - 0.5) * 0.3; // Small time-based variation
+          const assessment = {
+            submissionDate: date.toISOString().split('T')[0],
+            assessmentType: 'Ryff PWB (42-item)',
+            subscales: {
+              autonomy: Math.max(1.0, Math.min(5.0, profile.base + timeVariation + (Math.random() - 0.5) * profile.variation)),
+              environmentalMastery: Math.max(1.0, Math.min(5.0, profile.base + 0.2 + timeVariation + (Math.random() - 0.5) * profile.variation)),
+              personalGrowth: Math.max(1.0, Math.min(5.0, profile.base + 0.1 + timeVariation + (Math.random() - 0.5) * profile.variation)),
+              positiveRelations: Math.max(1.0, Math.min(5.0, profile.base - 0.1 + timeVariation + (Math.random() - 0.5) * profile.variation)),
+              purposeInLife: Math.max(1.0, Math.min(5.0, profile.base + 0.05 + timeVariation + (Math.random() - 0.5) * profile.variation)),
+              selfAcceptance: Math.max(1.0, Math.min(5.0, profile.base + 0.15 + timeVariation + (Math.random() - 0.5) * profile.variation))
+            }
+          };
+          assessments.push(assessment);
+        }
+        
+        // Sort assessments by date (newest first)
+        assessments.sort((a, b) => new Date(b.submissionDate) - new Date(a.submissionDate));
+        
+        // Return student with current assessment (most recent) and history
+        return {
+          ...student,
+          submissionDate: assessments[0].submissionDate,
+          subscales: assessments[0].subscales,
+          assessmentHistory: assessments
+        };
+      });
+      
+      console.log('Initialized student data with assessment history:', this.students);
+    },
+    
+    // Update student data from AccountManagement
+    updateStudentData(studentsData) {
+      this.students = studentsData;
+      // Recalculate risk dimensions when student data changes
+      this.calculateRiskDimensions();
     },
     // Calculate risk dimensions based on actual student data
     calculateRiskDimensions() {
@@ -847,8 +821,71 @@ export default {
   position: fixed;
   height: 100vh;
   overflow-y: auto;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-collapsed {
+  width: 64px;
+}
+
+.sidebar-collapsed .logo-text,
+.sidebar-collapsed .sidebar-menu h3,
+.sidebar-collapsed .menu-item span,
+.sidebar-collapsed .submenu-arrow {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.sidebar-collapsed .submenu {
+  max-height: 0 !important;
+  overflow: hidden;
+}
+
+.sidebar-collapsed .menu-item {
+  justify-content: center;
+  padding: 12px 20px;
+}
+
+.sidebar-collapsed .menu-icon {
+  margin-right: 0;
+}
+
+.sidebar-collapsed .logo-container {
+  justify-content: center;
+}
+
+.sidebar-collapsed .logo-container img {
+  margin-right: 0;
+}
+
+/* Tooltip for collapsed sidebar */
+.sidebar-collapsed .menu-item {
+  position: relative;
+}
+
+.sidebar-collapsed .menu-item:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-left: 8px;
+  opacity: 0;
+  animation: fadeInTooltip 0.2s ease forwards;
+}
+
+@keyframes fadeInTooltip {
+  to {
+    opacity: 1;
+  }
 }
 
 .logo-container {
@@ -1068,6 +1105,11 @@ export default {
   background-color: #f5f5f5; /* Plain dirty white background */
   min-height: 100vh;
   overflow-y: auto;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-content.content-collapsed {
+  margin-left: 64px;
 }
 
 .main-content > div {
@@ -1308,32 +1350,11 @@ export default {
   box-shadow: 0 0 0 2px rgba(0, 179, 176, 0.1);
 }
 
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
 
-.refresh-btn:hover {
-  background: #f8fafc;
-  color: #00b3b0;
-  border-color: #00b3b0;
-}
-
-.refresh-btn i {
-  font-size: 1rem;
-}
 
 /* Metrics Row */
 .metrics-row {
+  margin-top: 32px;
   margin-bottom: 24px;
   width: 100%;
 }

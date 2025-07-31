@@ -27,15 +27,6 @@
           <button class="view-button" @click.stop="viewVersion(version)">
             <i class="fas fa-eye"></i> View
           </button>
-          
-          <div class="card-options">
-            <button class="option-button edit-button" @click.stop>
-              <i class="fas fa-pencil-alt"></i>
-            </button>
-            <button class="option-button duplicate-button" @click.stop>
-              <i class="fas fa-copy"></i>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -67,8 +58,8 @@ export default {
           id: 1,
           title: 'Standard Assessment',
           description: 'Default assessment with standard introduction',
-          items: '54',
-          type: 'medium',
+          items: '84',
+          type: 'complete',
           lastModified: '2023-05-15'
         },
         {
@@ -284,51 +275,7 @@ export default {
   transform: translateY(-2px);
 }
 
-.card-options {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  display: flex;
-  gap: 5px;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all 0.3s ease;
-}
 
-.version-card:hover .card-options, .version-card.hovered .card-options {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.option-button {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(2px);
-  color: var(--text);
-}
-
-.option-button:hover {
-  background-color: white;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
-}
-
-.edit-button:hover {
-  color: var(--primary);
-}
-
-.duplicate-button:hover {
-  color: #5c7cfa;
-}
 
 .add-version-card {
   background-color: #f0f7ff;
@@ -375,4 +322,4 @@ export default {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>

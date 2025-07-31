@@ -9,15 +9,15 @@
     </div>
     
     <div class="college-stats-grid">
-      <div class="college-stat-card" v-for="(college, index) in colleges" :key="index">
+      <div class="college-stat-card" v-for="(college, index) in colleges" :key="index" @click="navigateToCollegeDetail(college)" :class="{ 'clickable': true }">
         <div class="college-header">
           <h3>{{ college.name }}</h3>
           <span class="student-count">{{ college.students }} students</span>
         </div>
         <div class="college-metrics">
           <div class="metric">
-            <span class="metric-label">Average Score</span>
-            <span class="metric-value">{{ college.avgScore }}</span>
+            <span class="metric-label">Overall Score</span>
+            <span class="metric-value">{{ Math.round(college.avgScore) }}</span>
           </div>
           <div class="metric">
             <span class="metric-label">At Risk Students</span>
@@ -28,9 +28,9 @@
           <div class="dimension-bar" v-for="(dim, dimName) in college.dimensions" :key="dimName">
             <span class="dimension-name">{{ formatDimName(dimName) }}</span>
             <div class="progress-track">
-              <div class="progress-fill" :style="{ width: `${dim.score}%`, backgroundColor: getDimensionColor(dimName) }"></div>
+              <div class="progress-fill" :style="{ width: `${(dim.score/7)*100}%`, backgroundColor: getDimensionColor(dimName) }"></div>
             </div>
-            <span class="dimension-score">{{ dim.score }}%</span>
+            <span class="dimension-score">{{ Math.round(dim.score) }}/7</span>
           </div>
         </div>
       </div>
@@ -119,6 +119,10 @@ export default {
         atRisk: 0,
         dimensions: this.getDefaultDimensions()
       }));
+    },
+    navigateToCollegeDetail(college) {
+      // Emit event to parent component to handle navigation
+      this.$emit('navigate-to-college', college);
     }
   }
 };
@@ -154,9 +158,18 @@ p {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.college-stat-card.clickable {
+  cursor: pointer;
+}
+
 .college-stat-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.college-stat-card.clickable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
 }
 
 .college-header {

@@ -31,121 +31,20 @@ export default {
     };
   },
   mounted() {
-    // If student data is provided via props, use it
-    if (this.studentData && this.studentData.length > 0) {
-      this.calculateScores(this.studentData);
-    } else {
-      // Otherwise, fetch sample student data
-      this.fetchStudentData();
+    // Always use student data from props (from AccountManagement via CounselorDashboard)
+    this.calculateScores(this.studentData || []);
+  },
+  watch: {
+    // Watch for changes in student data and recalculate scores
+    studentData: {
+      handler(newData) {
+        this.calculateScores(newData || []);
+      },
+      deep: true
     }
   },
   methods: {
-    // Fetch sample student data - in a real app, this would be an API call
-    fetchStudentData() {
-      // Sample student data - same as in the dashboard
-      const students = [
-        {
-          id: 'ST12347',
-          name: 'Mike Johnson',
-          college: 'CCS',
-          section: 'BSIT1A',
-          subscales: {
-            autonomy: 2.4,
-            environmentalMastery: 5.0, // definitely not at risk
-            personalGrowth: 3.5,
-            positiveRelations: 3.1,
-            purposeInLife: 3.4,
-            selfAcceptance: 2.9
-          }
-        },
-        {
-          id: 'ST12348',
-          name: 'Sarah Williams',
-          college: 'CCS',
-          section: 'BSCS3A',
-          subscales: {
-            autonomy: 2.0,
-            environmentalMastery: 5.0, // definitely not at risk
-            personalGrowth: 3.0,
-            positiveRelations: 2.0,
-            purposeInLife: 2.6,
-            selfAcceptance: 2.9
-          }
-        },
-        {
-          id: 'ST12353',
-          name: 'Kevin Wong',
-          college: 'CCS',
-          section: 'BSIT3A',
-          subscales: {
-            autonomy: 2.4,
-            environmentalMastery: 2.0, // only CCS student at risk for EM
-            personalGrowth: 2.9,
-            positiveRelations: 2.5,
-            purposeInLife: 2.5,
-            selfAcceptance: 2.4
-          }
-        },
-        {
-          id: 'ST12351',
-          name: 'Robert Brown',
-          college: 'COE',
-          section: 'BSCE3B',
-          subscales: {
-            autonomy: 2.3,
-            environmentalMastery: 3.5,
-            personalGrowth: 3.4,
-            positiveRelations: 3.3,
-            purposeInLife: 2.3,
-            selfAcceptance: 3.4
-          }
-        },
-        {
-          id: 'ST12355',
-          name: 'Sophia Garcia',
-          college: 'CAS',
-          section: 'BSPS2B',
-          subscales: {
-            autonomy: 2.2,
-            environmentalMastery: 3.4,
-            personalGrowth: 2.4,
-            positiveRelations: 3.4,
-            purposeInLife: 3.2,
-            selfAcceptance: 3.4
-          }
-        },
-        {
-          id: 'ST12356',
-          name: 'Alex Thompson',
-          college: 'CBA',
-          section: 'BSBA3A',
-          subscales: {
-            autonomy: 3.3,
-            environmentalMastery: 2.2,
-            personalGrowth: 3.2,
-            positiveRelations: 3.4,
-            purposeInLife: 3.3,
-            selfAcceptance: 2.3
-          }
-        },
-        {
-          id: 'ST12354',
-          name: 'Jessica Martin',
-          college: 'CN',
-          section: 'BSCS2B',
-          subscales: {
-            autonomy: 3.5,
-            environmentalMastery: 2.3,
-            personalGrowth: 3.5,
-            positiveRelations: 2.4,
-            purposeInLife: 3.6,
-            selfAcceptance: 2.2
-          }
-        }
-      ];
-      
-      this.calculateScores(students);
-    },
+
     
     // Calculate average scores by college from student data
     calculateScores(students) {
