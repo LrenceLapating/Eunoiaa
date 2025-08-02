@@ -87,39 +87,6 @@
       </div>
     </div>
 
-    <!-- Reminder Log Section -->
-    <div class="log-section">
-      <div class="section-header">
-        <h2>Reminder Log</h2>
-        <p class="section-description">View logs of when reminders were sent and to whom</p>
-      </div>
-
-      <div class="log-table-container">
-        <table class="log-table">
-          <thead>
-            <tr>
-              <th>Recipient</th>
-              <th>Email</th>
-              <th>Sent At</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(log, index) in reminderLogs" :key="index" class="log-row">
-              <td>{{ log.recipient }}</td>
-              <td>{{ log.email }}</td>
-              <td>{{ log.sentAt }}</td>
-              <td>
-                <span class="status-badge" :class="log.status.toLowerCase()">
-                  {{ log.status }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <!-- Success Toast -->
     <div class="toast" v-if="showToast" :class="{ 'show': showToast }">
       <div class="toast-content">

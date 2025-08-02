@@ -57,7 +57,7 @@
           <i class="fas fa-chevron-down"></i>
         </div>
         
-        <div class="filter-dropdown">
+        <div class="filter-dropdown" v-if="currentTab === 'student'">
           <select v-model="sectionFilter">
             <option value="all">All Sections</option>
             <option value="BSIT1A">BSIT1A</option>
@@ -71,12 +71,12 @@
           <i class="fas fa-chevron-down"></i>
         </div>
         
-        <div class="filter-dropdown">
+        <div class="filter-dropdown" v-if="currentTab === 'student'">
           <select v-model="riskLevelFilter">
             <option value="all">All Levels</option>
-            <option value="High Risk">High Risk</option>
-            <option value="Medium Risk">Medium Risk</option>
-            <option value="Low Risk">Low Risk</option>
+            <option value="At Risk">At Risk</option>
+            <option value="Moderate">Moderate</option>
+            <option value="Healthy">Healthy</option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
@@ -120,23 +120,32 @@
             </td>
             <td>
               <div class="dimension-risk">
-                <span class="risk-count" v-if="hasAnyRiskDimension(student)" title="Number of at-risk dimensions">
+                <!-- At Risk: Show count in red -->
+                <span class="risk-count at-risk" v-if="getAtRiskDimensionsCount(student) > 0" title="Number of at-risk dimensions">
                   {{ getAtRiskDimensionsCount(student) }}/6
                 </span>
+                <!-- Moderate: Show count in yellow -->
+                <span class="risk-count moderate" v-else-if="getModerateDimensionsCount(student) > 0" title="Number of moderate dimensions">
+                  {{ getModerateDimensionsCount(student) }}/6
+                </span>
+                <!-- No Risk: When all dimensions are healthy (6/6) -->
+                <span class="no-risk" v-else-if="getHealthyDimensionsCount(student) === 6" title="All dimensions are healthy">No Risk</span>
+                <!-- Fallback for edge cases -->
+                <span v-else class="no-data">No Data</span>
+                
                 <div class="risk-scores">
                   <div 
                     v-for="(score, subscale) in (student?.subscales || {})" 
                     :key="subscale"
-                    v-if="score !== undefined && isAtRisk(score * 7)"
+                    v-if="score !== undefined && (isAtRisk(score * 7) || isModerate(score * 7))"
                     class="risk-dimension-container"
                   >
-                    <div class="risk-dimension-score">
+                    <div class="risk-dimension-score" :class="getDimensionRiskClass(score * 7)">
                       {{ Math.round(score * 7) }}
                       <div class="hover-label">{{ formatSubscaleName(subscale) }}</div>
                     </div>
                   </div>
                 </div>
-                <span v-if="!hasAnyRiskDimension(student)" class="no-risk">No Risk</span>
               </div>
             </td>
             <td>
@@ -156,6 +165,7 @@
           <tr>
             <th>Student ID</th>
             <th>Student Name</th>
+            <th>College</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -163,6 +173,7 @@
           <tr v-for="(student, index) in filteredStudents" :key="student?.id || index" class="student-row">
             <td>{{ student?.id || 'N/A' }}</td>
             <td>{{ student?.name || 'N/A' }}</td>
+            <td>{{ student?.college || 'N/A' }}</td>
             <td>
               <button class="history-button" @click="viewStudentHistory(student)">
                 <i class="fas fa-history"></i> History
@@ -199,8 +210,11 @@
               </div>
               <div class="info-item">
                 <span class="info-label">At-Risk Dimensions:</span>
-                <span v-if="hasAnyRiskDimension(selectedStudent)" class="risk-badge high-risk">
+                <span v-if="getAtRiskDimensionsCount(selectedStudent) > 0" class="risk-badge high-risk">
                   {{ getAtRiskDimensionsCount(selectedStudent) }} Dimension(s)
+                </span>
+                <span v-else-if="getModerateDimensionsCount(selectedStudent) > 0" class="risk-badge moderate">
+                  {{ getModerateDimensionsCount(selectedStudent) }}/6 Moderate
                 </span>
                 <span v-else class="risk-badge low-risk">None</span>
               </div>
@@ -265,7 +279,12 @@
           </div>
           
           <div class="history-table-container">
-            <h5>Assessment History</h5>
+            <div class="history-header">
+              <h5>Assessment History</h5>
+              <button class="view-complete-history-btn" @click="showCompleteHistoryModal = true" v-if="getStudentAssessmentHistory(selectedStudentForHistory).length > 0">
+                <i class="fas fa-chart-line"></i> View Comprehensive Report
+              </button>
+            </div>
             <table class="history-table">
               <thead>
                 <tr>
@@ -297,6 +316,186 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comprehensive Assessment Report Modal -->
+    <div class="modal comprehensive-modal" v-if="showCompleteHistoryModal" @click.self="showCompleteHistoryModal = false">
+      <div class="modal-content comprehensive-content">
+        <div class="modal-header">
+          <h3>Comprehensive Assessment Report</h3>
+          <div class="header-actions">
+            <button class="print-report-btn" @click="printComprehensiveReport()">
+              <i class="fas fa-print"></i> Print Report
+            </button>
+            <button class="close-button" @click="showCompleteHistoryModal = false">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-body comprehensive-body" v-if="selectedStudentForHistory">
+          <!-- Report Header -->
+          <div class="report-header">
+            <div class="system-info">
+              <h2>EUNOIA Well-being Assessment System</h2>
+              <p>Comprehensive Assessment Report</p>
+            </div>
+            <div class="student-report-info">
+              <div class="info-row">
+                <span class="label">Student Name:</span>
+                <span class="value">{{ selectedStudentForHistory.name }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Student ID:</span>
+                <span class="value">{{ selectedStudentForHistory.id }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">College:</span>
+                <span class="value">{{ selectedStudentForHistory.college }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Section:</span>
+                <span class="value">{{ selectedStudentForHistory.section }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Generated:</span>
+                <span class="value">{{ new Date().toLocaleDateString() }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assessment Summary Table -->
+          <div class="report-section">
+            <h4>Assessment Summary</h4>
+            <table class="assessment-summary-table">
+              <thead>
+                <tr>
+                  <th>Assessment Date</th>
+                  <th>Type</th>
+                  <th>Overall Score</th>
+                  <th>Risk Status</th>
+                  <th>At-Risk Dimensions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
+                  <td>{{ assessment.submissionDate }}</td>
+                  <td>{{ assessment.assessmentType || 'Ryff PWB (42-item)' }}</td>
+                  <td class="score-cell">{{ calculateAssessmentOverallScore(assessment) }}</td>
+                  <td>
+                    <span class="risk-badge" :class="hasAssessmentRisk(assessment) ? 'high-risk' : 'low-risk'">
+                      {{ hasAssessmentRisk(assessment) ? 'AT RISK' : 'HEALTHY' }}
+                    </span>
+                  </td>
+                  <td>{{ getAssessmentAtRiskDimensionsCount(assessment) }}/6</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Detailed Dimension Scores -->
+          <div class="report-section">
+            <h4>Detailed Dimension Scores History</h4>
+            <div class="dimensions-comparison">
+              <table class="dimension-scores-table">
+                <thead>
+                  <tr>
+                    <th class="dimension-header">Dimension</th>
+                    <th v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index" class="assessment-date-header">
+                      {{ formatDateShort(assessment.submissionDate) }}
+                    </th>
+                    <th class="trend-header">Trend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="dimension in ryffDimensionsList" :key="dimension.key">
+                    <td class="dimension-name">{{ dimension.name }}</td>
+                    <td v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index" class="score-cell">
+                      <div class="score-container">
+                        <span class="score-value" :class="getDimensionScoreClass(assessment, dimension.key)">
+                          {{ getDimensionScore(assessment, dimension.key) }}
+                        </span>
+                        <div class="score-bar">
+                          <div class="score-fill" :style="getScoreBarStyle(assessment, dimension.key)"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="trend-cell">
+                      <div class="trend-indicator" :class="getDimensionTrend(dimension.key)">
+                        <i :class="getTrendIcon(dimension.key)"></i>
+                        <span>{{ getTrendLabel(dimension.key) }}</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Progress Analysis -->
+          <div class="report-section">
+            <h4>Progress Analysis</h4>
+            <div class="progress-analysis">
+              <div class="analysis-card">
+                <h5>Overall Trend</h5>
+                <div class="overall-trend">
+                  <div class="trend-chart">
+                    <canvas ref="trendChart" width="300" height="150"></canvas>
+                  </div>
+                  <div class="trend-summary">
+                    <p>{{ getOverallTrendSummary() }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trend Analysis Information -->
+          <div class="report-section">
+            <h4>Trend Analysis Guide</h4>
+            <div class="trend-legend">
+              <div class="legend-item">
+                <div class="trend-indicator trend-improving">
+                  <i class="fas fa-arrow-up"></i>
+                  <span>Improving</span>
+                </div>
+                <p>Consistent upward trend across all assessments (2+ point improvement)</p>
+              </div>
+              <div class="legend-item">
+                <div class="trend-indicator trend-declining">
+                  <i class="fas fa-arrow-down"></i>
+                  <span>Declining</span>
+                </div>
+                <p>Consistent downward trend across all assessments (2+ point decline)</p>
+              </div>
+              <div class="legend-item">
+                <div class="trend-indicator trend-stable">
+                  <i class="fas fa-minus"></i>
+                  <span>Stable</span>
+                </div>
+                <p>Minimal change across all assessments (less than 2 points variation)</p>
+              </div>
+              <div class="legend-item">
+                <div class="trend-indicator trend-no-trend">
+                  <i class="fas fa-question"></i>
+                  <span>No Data</span>
+                </div>
+                <p>Insufficient assessment history (less than 2 assessments) for trend analysis</p>
+              </div>
+            </div>
+            <div class="trend-note">
+              <p><strong>Note:</strong> Trend analysis uses linear regression across ALL assessment records to calculate the overall direction of change for each psychological dimension. A 2-point threshold is used to determine significant trends in well-being indicators.</p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="report-footer">
+            <div class="footer-info">
+              <p><strong>Note:</strong> This transcript contains confidential psychological assessment data. Handle with appropriate care and in accordance with privacy regulations.</p>
+              <p><strong>Generated by:</strong> EUNOIA System | <strong>Date:</strong> {{ new Date().toLocaleString() }}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -342,9 +541,18 @@ export default {
       sortDirection: 'desc',
       showDetailsModal: false,
       showHistoryModal: false,
+      showCompleteHistoryModal: false,
       selectedStudent: null,
       selectedStudentForHistory: null,
       filteredStudents: [],
+      ryffDimensionsList: [
+        { key: 'autonomy', name: 'Autonomy' },
+        { key: 'environmentalMastery', name: 'Environmental Mastery' },
+        { key: 'personalGrowth', name: 'Personal Growth' },
+        { key: 'positiveRelations', name: 'Positive Relations' },
+        { key: 'purposeInLife', name: 'Purpose in Life' },
+        { key: 'selfAcceptance', name: 'Self-Acceptance' }
+      ],
       // Use the same risk threshold as the dashboard
       riskThresholds: {
         q1: 17, // Below or equal to this is "At Risk" (Q1)
@@ -413,6 +621,46 @@ export default {
       return count;
     },
     
+    // Get count of moderate dimensions (between at-risk and healthy)
+    getModerateDimensionsCount(student) {
+      if (!student || !student.subscales) return 0;
+      let count = 0;
+      for (const subscale in student.subscales) {
+        if (student.subscales[subscale] !== undefined) {
+          const score = student.subscales[subscale] * 7;
+          if (score > this.riskThresholds.q1 && score < this.riskThresholds.q4) {
+            count++;
+          }
+        }
+      }
+      return count;
+    },
+    
+    // Get count of healthy dimensions
+    getHealthyDimensionsCount(student) {
+      if (!student || !student.subscales) return 0;
+      let count = 0;
+      for (const subscale in student.subscales) {
+        if (student.subscales[subscale] !== undefined) {
+          const score = student.subscales[subscale] * 7;
+          if (score >= this.riskThresholds.q4) {
+            count++;
+          }
+        }
+      }
+      return count;
+    },
+    
+    // Check if dimension score is moderate
+    isModerate(score) {
+      return score > this.riskThresholds.q1 && score < this.riskThresholds.q4;
+    },
+    
+    // Check if dimension score is healthy
+    isHealthy(score) {
+      return score >= this.riskThresholds.q4;
+    },
+    
     // Get color based on dimension score
     getDimensionScoreColor(score) {
       if (score <= this.riskThresholds.q1) return '#f44336';  // Red for at risk (Q1)
@@ -447,20 +695,25 @@ export default {
         result = result.filter(student => student.section === this.sectionFilter);
       }
       
-      // Apply risk level filter - now based on having at-risk dimensions
+      // Apply risk level filter - based on overall student risk profile
       if (this.riskLevelFilter !== 'all') {
-        if (this.riskLevelFilter === 'High Risk') {
+        if (this.riskLevelFilter === 'At Risk') {
           result = result.filter(student => {
             const atRiskCount = this.getAtRiskDimensionsCount(student);
-            return atRiskCount >= 3; // High risk if 3+ dimensions are at risk
+            return atRiskCount > 0; // At risk if any dimension is at risk
           });
-        } else if (this.riskLevelFilter === 'Medium Risk') {
+        } else if (this.riskLevelFilter === 'Moderate') {
           result = result.filter(student => {
             const atRiskCount = this.getAtRiskDimensionsCount(student);
-            return atRiskCount > 0 && atRiskCount < 3; // Medium risk if 1-2 dimensions are at risk
+            const moderateCount = this.getModerateDimensionsCount(student);
+            return atRiskCount === 0 && moderateCount > 0; // Moderate if no at-risk but has moderate dimensions
           });
-        } else if (this.riskLevelFilter === 'Low Risk') {
-          result = result.filter(student => !this.hasAnyRiskDimension(student));
+        } else if (this.riskLevelFilter === 'Healthy') {
+          result = result.filter(student => {
+            const atRiskCount = this.getAtRiskDimensionsCount(student);
+            const moderateCount = this.getModerateDimensionsCount(student);
+            return atRiskCount === 0 && moderateCount === 0; // Healthy if all dimensions are healthy
+          });
         }
       }
       
@@ -717,6 +970,264 @@ export default {
         const scaledScore = score * 7; // Scale to 7-49 range
         return scaledScore <= this.riskThresholds.q1;
       });
+    },
+
+    // Comprehensive report methods
+    getAssessmentAtRiskDimensionsCount(assessment) {
+      if (!assessment || !assessment.subscales) return 0;
+      let count = 0;
+      for (const subscale in assessment.subscales) {
+        if (assessment.subscales[subscale] !== undefined && this.isAtRisk(assessment.subscales[subscale] * 7)) {
+          count++;
+        }
+      }
+      return count;
+    },
+
+    formatDateShort(dateString) {
+      if (!dateString) return 'N/A';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+    },
+
+    getDimensionScore(assessment, dimensionKey) {
+      if (!assessment || !assessment.subscales || assessment.subscales[dimensionKey] === undefined) {
+        return 'N/A';
+      }
+      return Math.round(assessment.subscales[dimensionKey] * 7);
+    },
+
+    getDimensionScoreClass(assessment, dimensionKey) {
+      if (!assessment || !assessment.subscales || assessment.subscales[dimensionKey] === undefined) {
+        return 'no-data';
+      }
+      const score = assessment.subscales[dimensionKey] * 7;
+      return this.getDimensionRiskClass(score);
+    },
+
+    getScoreBarStyle(assessment, dimensionKey) {
+      if (!assessment || !assessment.subscales || assessment.subscales[dimensionKey] === undefined) {
+        return { width: '0%', backgroundColor: '#e0e0e0' };
+      }
+      const score = assessment.subscales[dimensionKey] * 7;
+      const percentage = (score / 49) * 100;
+      return {
+        width: percentage + '%',
+        backgroundColor: this.getDimensionScoreColor(score)
+      };
+    },
+
+    calculateLinearRegressionSlope(scores) {
+      const n = scores.length;
+      if (n < 2) return 0;
+      
+      // Create x values (time points: 0, 1, 2, ...)
+      const xValues = Array.from({length: n}, (_, i) => i);
+      
+      // Calculate means
+      const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
+      const yMean = scores.reduce((sum, y) => sum + y, 0) / n;
+      
+      // Calculate slope using least squares method
+      let numerator = 0;
+      let denominator = 0;
+      
+      for (let i = 0; i < n; i++) {
+        numerator += (xValues[i] - xMean) * (scores[i] - yMean);
+        denominator += (xValues[i] - xMean) ** 2;
+      }
+      
+      return denominator === 0 ? 0 : numerator / denominator;
+    },
+
+    getDimensionTrend(dimensionKey) {
+      const history = this.getStudentAssessmentHistory(this.selectedStudentForHistory);
+      if (history.length < 2) return 'no-trend';
+      
+      const scores = history.map(assessment => {
+        if (!assessment.subscales || assessment.subscales[dimensionKey] === undefined) return null;
+        return assessment.subscales[dimensionKey] * 7;
+      }).filter(score => score !== null);
+      
+      if (scores.length < 2) return 'no-trend';
+      
+      // Use linear regression to calculate trend across ALL assessment records
+      const slope = this.calculateLinearRegressionSlope(scores);
+      const totalChange = slope * (scores.length - 1);
+      
+      // Consider both slope significance and total change magnitude
+      if (Math.abs(totalChange) < 2) return 'stable';
+      return totalChange > 0 ? 'improving' : 'declining';
+    },
+
+    getTrendIcon(dimensionKey) {
+      const trend = this.getDimensionTrend(dimensionKey);
+      switch (trend) {
+        case 'improving': return 'fas fa-arrow-up';
+        case 'declining': return 'fas fa-arrow-down';
+        case 'stable': return 'fas fa-minus';
+        default: return 'fas fa-question';
+      }
+    },
+
+    getTrendLabel(dimensionKey) {
+      const trend = this.getDimensionTrend(dimensionKey);
+      switch (trend) {
+        case 'improving': return 'Improving';
+        case 'declining': return 'Declining';
+        case 'stable': return 'Stable';
+        default: return 'No Data';
+      }
+    },
+
+    getOverallTrendSummary() {
+      const history = this.getStudentAssessmentHistory(this.selectedStudentForHistory);
+      if (history.length < 2) {
+        return 'Insufficient data for trend analysis. At least two assessments are required.';
+      }
+      
+      // Calculate overall scores for all assessments
+      const overallScores = history.map(assessment => this.calculateAssessmentOverallScore(assessment));
+      
+      // Use linear regression to analyze trend across ALL assessments
+      const slope = this.calculateLinearRegressionSlope(overallScores);
+      const totalChange = slope * (overallScores.length - 1);
+      const assessmentCount = overallScores.length;
+      
+      if (Math.abs(totalChange) < 8) {
+        return `Overall well-being scores have remained relatively stable across ${assessmentCount} assessments (${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(1)} points trend).`;
+      } else if (totalChange > 0) {
+        return `Positive trend observed with consistent improvement of ${totalChange.toFixed(1)} points across ${assessmentCount} assessments.`;
+      } else {
+        return `Concerning declining trend with ${Math.abs(totalChange).toFixed(1)} points decrease across ${assessmentCount} assessments. Recommend immediate attention.`;
+      }
+    },
+
+    getRiskChanges() {
+      const history = this.getStudentAssessmentHistory(this.selectedStudentForHistory);
+      if (history.length < 2) return [];
+      
+      const changes = [];
+      const firstAssessment = history[0];
+      const lastAssessment = history[history.length - 1];
+      
+      this.ryffDimensionsList.forEach(dimension => {
+        const firstScore = firstAssessment.subscales?.[dimension.key] ? firstAssessment.subscales[dimension.key] * 7 : null;
+        const lastScore = lastAssessment.subscales?.[dimension.key] ? lastAssessment.subscales[dimension.key] * 7 : null;
+        
+        if (firstScore !== null && lastScore !== null) {
+          const firstRisk = this.isAtRisk(firstScore);
+          const lastRisk = this.isAtRisk(lastScore);
+          
+          if (firstRisk && !lastRisk) {
+            changes.push({
+              dimension: dimension.name,
+              description: 'Moved out of risk zone',
+              type: 'improvement'
+            });
+          } else if (!firstRisk && lastRisk) {
+            changes.push({
+              dimension: dimension.name,
+              description: 'Entered risk zone',
+              type: 'concern'
+            });
+          }
+        }
+      });
+      
+      return changes;
+    },
+
+    getRecommendations() {
+      const history = this.getStudentAssessmentHistory(this.selectedStudentForHistory);
+      const recommendations = [];
+      
+      if (history.length === 0) {
+        return [{
+          type: 'no-data',
+          icon: 'fas fa-info-circle',
+          title: 'No Assessment Data',
+          description: 'No assessment history available for this student.'
+        }];
+      }
+      
+      const latestAssessment = history[history.length - 1];
+      const atRiskCount = this.getAssessmentAtRiskDimensionsCount(latestAssessment);
+      
+      if (atRiskCount >= 3) {
+        recommendations.push({
+          type: 'urgent',
+          icon: 'fas fa-exclamation-triangle',
+          title: 'Urgent Intervention Required',
+          description: `Student shows high risk in ${atRiskCount} dimensions. Immediate counseling session recommended.`
+        });
+      } else if (atRiskCount > 0) {
+        recommendations.push({
+          type: 'moderate',
+          icon: 'fas fa-user-md',
+          title: 'Targeted Support Needed',
+          description: `Student shows risk in ${atRiskCount} dimension(s). Schedule follow-up session to address specific areas.`
+        });
+      } else {
+        recommendations.push({
+          type: 'positive',
+          icon: 'fas fa-thumbs-up',
+          title: 'Positive Well-being Status',
+          description: 'Student shows healthy well-being across all dimensions. Continue regular monitoring.'
+        });
+      }
+      
+      if (history.length >= 2) {
+        const trend = this.getOverallTrendSummary();
+        if (trend.includes('decline')) {
+          recommendations.push({
+            type: 'trend',
+            icon: 'fas fa-chart-line',
+            title: 'Monitor Declining Trend',
+            description: 'Recent assessments show declining scores. Consider proactive intervention strategies.'
+          });
+        }
+      }
+      
+      recommendations.push({
+        type: 'general',
+        icon: 'fas fa-calendar-check',
+        title: 'Regular Assessment Schedule',
+        description: 'Continue regular assessments to monitor progress and maintain comprehensive records.'
+      });
+      
+      return recommendations;
+    },
+
+    printComprehensiveReport() {
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      const reportContent = document.querySelector('.comprehensive-content').innerHTML;
+      
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Comprehensive Report - ${this.selectedStudentForHistory.name}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              .report-header { border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px; }
+              .report-section { margin-bottom: 30px; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f5f5f5; }
+              .score-cell { text-align: center; }
+              .risk-badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+              .high-risk { background-color: #ffebee; color: #c62828; }
+              .low-risk { background-color: #e8f5e8; color: #2e7d32; }
+              @media print { .header-actions { display: none; } }
+            </style>
+          </head>
+          <body>${reportContent}</body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      printWindow.print();
     },
     
     // View details for a specific assessment
@@ -1205,13 +1716,26 @@ export default {
 
 .risk-count {
   font-weight: 600;
-  color: #f44336;
   font-size: 13px;
-  background-color: #ffebee;
   padding: 2px 8px;
   border-radius: 12px;
   display: inline-block;
   margin-bottom: 3px;
+}
+
+.risk-count.at-risk {
+  color: #f44336;
+  background-color: #ffebee;
+}
+
+.risk-count.moderate {
+  color: #ff9800;
+  background-color: #fff3e0;
+}
+
+.risk-count.healthy {
+  color: #4caf50;
+  background-color: #e8f5e8;
 }
 
 .risk-scores {
@@ -1562,6 +2086,452 @@ export default {
 
 .tab-option:hover {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Comprehensive Report Modal Styles */
+.comprehensive-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.comprehensive-content {
+  background: white;
+  border-radius: 12px;
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.report-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px 30px;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.report-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.student-report-info {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-top: 5px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.header-actions .btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.header-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.comprehensive-body {
+  padding: 30px;
+}
+
+.report-section {
+  margin-bottom: 40px;
+}
+
+.report-section h4 {
+  color: #333;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-section h4 i {
+  color: #667eea;
+}
+
+.assessment-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.assessment-summary-table th,
+.assessment-summary-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.assessment-summary-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.assessment-summary-table td {
+  font-size: 0.9rem;
+}
+
+.score-cell {
+  text-align: center;
+  font-weight: 600;
+}
+
+.dimension-scores-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dimension-scores-table th,
+.dimension-scores-table td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.85rem;
+}
+
+.dimension-scores-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.dimension-scores-table .dimension-name {
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  min-width: 150px;
+}
+
+.score-bar-container {
+  position: relative;
+  width: 60px;
+  height: 20px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.score-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.trend-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.trend-improving {
+  color: #4caf50;
+}
+
+.trend-declining {
+  color: #f44336;
+}
+
+.trend-stable {
+  color: #ff9800;
+}
+
+.trend-no-trend {
+  color: #9e9e9e;
+}
+
+/* Trend Legend Styles */
+.trend-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.legend-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  border-left: 4px solid #e0e0e0;
+}
+
+.legend-item .trend-indicator {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.legend-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.trend-note {
+  background: #e3f2fd;
+  border-radius: 8px;
+  padding: 15px;
+  border-left: 4px solid #2196f3;
+}
+
+.trend-note p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1565c0;
+  line-height: 1.5;
+}
+
+.progress-analysis {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+  margin-bottom: 20px;
+}
+
+.progress-analysis h5 {
+  color: #333;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.progress-analysis p {
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+.risk-changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.risk-change-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.risk-change-improvement {
+  background: #e8f5e8;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.risk-change-concern {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.recommendation-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #667eea;
+  transition: transform 0.2s ease;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-2px);
+}
+
+.recommendation-card.urgent {
+  border-left-color: #f44336;
+}
+
+.recommendation-card.moderate {
+  border-left-color: #ff9800;
+}
+
+.recommendation-card.positive {
+  border-left-color: #4caf50;
+}
+
+.recommendation-card.trend {
+  border-left-color: #2196f3;
+}
+
+.recommendation-card.general {
+  border-left-color: #9e9e9e;
+}
+
+.recommendation-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.recommendation-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.8rem;
+}
+
+.recommendation-card.urgent .recommendation-icon {
+  background: #ffebee;
+  color: #f44336;
+}
+
+.recommendation-card.moderate .recommendation-icon {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.recommendation-card.positive .recommendation-icon {
+  background: #e8f5e8;
+  color: #4caf50;
+}
+
+.recommendation-card.trend .recommendation-icon {
+  background: #e3f2fd;
+  color: #2196f3;
+}
+
+.recommendation-card.general .recommendation-icon {
+  background: #f5f5f5;
+  color: #9e9e9e;
+}
+
+.recommendation-title {
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.recommendation-description {
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.no-data {
+  color: #9e9e9e;
+  font-style: italic;
+}
+
+/* Risk level badges in comprehensive report */
+.risk-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-badge.high-risk {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+.risk-badge.moderate {
+  background: #fff3e0;
+  color: #f57c00;
+  border: 1px solid #ffcc02;
+}
+
+.risk-badge.low-risk {
+  background: #e8f5e8;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.risk-badge.no-data {
+  background: #f5f5f5;
+  color: #9e9e9e;
+  border: 1px solid #e0e0e0;
+}
+
+/* Responsive design for comprehensive report modal */
+@media (max-width: 768px) {
+  .comprehensive-content {
+    width: 98%;
+    margin: 10px;
+  }
+  
+  .report-header {
+    padding: 15px 20px;
+  }
+  
+  .comprehensive-body {
+    padding: 20px;
+  }
+  
+  .recommendations-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dimension-scores-table {
+    font-size: 0.8rem;
+  }
+  
+  .assessment-summary-table th,
+  .assessment-summary-table td {
+    padding: 8px 10px;
+  }
 }
 
 </style>

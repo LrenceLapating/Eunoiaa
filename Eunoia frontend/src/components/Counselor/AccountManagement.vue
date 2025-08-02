@@ -71,21 +71,21 @@
           <table class="account-table users-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Section</th>
                 <th>ID Number</th>
-                <th>Email</th>
+                <th>Name</th>
                 <th>Year Level</th>
+                <th>Section</th>
+                <th>Email</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <transition-group name="row-fade-slide" tag="tbody">
               <tr v-for="user in filteredUsers" :key="user.id">
-                <td>{{ user.name }}</td>
-                <td>{{ user.section }}</td>
                 <td>{{ user.id }}</td>
-                <td>{{ user.email }}</td>
+                <td>{{ user.name }}</td>
                 <td>{{ user.yearLevel }}</td>
+                <td>{{ user.section }}</td>
+                <td>{{ user.email }}</td>
                 <td class="actions-cell">
                   <button class="edit-btn" title="Edit User">
                     <i class="fas fa-edit"></i>

@@ -36,21 +36,23 @@ export const getDimensionColor = (name) => {
 export const calculateOverallScore = (student) => {
   if (!student || !student.subscales) return 0;
   const scores = Object.values(student.subscales);
+  // Sum all dimension scores (each on 7-49 scale) for total score (42-294 range)
   const total = scores.reduce((sum, score) => sum + (score * 7), 0);
-  return Math.round(total / scores.length);
+  return Math.round(total);
 };
 
 export const getDimensionRiskLevel = (score) => {
+  // Score is already on 1-7 scale, convert to 7-49 scale for tertile calculation
   const scaledScore = score * 7; // Convert to 7-49 scale
-  if (scaledScore <= 21) return 'High Risk';
-  if (scaledScore <= 28) return 'Medium Risk';
-  return 'Low Risk';
+  if (scaledScore <= 17) return 'At Risk';  // T1: ≤17
+  if (scaledScore <= 38) return 'Moderate'; // T2: 18-38
+  return 'Healthy';                         // T3: ≥39
 };
 
 export const getAtRiskDimensions = (student) => {
   if (!student || !student.subscales) return [];
   return Object.entries(student.subscales)
-    .filter(([_, score]) => getDimensionRiskLevel(score) === 'High Risk')
+    .filter(([_, score]) => getDimensionRiskLevel(score) === 'At Risk')
     .map(([dimension]) => dimension);
 };
 
@@ -60,6 +62,15 @@ export const getAtRiskDimensionsCount = (student) => {
 
 export const hasAnyRiskDimension = (student) => {
   return getAtRiskDimensionsCount(student) > 0;
+};
+
+export const getOverallRiskLevel = (student) => {
+  const overallScore = calculateOverallScore(student); // Already on 42-294 scale
+  // Tertile method: (294-42)/3 = 84 interval, but using specified thresholds
+  // T1: ≤111 (At Risk), T2: 112-181 (Moderate), T3: ≥182 (Healthy)
+  if (overallScore <= 111) return 'At Risk';
+  if (overallScore <= 181) return 'Moderate';
+  return 'Healthy';
 };
 
 export const calculateCollegeStats = (students) => {
