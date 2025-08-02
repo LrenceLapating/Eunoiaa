@@ -32,13 +32,19 @@
           </div>
           
           <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" v-model="email" placeholder="Enter your email" required>
+            <label for="username">ID Number or Email</label>
+            <input type="text" id="username" v-model="email" placeholder="Enter your Student ID or Email" required autocomplete="username">
           </div>
           
           <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" v-model="password" placeholder="Enter your password" required>
+            <div class="password-input-wrapper">
+              <input :type="showPassword ? 'text' : 'password'" id="password" v-model="password" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="button" class="password-toggle" @click="showPassword = !showPassword">
+                <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              </button>
+            </div>
+            <p class="password-hint">Default password for students: student123</p>
           </div>
           
           <div class="remember-forgot">
@@ -111,7 +117,9 @@ export default {
       password: '',
       rememberMe: false,
       showNotification: false,
-      notificationMessage: ''
+      notificationMessage: '',
+      showPassword: false,
+      isLoading: false
     }
   },
   mounted() {
@@ -123,22 +131,66 @@ export default {
     }, 100);
   },
   methods: {
-    handleSubmit() {
-      // Here you would typically handle authentication
-      console.log('Login attempt with:', this.email);
+    async handleSubmit() {
+      this.isLoading = true;
+      this.showNotification = false;
       
-      // Temporary counselor login check
-      if (this.email === 'counselor@eunoia.edu' && this.password === 'counselor123') {
-        localStorage.setItem('eunoia_logged_in', 'true');
-        localStorage.setItem('eunoia_user_type', 'counselor');
-        this.$emit('counselor-login');
-      } else if (this.email === 'student@eunoia.edu' && this.password === 'student123') {
-        localStorage.setItem('eunoia_user_type', 'student');
-        this.$emit('student-login');
-      } else if (this.email && this.password) {
-        // For other logins (to be implemented)
-        this.notificationMessage = 'Login functionality will be available in future updates. Try counselor@eunoia.edu / counselor123 or student@eunoia.edu / student123 for demo access.';
+      console.log('Login attempt:', { username: this.email, password: this.password ? '***' : 'empty' });
+      
+      try {
+        // First try student login
+        const studentResponse = await fetch('http://localhost:3000/api/auth/student/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: this.email,
+            password: this.password
+          })
+        });
+        
+        console.log('Student login response status:', studentResponse.status);
+        
+        if (studentResponse.ok) {
+          const studentData = await studentResponse.json();
+          console.log('Student login successful:', studentData);
+          localStorage.setItem('studentToken', studentData.token);
+          localStorage.setItem('studentData', JSON.stringify(studentData.student));
+          localStorage.setItem('eunoia_user_type', 'student');
+          this.notificationMessage = 'Student login successful! Welcome back.';
+          this.showNotification = true;
+          setTimeout(() => {
+            this.$emit('student-login');
+          }, 1500);
+          return;
+        } else {
+          const errorData = await studentResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.log('Student login failed:', studentResponse.status, errorData);
+        }
+        
+        // If student login fails, try counselor login (hardcoded for now)
+        if (this.email === 'counselor@eunoia.edu' && this.password === 'counselor123') {
+          localStorage.setItem('eunoia_logged_in', 'true');
+          localStorage.setItem('eunoia_user_type', 'counselor');
+          this.notificationMessage = 'Counselor login successful!';
+          this.showNotification = true;
+          setTimeout(() => {
+            this.$emit('counselor-login');
+          }, 1500);
+          return;
+        }
+        
+        // If both fail, show error
+        this.notificationMessage = 'Invalid credentials. For students, use your ID number or email with password "student123". For counselors, use counselor@eunoia.edu / counselor123.';
         this.showNotification = true;
+        
+      } catch (error) {
+        console.error('Login error:', error);
+        this.notificationMessage = 'Network error. Please check if the server is running and try again.';
+        this.showNotification = true;
+      } finally {
+        this.isLoading = false;
       }
     },
     goToLanding() {
@@ -217,6 +269,40 @@ export default {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.2);
   outline: none;
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 45px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.password-toggle:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.password-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  margin-bottom: 0;
 }
 
 .remember-forgot {
@@ -656,4 +742,4 @@ export default {
 .close-notification:hover {
   color: var(--text);
 }
-</style> 
+</style>

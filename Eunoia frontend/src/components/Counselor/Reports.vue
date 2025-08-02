@@ -286,13 +286,7 @@ export default {
           participants: 450
         }
       ],
-      availableColleges: [
-        { code: 'CCS', name: 'College of Computer Studies', studentCount: 5 },
-        { code: 'CN', name: 'College of Nursing', studentCount: 3 },
-        { code: 'COE', name: 'College of Engineering', studentCount: 3 },
-        { code: 'CBA', name: 'College of Business Administration', studentCount: 2 },
-        { code: 'CAS', name: 'College of Arts and Sciences', studentCount: 2 }
-      ],
+      availableColleges: [],
       availableYearLevels: ['1st Year', '2nd Year', '3rd Year', '4th Year']
     };
   },
@@ -323,6 +317,9 @@ export default {
       
       console.log('Auto-selected assessments:', this.selectedAssessments);
     }
+    
+    // Populate available colleges from student data
+    this.populateAvailableColleges();
   },
   methods: {
     selectReportType(type) {
@@ -361,25 +358,24 @@ export default {
     },
     
     getStudentAssessments(studentId) {
-      // Mock assessment history for demonstration
-      const assessmentHistory = {
-        1: [
-          { id: 1, number: 1, date: '2024-08-15', score: 85 },
-          { id: 2, number: 2, date: '2024-10-20', score: 92 },
-          { id: 3, number: 3, date: '2024-12-10', score: 78 }
-        ],
-        2: [
-          { id: 4, number: 1, date: '2024-08-18', score: 76 },
-          { id: 5, number: 2, date: '2024-11-05', score: 88 }
-        ],
-        3: [
-          { id: 6, number: 1, date: '2024-09-01', score: 95 },
-          { id: 7, number: 2, date: '2024-11-15', score: 89 },
-          { id: 8, number: 3, date: '2024-12-20', score: 91 },
-          { id: 9, number: 4, date: '2025-01-10', score: 84 }
-        ]
-      };
-      return assessmentHistory[studentId] || [];
+      // Find the student and return their assessment history
+      const student = this.students.find(s => s.id === studentId);
+      if (student && student.assessmentHistory) {
+        return student.assessmentHistory.map((assessment, index) => ({
+          id: index + 1,
+          number: index + 1,
+          date: assessment.submissionDate,
+          score: Math.round(this.calculateAssessmentScore(assessment) * 7) // Convert to 7-49 scale
+        }));
+      }
+      return [];
+    },
+    
+    calculateAssessmentScore(assessment) {
+      if (!assessment.subscales) return 0;
+      const subscales = assessment.subscales;
+      const total = Object.values(subscales).reduce((sum, score) => sum + score, 0);
+      return total / Object.keys(subscales).length; // Average score
     },
     
     formatDate(dateString) {
@@ -439,6 +435,37 @@ export default {
       }, 2000);
     },
     
+    populateAvailableColleges() {
+      // Extract unique colleges from student data
+      const collegeMap = new Map();
+      
+      this.students.forEach(student => {
+        if (student.college) {
+          const collegeCode = student.college;
+          if (collegeMap.has(collegeCode)) {
+            collegeMap.get(collegeCode).studentCount++;
+          } else {
+            // Map college codes to full names
+            const collegeNames = {
+              'CCS': 'College of Computer Studies',
+              'CN': 'College of Nursing', 
+              'COE': 'College of Engineering',
+              'CBA': 'College of Business Administration',
+              'CAS': 'College of Arts and Sciences'
+            };
+            
+            collegeMap.set(collegeCode, {
+              code: collegeCode,
+              name: collegeNames[collegeCode] || collegeCode,
+              studentCount: 1
+            });
+          }
+        }
+      });
+      
+      this.availableColleges = Array.from(collegeMap.values());
+    },
+    
     downloadPDF(filename) {
       // Simulate PDF download
       const link = document.createElement('a');
@@ -473,6 +500,13 @@ export default {
         }
       },
       immediate: false
+    },
+    // Watch for changes in students prop
+    students: {
+      handler() {
+        this.populateAvailableColleges();
+      },
+      immediate: true
     }
   }
 };

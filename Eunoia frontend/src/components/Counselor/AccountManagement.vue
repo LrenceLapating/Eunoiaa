@@ -22,7 +22,7 @@
                   <i class="fas fa-download"></i> Download Template
                 </button>
               </div>
-              <span class="format-text">Format: Name, Section, Department, ID Number, Email, Year Level</span>
+              <span class="format-text">Format: Name, Section, College, ID Number, Email, Year Level</span>
             </div>
           </div>
           
@@ -135,7 +135,7 @@
             <p>Drag & Drop your CSV file here, or click to select</p>
             <p class="file-name" v-if="uploadedFileName">{{ uploadedFileName }}</p>
           </div>
-          <p class="format-text">Format: Name, Section, Department, ID Number, Email, Year Level</p>
+          <p class="format-text">Format: Name, Section, College, ID Number, Email, Year Level</p>
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showUploadModal = false">Cancel</button>
@@ -149,6 +149,10 @@
 <script>
 export default {
   name: 'AccountManagement',
+  async mounted() {
+    // Load initial data from backend
+    await this.loadCollegesFromBackend();
+  },
   data() {
     return {
       selectedCollege: null,
@@ -159,39 +163,8 @@ export default {
         type: 'success',
         icon: 'fas fa-check-circle'
       },
-      departments: [
-        { name: 'CCS', users: 5 },
-        { name: 'CN', users: 3 },
-        { name: 'COE', users: 3 },
-        { name: 'CBA', users: 2 },
-        { name: 'CAS', users: 2 }
-      ],
-      users: [
-        // CCS Students (5 total)
-        { name: 'Mike Johnson', section: 'BSIT1A', id: 'ST12347', email: 'mike.johnson@example.com', college: 'CCS', yearLevel: '1st Year' },
-        { name: 'Sarah Williams', section: 'BSCS3A', id: 'ST12348', email: 'sarah.williams@example.com', college: 'CCS', yearLevel: '3rd Year' },
-        { name: 'Kevin Wong', section: 'BSIT3A', id: 'ST12353', email: 'kevin.wong@example.com', college: 'CCS', yearLevel: '3rd Year' },
-        { name: 'Emily Chen', section: 'BSCS4A', id: 'ST12360', email: 'emily.chen@example.com', college: 'CCS', yearLevel: '4th Year' },
-        { name: 'David Park', section: 'BSIT4A', id: 'ST12361', email: 'david.park@example.com', college: 'CCS', yearLevel: '4th Year' },
-        
-        // CN Students (3 total)
-        { name: 'Lisa Wang', section: 'BSN3A', id: 'ST12365', email: 'lisa.wang@example.com', college: 'CN', yearLevel: '3rd Year' },
-        { name: 'Michael Torres', section: 'BSN4A', id: 'ST12366', email: 'michael.torres@example.com', college: 'CN', yearLevel: '4th Year' },
-        { name: 'Jessica Martin', section: 'BSCS2B', id: 'ST12354', email: 'jessica.martin@example.com', college: 'CN', yearLevel: '2nd Year' },
-        
-        // COE Students (3 total)
-        { name: 'Amanda Davis', section: 'BSCE2A', id: 'ST12369', email: 'amanda.davis@example.com', college: 'COE', yearLevel: '2nd Year' },
-        { name: 'Robert Brown', section: 'BSCE3B', id: 'ST12351', email: 'robert.brown@example.com', college: 'COE', yearLevel: '3rd Year' },
-        { name: 'Maria Rodriguez', section: 'BSCE4A', id: 'ST12362', email: 'maria.rodriguez@example.com', college: 'COE', yearLevel: '4th Year' },
-        
-        // CBA Students (2 total)
-        { name: 'Rachel Green', section: 'BSBA2A', id: 'ST12367', email: 'rachel.green@example.com', college: 'CBA', yearLevel: '2nd Year' },
-        { name: 'James Wilson', section: 'BSBA4A', id: 'ST12363', email: 'james.wilson@example.com', college: 'CBA', yearLevel: '4th Year' },
-        
-        // CAS Students (2 total)
-        { name: 'Daniel Kim', section: 'BSPS3A', id: 'ST12368', email: 'daniel.kim@example.com', college: 'CAS', yearLevel: '3rd Year' },
-        { name: 'Olivia Lee', section: 'BSPS4A', id: 'ST12364', email: 'olivia.lee@example.com', college: 'CAS', yearLevel: '4th Year' }
-      ],
+      departments: [], // Will be populated from backend API
+      users: [], // Will be populated from backend API
       showUploadModal: false,
       selectedSemester: null,
       semesters: ['1st Semester', '2nd Semester', 'Summer'],
@@ -218,9 +191,11 @@ export default {
     }
   },
   methods: {
-    viewCollegeUsers(collegeName) {
+    async viewCollegeUsers(collegeName) {
       this.selectedCollege = collegeName;
       this.searchQuery = '';
+      // Load students for the selected college from backend
+      await this.loadStudentsFromBackend(collegeName, this.searchQuery);
     },
     
     handleFileUpload(event) {
@@ -254,7 +229,7 @@ export default {
       
       // Get header row and check format
       const headers = lines[0].split(',').map(header => header.trim());
-      const requiredHeaders = ['Name', 'Section', 'Department', 'ID Number', 'Email', 'Year Level'];
+      const requiredHeaders = ['Name', 'Section', 'College', 'ID Number', 'Email', 'Year Level'];
       
       // Check if all required headers are present
       const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
@@ -266,7 +241,7 @@ export default {
       // Process data rows
       const nameIndex = headers.indexOf('Name');
       const sectionIndex = headers.indexOf('Section');
-      const departmentIndex = headers.indexOf('Department');
+      const collegeIndex = headers.indexOf('College');
       const idIndex = headers.indexOf('ID Number');
       const emailIndex = headers.indexOf('Email');
       const yearLevelIndex = headers.indexOf('Year Level');
@@ -285,19 +260,19 @@ export default {
         
         const name = values[nameIndex];
         const section = values[sectionIndex];
-        const department = values[departmentIndex];
+        const college = values[collegeIndex];
         const id = values[idIndex];
         const email = values[emailIndex];
         const yearLevel = values[yearLevelIndex];
         
         // Skip if any required field is empty
-        if (!name || !section || !department || !id || !email || !yearLevel) continue;
+        if (!name || !section || !college || !id || !email || !yearLevel) continue;
         
-        // Check if the department exists
-        if (!existingDepartments.has(department)) {
-          // Add new department
-          this.departments.push({ name: department, users: 0 });
-          existingDepartments.add(department);
+        // Check if the college exists (use college column instead of department)
+        if (!existingDepartments.has(college)) {
+          // Add new college
+          this.departments.push({ name: college, users: 0 });
+          existingDepartments.add(college);
           newColleges++;
         }
         
@@ -310,12 +285,12 @@ export default {
             section,
             id,
             email,
-            college: department,
+            college: college, // Use college column instead of department
             yearLevel
           });
           
-          // Update department user count
-          const deptIndex = this.departments.findIndex(dept => dept.name === department);
+          // Update college user count
+          const deptIndex = this.departments.findIndex(dept => dept.name === college);
           if (deptIndex !== -1) {
             this.departments[deptIndex].users++;
           }
@@ -344,19 +319,10 @@ export default {
     },
     
     downloadTemplate() {
-      // Create CSV content
-      const headers = 'Name,Section,Department,ID Number,Email,Year Level';
-      const exampleRow = 'John Doe,BSIT1A,CCS,2023-10001,john.doe@example.com,1st Year';
-      const csvContent = `${headers}\n${exampleRow}`;
-      
-      // Create a blob and download link
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      
-      // Create and trigger download
+      // Download template from backend API
       const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'account_template.csv');
+      link.href = 'http://localhost:3000/api/accounts/csv-template';
+      link.download = 'student_template.csv';
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
@@ -402,7 +368,7 @@ export default {
         this.uploadedFileName = file.name;
       }
     },
-    confirmUpload() {
+    async confirmUpload() {
       if (!this.uploadedFile || !this.selectedSemester) {
         this.showNotification('Please select a semester and upload a CSV file.', 'error', 'fas fa-exclamation-circle');
         return;
@@ -414,16 +380,98 @@ export default {
         return;
       }
       
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target.result;
-        this.processCSV(content); // Use the existing processCSV method
+      try {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('csvFile', this.uploadedFile);
+        formData.append('semester', this.selectedSemester);
+        
+        // Show loading notification
+        this.showNotification('Uploading CSV file...', 'info', 'fas fa-spinner fa-spin');
+        
+        // Send to backend API
+        const response = await fetch('http://localhost:3000/api/accounts/upload-csv', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          // Success - refresh data from backend
+          await this.loadCollegesFromBackend();
+          this.showNotification(
+            `Successfully uploaded! ${result.studentsProcessed} students processed.`, 
+            'success', 
+            'fas fa-check-circle'
+          );
+        } else {
+          // Handle validation errors
+          if (result.errors && result.errors.length > 0) {
+            const errorMessage = `Upload failed: ${result.errors.slice(0, 3).join(', ')}`;
+            this.showNotification(errorMessage, 'error', 'fas fa-exclamation-circle');
+          } else {
+            this.showNotification(result.error || 'Upload failed', 'error', 'fas fa-exclamation-circle');
+          }
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        this.showNotification('Network error. Please check if the backend server is running.', 'error', 'fas fa-exclamation-circle');
+      } finally {
+        // Clean up modal state
         this.showUploadModal = false;
-        this.uploadedFile = null; // Clear uploaded file state
-        this.uploadedFileName = ''; // Clear uploaded file name state
-        this.selectedSemester = null; // Clear selected semester state
-      };
-      reader.readAsText(this.uploadedFile);
+        this.uploadedFile = null;
+        this.uploadedFileName = '';
+        this.selectedSemester = null;
+      }
+    },
+    
+    // Load colleges data from backend
+    async loadCollegesFromBackend() {
+      try {
+        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        if (response.ok) {
+          const data = await response.json();
+          this.departments = data.colleges.map(college => ({
+            name: college.name,
+            users: college.totalUsers
+          }));
+        } else {
+          console.error('Failed to load colleges from backend');
+        }
+      } catch (error) {
+        console.error('Error loading colleges:', error);
+      }
+    },
+    
+    // Load students data from backend
+    async loadStudentsFromBackend(college = 'all', search = '') {
+      try {
+        const params = new URLSearchParams({
+          college: college,
+          search: search,
+          page: 1,
+          limit: 100
+        });
+        
+        const response = await fetch(`http://localhost:3000/api/accounts/students?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          this.users = data.students.map(student => ({
+            id: student.id_number,
+            name: student.name,
+            college: student.college,
+            section: student.section,
+            email: student.email,
+            yearLevel: student.year_level
+          }));
+          this.emitStudentData();
+        } else {
+          console.error('Failed to load students from backend');
+        }
+      } catch (error) {
+        console.error('Error loading students:', error);
+      }
     },
     
     // Emit student data to parent component

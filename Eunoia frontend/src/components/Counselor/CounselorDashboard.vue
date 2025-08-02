@@ -190,7 +190,8 @@
                      :key="index" 
                      class="alert-item"
                      @click="showDimensionDetails(dimension)"
-                     :class="{ 'clickable': true }">
+                     :class="{ 'clickable': true }"
+                     v-if="dimension && dimension.name && dimension.highRiskColleges">
                   <div class="alert-details">
                     <h4>{{ dimension.name }}</h4>
                   </div>
@@ -198,6 +199,9 @@
                     <p>{{ dimension.highRiskColleges.length }} colleges</p>
                     <span>at high risk</span>
                   </div>
+                </div>
+                <div v-if="!dimensions || dimensions.length === 0" class="no-alerts">
+                  <p>No risk alerts at this time</p>
                 </div>
               </div>
             </div>
@@ -409,16 +413,16 @@ export default {
       academicYears: [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
     }
   },
-  created() {
-    // Initialize student data immediately
-    this.initializeStudentData();
-    // Calculate risk dimensions based on student data
+  async created() {
+    // Initialize student data and wait for it to complete
+    await this.initializeStudentData();
+    // Calculate risk dimensions only after student data is loaded
     this.calculateRiskDimensions();
   },
-  mounted() {
+  async mounted() {
     // Ensure data is available when components mount
     if (this.students.length === 0) {
-      this.initializeStudentData();
+      await this.initializeStudentData();
       this.calculateRiskDimensions();
     }
   },
@@ -567,163 +571,42 @@ export default {
       this.selectedCollegeDetail = null;
     },
     
-    // Initialize student data with enhanced assessment history
-    initializeStudentData() {
-      // Generate assessment history for each student with varied risk levels
-      const baseStudents = [
-        // CCS Students (5 total)
-        { id: 'ST12347', name: 'Mike Johnson', college: 'CCS', section: 'BSIT1A', email: 'mike.johnson@example.com', yearLevel: '1st Year' },
-        { id: 'ST12348', name: 'Sarah Williams', college: 'CCS', section: 'BSCS3A', email: 'sarah.williams@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12353', name: 'Kevin Wong', college: 'CCS', section: 'BSIT3A', email: 'kevin.wong@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12360', name: 'Emily Chen', college: 'CCS', section: 'BSCS4A', email: 'emily.chen@example.com', yearLevel: '4th Year' },
-        { id: 'ST12361', name: 'David Park', college: 'CCS', section: 'BSIT4A', email: 'david.park@example.com', yearLevel: '4th Year' },
-        // CN Students (3 total)
-        { id: 'ST12365', name: 'Lisa Wang', college: 'CN', section: 'BSN3A', email: 'lisa.wang@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12366', name: 'Michael Torres', college: 'CN', section: 'BSN4A', email: 'michael.torres@example.com', yearLevel: '4th Year' },
-        { id: 'ST12354', name: 'Jessica Martin', college: 'CN', section: 'BSCS2B', email: 'jessica.martin@example.com', yearLevel: '2nd Year' },
-        // COE Students (3 total)
-        { id: 'ST12369', name: 'Amanda Davis', college: 'COE', section: 'BSCE2A', email: 'amanda.davis@example.com', yearLevel: '2nd Year' },
-        { id: 'ST12351', name: 'Robert Brown', college: 'COE', section: 'BSCE3B', email: 'robert.brown@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12362', name: 'Maria Rodriguez', college: 'COE', section: 'BSCE4A', email: 'maria.rodriguez@example.com', yearLevel: '4th Year' },
-        // CBA Students (2 total)
-        { id: 'ST12367', name: 'Rachel Green', college: 'CBA', section: 'BSBA2A', email: 'rachel.green@example.com', yearLevel: '2nd Year' },
-        { id: 'ST12363', name: 'James Wilson', college: 'CBA', section: 'BSBA4A', email: 'james.wilson@example.com', yearLevel: '4th Year' },
-        // CAS Students (2 total)
-        { id: 'ST12368', name: 'Daniel Kim', college: 'CAS', section: 'BSPS3A', email: 'daniel.kim@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12364', name: 'Olivia Lee', college: 'CAS', section: 'BSPS4A', email: 'olivia.lee@example.com', yearLevel: '4th Year' },
-        // Additional Healthy Students (6 total)
-        { id: 'ST12370', name: 'Alexander Thompson', college: 'CCS', section: 'BSCS3A', email: 'alexander.thompson@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12371', name: 'Sophia Martinez', college: 'CN', section: 'BSN2A', email: 'sophia.martinez@example.com', yearLevel: '2nd Year' },
-        { id: 'ST12372', name: 'Benjamin Clark', college: 'COE', section: 'BSCE1A', email: 'benjamin.clark@example.com', yearLevel: '1st Year' },
-        { id: 'ST12373', name: 'Isabella Garcia', college: 'CBA', section: 'BSBA3A', email: 'isabella.garcia@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12374', name: 'Christopher Lee', college: 'CAS', section: 'BSPS2A', email: 'christopher.lee@example.com', yearLevel: '2nd Year' },
-        { id: 'ST12375', name: 'Victoria Johnson', college: 'CCS', section: 'BSIT2A', email: 'victoria.johnson@example.com', yearLevel: '2nd Year' },
-        // Additional Very Healthy Students (4 more)
-        { id: 'ST12376', name: 'Matthew Rodriguez', college: 'COE', section: 'BSEE3A', email: 'matthew.rodriguez@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12377', name: 'Emma Wilson', college: 'CN', section: 'BSN3A', email: 'emma.wilson@example.com', yearLevel: '3rd Year' },
-        { id: 'ST12378', name: 'Daniel Anderson', college: 'CBA', section: 'BSAC2A', email: 'daniel.anderson@example.com', yearLevel: '2nd Year' },
-        { id: 'ST12379', name: 'Grace Taylor', college: 'CAS', section: 'BSBI4A', email: 'grace.taylor@example.com', yearLevel: '4th Year' }
-      ];
-
-      this.students = baseStudents.map((student, index) => {
-        const assessmentCount = Math.floor(Math.random() * 3) + 1; // 1-3 assessments
-        const assessments = [];
-        
-        // Define different risk profiles for variety
-        // Note: Scores are on 1-7 scale, then converted to 7-49 scale for tertile calculation
-        // Tertile thresholds: ≤17 (At Risk), 18-38 (Moderate), ≥39 (Healthy)
-        // On 1-7 scale: ≤2.43 (At Risk), 2.57-5.43 (Moderate), ≥5.57 (Healthy)
-        const riskProfiles = [
-          // At Risk profile (≤2.43 on 1-7 scale = ≤17 on 7-49 scale)
-          { base: 2.0, variation: 0.3 },
-          // At Risk-Medium profile
-          { base: 2.3, variation: 0.2 },
-          // Moderate-Low profile (2.57-3.5 on 1-7 scale = 18-24.5 on 7-49 scale)
-          { base: 3.0, variation: 0.4 },
-          // Moderate-Medium profile (3.5-4.5 on 1-7 scale = 24.5-31.5 on 7-49 scale)
-          { base: 4.0, variation: 0.5 },
-          // Moderate-High profile (4.5-5.43 on 1-7 scale = 31.5-38 on 7-49 scale)
-          { base: 5.2, variation: 0.2 },
-          // Healthy profile (≥5.57 on 1-7 scale = ≥39 on 7-49 scale)
-          { base: 6.0, variation: 0.4 },
-          // Mixed moderate-healthy profile
-          { base: 4.5, variation: 1.0, mixed: true },
-          // All healthy profile (≥5.57 on all dimensions)
-          { base: 6.2, variation: 0.3, allHealthy: true }
-        ];
-        
-        // Assign risk profile with special handling to ensure at least 5 students have all healthy dimensions
-        let profileIndex;
-        let useSpecialProfile = false;
-        
-        // Ensure first 5 students (indices 0-4) have all healthy dimensions
-        if (index < 5) {
-          profileIndex = 7; // All healthy profile - guarantees all dimensions are healthy (4.0+)
-          useSpecialProfile = true;
-        } else if (index >= 18) { // New students (indices 18-27) get very healthy profiles
-          profileIndex = 5; // Very healthy profile (index 5) for additional healthy students
-        } else if (index >= 5 && index <= 14) { // Moderate students (indices 5-14)
-          if (index <= 9) { // Students 5-9 become all healthy (total of 10 all-healthy students)
-            profileIndex = 7; // All healthy profile
-            useSpecialProfile = true;
-          } else { // Remaining moderate students (indices 10-14) get mixed scores
-            profileIndex = 6; // Mixed moderate-healthy profile
-            useSpecialProfile = true;
-          }
+    // Initialize student data from backend API
+    async initializeStudentData() {
+      try {
+        // Load students from backend API
+        const response = await fetch('http://localhost:3000/api/accounts/students?page=1&limit=100');
+        if (response.ok) {
+          const data = await response.json();
+          this.students = data.students.map(student => ({
+            id: student.id_number,
+            name: student.name,
+            college: student.college,
+            section: student.section,
+            email: student.email,
+            yearLevel: `${student.year_level}${this.getYearSuffix(student.year_level)} Year`,
+            submissionDate: null, // No assessment data initially
+            subscales: null, // No assessment data initially
+            assessmentHistory: [] // No assessment history initially
+          }));
+          console.log('Loaded student data from backend:', this.students);
         } else {
-          profileIndex = index % 5; // Original students use original 5 profiles
+          console.error('Failed to load students from backend');
+          this.students = []; // Empty array if backend fails
         }
-        const profile = riskProfiles[profileIndex];
-        
-        for (let i = 0; i < assessmentCount; i++) {
-          const daysAgo = (i + 1) * 30 + Math.floor(Math.random() * 15); // Spread assessments over months
-          const date = new Date();
-          date.setDate(date.getDate() - daysAgo);
-          
-          // Generate varied scores based on risk profile
-          const timeVariation = (Math.random() - 0.5) * 0.3; // Small time-based variation
-          let subscales;
-          
-          if (profile.allHealthy) {
-            // All dimensions healthy (≥5.57 on 1-7 scale, which is ≥39 on 7-49 scale)
-            subscales = {
-              autonomy: Math.max(5.57, Math.min(7.0, profile.base + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              environmentalMastery: Math.max(5.57, Math.min(7.0, profile.base + 0.1 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              personalGrowth: Math.max(5.57, Math.min(7.0, profile.base + 0.05 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              positiveRelations: Math.max(5.57, Math.min(7.0, profile.base - 0.05 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              purposeInLife: Math.max(5.57, Math.min(7.0, profile.base + 0.02 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              selfAcceptance: Math.max(5.57, Math.min(7.0, profile.base + 0.08 + timeVariation + (Math.random() - 0.5) * profile.variation))
-            };
-          } else if (profile.mixed) {
-            // Mixed: some dimensions healthy (≥5.57), some moderate (2.57-5.43)
-            const dimensions = ['autonomy', 'environmentalMastery', 'personalGrowth', 'positiveRelations', 'purposeInLife', 'selfAcceptance'];
-            const healthyCount = Math.floor(Math.random() * 3) + 2; // 2-4 healthy dimensions
-            const healthyDimensions = dimensions.sort(() => 0.5 - Math.random()).slice(0, healthyCount);
-            
-            subscales = {};
-            dimensions.forEach(dim => {
-              if (healthyDimensions.includes(dim)) {
-                // Healthy dimension (≥5.57 on 1-7 scale = ≥39 on 7-49 scale)
-                subscales[dim] = Math.max(5.57, Math.min(7.0, 6.0 + (Math.random() - 0.5) * 0.6));
-              } else {
-                // Moderate dimension (2.57-5.43 on 1-7 scale = 18-38 on 7-49 scale)
-                subscales[dim] = Math.max(2.57, Math.min(5.43, 4.0 + (Math.random() - 0.5) * 1.5));
-              }
-            });
-          } else {
-            // Standard profile generation (1-7 scale)
-            subscales = {
-              autonomy: Math.max(1.0, Math.min(7.0, profile.base + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              environmentalMastery: Math.max(1.0, Math.min(7.0, profile.base + 0.2 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              personalGrowth: Math.max(1.0, Math.min(7.0, profile.base + 0.1 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              positiveRelations: Math.max(1.0, Math.min(7.0, profile.base - 0.1 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              purposeInLife: Math.max(1.0, Math.min(7.0, profile.base + 0.05 + timeVariation + (Math.random() - 0.5) * profile.variation)),
-              selfAcceptance: Math.max(1.0, Math.min(7.0, profile.base + 0.15 + timeVariation + (Math.random() - 0.5) * profile.variation))
-            };
-          }
-          
-          const assessment = {
-            submissionDate: date.toISOString().split('T')[0],
-            assessmentType: 'Ryff PWB (42-item)',
-            subscales: subscales
-          };
-          assessments.push(assessment);
-        }
-        
-        // Sort assessments by date (newest first)
-        assessments.sort((a, b) => new Date(b.submissionDate) - new Date(a.submissionDate));
-        
-        // Return student with current assessment (most recent) and history
-        return {
-          ...student,
-          submissionDate: assessments[0].submissionDate,
-          subscales: assessments[0].subscales,
-          assessmentHistory: assessments
-        };
-      });
-      
-      console.log('Initialized student data with assessment history:', this.students);
+      } catch (error) {
+        console.error('Error loading students:', error);
+        this.students = []; // Empty array if error occurs
+      }
     },
+    
+    // Helper method to get year suffix
+    getYearSuffix(year) {
+      const suffixes = { 1: 'st', 2: 'nd', 3: 'rd' };
+      return suffixes[year] || 'th';
+    },
+    
+
     
     // Update student data from AccountManagement
     updateStudentData(studentsData) {
@@ -753,6 +636,11 @@ export default {
         
         // Check each student
         this.students.forEach(student => {
+          // Skip students without assessment data
+          if (!student.subscales || !student.subscales[propertyName]) {
+            return;
+          }
+          
           // Check if this dimension is at risk for this student
           const score = student.subscales[propertyName] * 7; // Scale to 7-49 range
           if (score <= this.riskThreshold) {

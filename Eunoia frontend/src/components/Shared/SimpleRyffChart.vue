@@ -1,6 +1,13 @@
 <template>
   <div class="simple-chart-container">
-    <canvas ref="chartCanvas"></canvas>
+    <canvas 
+      v-if="studentData && studentData.length > 0" 
+      ref="chartCanvas"
+      :key="chartKey"
+    ></canvas>
+    <div v-else class="no-data-message">
+      <p>No student data available for chart display</p>
+    </div>
   </div>
 </template>
 
@@ -24,31 +31,35 @@ export default {
   data() {
     return {
       chart: null,
+      chartKey: 0,
       colleges: ['CCS', 'CN', 'CBA', 'COE', 'CAS'],
       subscales: ryffDimensions.map(formatDimensionName),
       scores: {},
       colors: ryffDimensions.map(dim => getDimensionColor(dim))
     };
   },
-  mounted() {
-    // Always use student data from props (from AccountManagement via CounselorDashboard)
-    this.calculateScores(this.studentData || []);
+  async mounted() {
+    await this.$nextTick();
+    await this.calculateScores(this.studentData || []);
   },
   watch: {
-    // Watch for changes in student data and recalculate scores
     studentData: {
-      handler(newData) {
-        this.calculateScores(newData || []);
+      async handler(newData) {
+        this.chartKey++;
+        await this.$nextTick();
+        await this.calculateScores(newData || []);
       },
       deep: true
     }
   },
+  beforeUnmount() {
+    if (this.chart) {
+      this.chart.destroy();
+      this.chart = null;
+    }
+  },
   methods: {
-
-    
-    // Calculate average scores by college from student data
-    calculateScores(students) {
-      // Initialize scores object with empty arrays for each college
+    async calculateScores(students) {
       const scores = {};
       this.colleges.forEach(college => {
         scores[college] = {
@@ -61,16 +72,16 @@ export default {
         };
       });
       
-      // Group scores by college
       students.forEach(student => {
-        if (scores[student.college]) {
+        if (scores[student.college] && student.subscales) {
           for (const subscale in student.subscales) {
-            scores[student.college][subscale].push(student.subscales[subscale]);
+            if (student.subscales[subscale] !== null && student.subscales[subscale] !== undefined) {
+              scores[student.college][subscale].push(student.subscales[subscale]);
+            }
           }
         }
       });
       
-      // Calculate averages
       const averages = {};
       this.colleges.forEach(college => {
         averages[college] = [
@@ -84,20 +95,49 @@ export default {
       });
       
       this.scores = averages;
-      this.createChart();
+      await this.createChart();
     },
     
-    // Calculate average of an array of numbers
     calculateAverage(arr) {
       if (!arr || arr.length === 0) return 0;
       const sum = arr.reduce((total, val) => total + val, 0);
       return sum / arr.length;
     },
     
-    createChart() {
-      const ctx = this.$refs.chartCanvas.getContext('2d');
+    async createChart() {
+      if (this.chart) {
+        this.chart.destroy();
+        this.chart = null;
+      }
       
-      // Prepare data for Chart.js
+      await this.$nextTick();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!this.$refs.chartCanvas) {
+        console.warn('Chart canvas not available');
+        return;
+      }
+      
+      const canvas = this.$refs.chartCanvas;
+      if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+        console.warn('Canvas has no dimensions');
+        return;
+      }
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.warn('Canvas context not available');
+        return;
+      }
+      
+      try {
+        ctx.save();
+        ctx.restore();
+      } catch (error) {
+        console.warn('Canvas context not ready:', error);
+        return;
+      }
+      
       const datasets = this.subscales.map((subscale, index) => {
         return {
           label: subscale,
@@ -108,42 +148,46 @@ export default {
         };
       });
       
-      // Create the chart
-      this.chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: this.colleges,
-          datasets: datasets
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom'
+      try {
+        this.chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: this.colleges,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(tooltipItems) {
+                    return tooltipItems[0].dataset.label + ' - ' + tooltipItems[0].label;
+                  },
+                  label: function(context) {
+                    return 'Score: ' + context.raw.toFixed(1);
+                  }
+                }
+              }
             },
-            tooltip: {
-              callbacks: {
-                title: function(tooltipItems) {
-                  return tooltipItems[0].dataset.label + ' - ' + tooltipItems[0].label;
-                },
-                label: function(context) {
-                  return 'Score: ' + context.raw.toFixed(1);
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 5,
+                ticks: {
+                  stepSize: 1
                 }
               }
             }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 5,
-              ticks: {
-                stepSize: 1
-              }
-            }
           }
-        }
-      });
+        });
+      } catch (error) {
+        console.error('Failed to create chart:', error);
+        this.chart = null;
+      }
     }
   }
 };
@@ -154,5 +198,14 @@ export default {
   width: 100%;
   height: 400px;
   position: relative;
+}
+
+.no-data-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+  font-style: italic;
 }
 </style>

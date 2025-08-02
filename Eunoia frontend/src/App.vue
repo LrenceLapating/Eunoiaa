@@ -1,6 +1,6 @@
 <template>
   <LandingPage v-if="currentPage === 'landing'" @navigate-to-login="currentPage = 'login'" />
-  <Login v-else-if="currentPage === 'login'" @switch-to-landing="currentPage = 'landing'" @counselor-login="currentPage = 'counselor'" @student-login="currentPage = 'student'" />
+    <Login v-else-if="currentPage === 'login'" @switch-to-landing="currentPage = 'landing'" @counselor-login="currentPage = 'counselor'" @student-login="currentPage = 'student'" />
   <CounselorDashboard v-else-if="currentPage === 'counselor'" @switch-to-landing="currentPage = 'landing'" />
   <StudentDashboard v-else-if="currentPage === 'student'" @switch-to-landing="currentPage = 'landing'" />
 </template>
