@@ -5,7 +5,7 @@
            @mouseenter="sidebarExpanded = true" 
            @mouseleave="sidebarExpanded = false">
       <div class="logo-container">
-        <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
+        <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="logo-svg">
         <div class="logo-text" v-show="sidebarExpanded">
           <h1>EUNOIA</h1>
           <p>Counselor Portal</p>
@@ -234,30 +234,13 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td data-college="CCS">CCS</td>
-                      <td>5</td>
-                      <td>3</td>
+                    <tr v-for="college in collegeOverviewData" :key="college.name">
+                      <td :data-college="college.name">{{ college.name }}</td>
+                      <td>{{ college.totalTestTakers }}</td>
+                      <td>{{ college.lowScores }}</td>
                     </tr>
-                    <tr>
-                      <td data-college="CN">CN</td>
-                      <td>1</td>
-                      <td>1</td>
-                    </tr>
-                    <tr>
-                      <td data-college="COE">COE</td>
-                      <td>2</td>
-                      <td>1</td>
-                    </tr>
-                    <tr>
-                      <td data-college="CBA">CBA</td>
-                      <td>2</td>
-                      <td>1</td>
-                    </tr>
-                    <tr>
-                      <td data-college="CAS">CAS</td>
-                      <td>2</td>
-                      <td>1</td>
+                    <tr v-if="collegeOverviewData.length === 0">
+                      <td colspan="3" style="text-align: center; color: #999;">No college data available</td>
                     </tr>
                   </tbody>
                 </table>
@@ -358,6 +341,7 @@
 </template>
 
 <script>
+import authService from '@/services/authService'
 import SimpleRyffChart from '../Shared/SimpleRyffChart.vue'
 import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
@@ -403,6 +387,8 @@ export default {
       riskThreshold: 17,
       // Dimensions will be calculated dynamically
       dimensions: [],
+      // College overview data - will be populated from backend
+      collegeOverviewData: [],
       currentDate: new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
@@ -416,6 +402,8 @@ export default {
   async created() {
     // Initialize student data and wait for it to complete
     await this.initializeStudentData();
+    // Load college overview data
+    await this.loadCollegeOverviewData();
     // Calculate risk dimensions only after student data is loaded
     this.calculateRiskDimensions();
   },
@@ -469,10 +457,8 @@ export default {
     }
   },
   methods: {
-    logout() {
-      localStorage.removeItem('eunoia_logged_in');
-      localStorage.removeItem('eunoia_user_type');
-      this.$emit('switch-to-landing');
+    async logout() {
+      await authService.logout();
     },
     toggleSubmenu(menu) {
       this.showSubmenu = this.showSubmenu === menu ? null : menu;
@@ -493,11 +479,11 @@ export default {
       this.closeModal();
       
       // Log the navigation for debugging
-      console.log(`Navigating to students at risk for ${dimensionName} in ${collegeName}`);
+      // Navigate to at-risk students view
     },
     // Handle navigation to Reports from RyffScoring
     handleNavigateToReports(data) {
-      console.log('Navigating to Reports with data:', data);
+      // Navigate to reports with pre-selected data
       
       // Set the pre-selected student and report type
       this.preSelectedStudent = data.student;
@@ -507,7 +493,7 @@ export default {
       this.currentView = 'reports';
     },
     refreshData() {
-      console.log('Refreshing dashboard data...');
+      // Refresh dashboard data
       // Implement actual refresh logic here
     },
     
@@ -589,7 +575,7 @@ export default {
             subscales: null, // No assessment data initially
             assessmentHistory: [] // No assessment history initially
           }));
-          console.log('Loaded student data from backend:', this.students);
+          // Student data loaded successfully
         } else {
           console.error('Failed to load students from backend');
           this.students = []; // Empty array if backend fails
@@ -606,7 +592,26 @@ export default {
       return suffixes[year] || 'th';
     },
     
-
+    // Load college overview data from backend
+    async loadCollegeOverviewData() {
+      try {
+        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        if (response.ok) {
+          const data = await response.json();
+          this.collegeOverviewData = data.colleges.map(college => ({
+            name: college.name,
+            totalTestTakers: college.totalUsers || 0,
+            lowScores: Math.floor((college.totalUsers || 0) * 0.3) // Placeholder: 30% low scores
+          }));
+        } else {
+          console.error('Failed to load college overview data from backend');
+          this.collegeOverviewData = [];
+        }
+      } catch (error) {
+        console.error('Error loading college overview data:', error);
+        this.collegeOverviewData = [];
+      }
+    },
     
     // Update student data from AccountManagement
     updateStudentData(studentsData) {
@@ -671,19 +676,13 @@ export default {
           });
         }
         
-        // Debug log for Environmental Mastery in CCS
-        if (dimensionName === 'Environmental Mastery' && collegeRisks['CCS']) {
-          console.log('Environmental Mastery - CCS at-risk students:', 
-            collegeRisks['CCS'].studentCount,
-            'Student IDs:', collegeRisks['CCS'].studentIds);
-        }
+        // Track at-risk students for analysis
       }
       
       // Update the dimensions array
       this.dimensions = calculatedDimensions;
       
-      // Log all dimensions for debugging
-      console.log('Calculated risk dimensions:', JSON.stringify(this.dimensions));
+      // Risk dimensions calculated and updated
     }
   }
 }

@@ -576,7 +576,7 @@ export default {
   mounted() {
     // Double-check that filters are applied correctly after mounting
     if (this.selectedDimension) {
-      console.log("Component mounted, re-applying dimension filter");
+      // Re-apply dimension filter on component mount
       this.filterByDimensionAndCollege();
     }
   },
@@ -752,8 +752,7 @@ export default {
       this.riskLevelFilter = 'all';
       this.searchQuery = '';
       
-      console.log(`FILTERING: Dimension=${this.selectedDimension}, College=${this.collegeFilter}`);
-      console.log(`Risk threshold: ${this.riskThresholds.q1}`);
+      // Apply filtering based on dimension and college criteria
       
       // Map from dashboard dimension names to student data property names
       const dimensionMapping = {
@@ -774,7 +773,7 @@ export default {
       
       // Start with all students
       let result = [...this.students];
-      console.log(`Starting with ${result.length} students`);
+      // Filter students based on criteria
       
       // Apply both filters at once to ensure correct results
       result = result.filter(student => {
@@ -788,7 +787,7 @@ export default {
         if (subscaleKey && student.subscales[subscaleKey] !== undefined) {
           const score = student.subscales[subscaleKey] * 7; // Scale to 7-49 range
           dimensionMatch = score <= this.riskThresholds.q1;
-          console.log(`${student.name} (${student.college}): ${subscaleKey}=${score}, at risk: ${dimensionMatch}`);
+          // Student risk assessment check
         } else if (subscaleKey) {
           dimensionMatch = false;
         }
@@ -797,12 +796,7 @@ export default {
         return shouldInclude;
       });
       
-      console.log(`RESULT: ${result.length} students match criteria`);
-      if (result.length > 0) {
-        console.log('Filtered students:', result.map(s => `${s.name} (${s.college})`));
-      } else {
-        console.log('No students match the criteria');
-      }
+      // Update filtered results
       
       this.filteredStudents = result;
     },
@@ -848,10 +842,8 @@ export default {
         return;
       }
       
-      console.log('Contacting student:', student);
-      
-      const studentEmail = this.getStudentEmail(student);
-      console.log('Student email:', studentEmail);
+      // Contact student via email
+        const studentEmail = student.email;
       
       const subject = encodeURIComponent(`Follow-up on Your Well-being Assessment - ${student.name}`);
       
@@ -871,7 +863,7 @@ export default {
       
       // Open Gmail directly with pre-filled compose window
       const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studentEmail)}&su=${subject}&body=${body}`;
-      console.log('Opening Gmail compose:', gmailComposeUrl);
+      // Open Gmail compose window
       
       try {
         // Open Gmail compose in a new tab
@@ -920,7 +912,7 @@ export default {
         return;
       }
       
-      console.log('Generating report for student:', student);
+      // Generate individual student report
       
       // Close the modal first
       this.showDetailsModal = false;

@@ -3,7 +3,6 @@
     <canvas 
       v-if="studentData && studentData.length > 0" 
       ref="chartCanvas"
-      :key="chartKey"
     ></canvas>
     <div v-else class="no-data-message">
       <p>No student data available for chart display</p>
@@ -31,30 +30,46 @@ export default {
   data() {
     return {
       chart: null,
-      chartKey: 0,
       colleges: ['CCS', 'CN', 'CBA', 'COE', 'CAS'],
       subscales: ryffDimensions.map(formatDimensionName),
       scores: {},
-      colors: ryffDimensions.map(dim => getDimensionColor(dim))
+      colors: ryffDimensions.map(dim => getDimensionColor(dim)),
+      _isDestroyed: false,
+      isCreatingChart: false
     };
   },
   async mounted() {
     await this.$nextTick();
-    await this.calculateScores(this.studentData || []);
+    // Add a small delay to ensure DOM is fully ready
+    setTimeout(async () => {
+      if (this.$refs.chartCanvas && !this._isDestroyed) {
+        await this.calculateScores(this.studentData || []);
+      }
+    }, 300);
   },
   watch: {
     studentData: {
       async handler(newData) {
-        this.chartKey++;
-        await this.$nextTick();
-        await this.calculateScores(newData || []);
+        if (this._isDestroyed || this.isCreatingChart) return;
+        
+        // Add delay to ensure any pending operations complete
+        setTimeout(async () => {
+          if (this.$refs.chartCanvas && !this._isDestroyed && !this.isCreatingChart) {
+            await this.calculateScores(newData || []);
+          }
+        }, 150);
       },
       deep: true
     }
   },
   beforeUnmount() {
+    this._isDestroyed = true;
     if (this.chart) {
-      this.chart.destroy();
+      try {
+        this.chart.destroy();
+      } catch (error) {
+        console.warn('Error destroying chart:', error);
+      }
       this.chart = null;
     }
   },
@@ -105,88 +120,118 @@ export default {
     },
     
     async createChart() {
-      if (this.chart) {
-        this.chart.destroy();
-        this.chart = null;
-      }
+      // Check if component is being destroyed or already creating
+      if (this._isDestroyed || this.isCreatingChart) return;
       
-      await this.$nextTick();
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      if (!this.$refs.chartCanvas) {
-        console.warn('Chart canvas not available');
-        return;
-      }
-      
-      const canvas = this.$refs.chartCanvas;
-      if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
-        console.warn('Canvas has no dimensions');
-        return;
-      }
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        console.warn('Canvas context not available');
-        return;
-      }
+      this.isCreatingChart = true;
       
       try {
-        ctx.save();
-        ctx.restore();
-      } catch (error) {
-        console.warn('Canvas context not ready:', error);
-        return;
-      }
+        if (this.chart) {
+          try {
+            this.chart.destroy();
+          } catch (error) {
+            console.warn('Error destroying existing chart:', error);
+          }
+          this.chart = null;
+        }
+        
+        await this.$nextTick();
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Double check component state and canvas availability
+        if (this._isDestroyed || !this.$refs.chartCanvas) {
+          console.warn('Chart canvas not available or component destroyed');
+          return;
+        }
+        
+        const canvas = this.$refs.chartCanvas;
+        if (!canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+          console.warn('Canvas has no dimensions or is not available');
+          return;
+        }
+        
+        // Verify canvas is still attached to DOM
+        if (!canvas.isConnected) {
+          console.warn('Canvas is not connected to DOM');
+          return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          console.warn('Canvas context not available');
+          return;
+        }
+        
+        // Additional safety checks for canvas context
+        try {
+          // Test if context is functional
+          ctx.save();
+          ctx.restore();
+          
+          // Final check if component is still mounted
+          if (this._isDestroyed) {
+            console.warn('Component is being destroyed');
+            return;
+          }
+        } catch (error) {
+          console.warn('Canvas context not ready:', error);
+          return;
+        }
       
-      const datasets = this.subscales.map((subscale, index) => {
-        return {
-          label: subscale,
-          data: this.colleges.map(college => this.scores[college] ? this.scores[college][index] : 0),
-          backgroundColor: this.colors[index],
-          borderColor: this.colors[index].replace('0.7', '1'),
-          borderWidth: 1
-        };
-      });
-      
-      try {
-        this.chart = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: this.colleges,
-            datasets: datasets
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'bottom'
+        const datasets = this.subscales.map((subscale, index) => {
+          return {
+            label: subscale,
+            data: this.colleges.map(college => this.scores[college] ? this.scores[college][index] : 0),
+            backgroundColor: this.colors[index],
+            borderColor: this.colors[index].replace('0.7', '1'),
+            borderWidth: 1
+          };
+        });
+        
+        try {
+          this.chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: this.colleges,
+              datasets: datasets
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'bottom'
+                },
+                tooltip: {
+                  callbacks: {
+                    title: function(tooltipItems) {
+                      return tooltipItems[0].dataset.label + ' - ' + tooltipItems[0].label;
+                    },
+                    label: function(context) {
+                      return 'Score: ' + context.raw.toFixed(1);
+                    }
+                  }
+                }
               },
-              tooltip: {
-                callbacks: {
-                  title: function(tooltipItems) {
-                    return tooltipItems[0].dataset.label + ' - ' + tooltipItems[0].label;
-                  },
-                  label: function(context) {
-                    return 'Score: ' + context.raw.toFixed(1);
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 5,
+                  ticks: {
+                    stepSize: 1
                   }
                 }
               }
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                max: 5,
-                ticks: {
-                  stepSize: 1
-                }
-              }
             }
-          }
-        });
+          });
+        } catch (error) {
+          console.error('Failed to create chart:', error);
+          this.chart = null;
+        }
       } catch (error) {
-        console.error('Failed to create chart:', error);
-        this.chart = null;
+        console.error('Error in createChart:', error);
+      } finally {
+        this.isCreatingChart = false;
       }
     }
   }

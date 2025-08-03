@@ -13,7 +13,7 @@
     <div class="login-left fade-in">
       <div class="login-form">
         <div class="logo" style="margin-bottom: 30px;">
-          <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
+          <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="logo-svg">
           <h1>EUNOIA</h1>
         </div>
         
@@ -109,6 +109,8 @@
 </template>
 
 <script>
+import authService from '@/services/authService'
+
 export default {
   name: 'LoginPage',
   data() {
@@ -135,45 +137,26 @@ export default {
       this.isLoading = true;
       this.showNotification = false;
       
-      console.log('Login attempt:', { username: this.email, password: this.password ? '***' : 'empty' });
+      // Login attempt validation
       
       try {
-        // First try student login
-        const studentResponse = await fetch('http://localhost:3000/api/auth/student/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            username: this.email,
-            password: this.password
-          })
-        });
+        // Try student login first
+        const studentResult = await authService.loginStudent(this.email, this.password);
         
-        console.log('Student login response status:', studentResponse.status);
-        
-        if (studentResponse.ok) {
-          const studentData = await studentResponse.json();
-          console.log('Student login successful:', studentData);
-          localStorage.setItem('studentToken', studentData.token);
-          localStorage.setItem('studentData', JSON.stringify(studentData.student));
-          localStorage.setItem('eunoia_user_type', 'student');
-          this.notificationMessage = 'Student login successful! Welcome back.';
+        if (studentResult.success) {
+          this.notificationMessage = studentResult.message || 'Student login successful! Welcome back.';
           this.showNotification = true;
           setTimeout(() => {
             this.$emit('student-login');
           }, 1500);
           return;
-        } else {
-          const errorData = await studentResponse.json().catch(() => ({ error: 'Unknown error' }));
-          console.log('Student login failed:', studentResponse.status, errorData);
         }
         
-        // If student login fails, try counselor login (hardcoded for now)
-        if (this.email === 'counselor@eunoia.edu' && this.password === 'counselor123') {
-          localStorage.setItem('eunoia_logged_in', 'true');
-          localStorage.setItem('eunoia_user_type', 'counselor');
-          this.notificationMessage = 'Counselor login successful!';
+        // If student login fails, try counselor login
+        const counselorResult = await authService.loginCounselor(this.email, this.password);
+        
+        if (counselorResult.success) {
+          this.notificationMessage = counselorResult.message || 'Counselor login successful!';
           this.showNotification = true;
           setTimeout(() => {
             this.$emit('counselor-login');
@@ -182,7 +165,7 @@ export default {
         }
         
         // If both fail, show error
-        this.notificationMessage = 'Invalid credentials. For students, use your ID number or email with password "student123". For counselors, use counselor@eunoia.edu / counselor123.';
+        this.notificationMessage = counselorResult.error || 'Invalid credentials. Please check your username and password.';
         this.showNotification = true;
         
       } catch (error) {

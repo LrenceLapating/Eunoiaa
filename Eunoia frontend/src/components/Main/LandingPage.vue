@@ -4,7 +4,7 @@
     <header id="header">
         <div class="container header-container">
             <div class="logo">
-                <img src="https://via.placeholder.com/32x32/00b3b0/ffffff?text=E" alt="EUNOIA Logo">
+                <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="logo-svg">
                 <h1>EUNOIA</h1>
             </div>
             <nav>

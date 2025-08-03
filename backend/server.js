@@ -2,14 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const accountRoutes = require('./routes/accounts');
 const { router: authRoutes } = require('./routes/auth');
 const { supabase } = require('./config/database');
+const { SessionManager } = require('./middleware/sessionManager');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
+const sessionManager = new SessionManager();
 
 // Security middleware
 app.use(helmet());
@@ -28,6 +31,10 @@ app.use(limiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+
+// Trust proxy for accurate IP addresses
+app.set('trust proxy', 1);
 
 // Routes
 app.use('/api/accounts', accountRoutes);
@@ -73,10 +80,22 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// Session cleanup job - runs every hour
+setInterval(async () => {
+  try {
+    await sessionManager.cleanupExpiredSessions();
+    console.log('🧹 Session cleanup completed');
+  } catch (error) {
+    console.error('❌ Session cleanup failed:', error);
+  }
+}, 60 * 60 * 1000); // 1 hour
+
 app.listen(PORT, () => {
   console.log(`🚀 EUNOIA Backend Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:8080'}`);
+  console.log(`🔐 Session-based authentication enabled`);
+  console.log(`🧹 Session cleanup job scheduled every hour`);
 });
 
 module.exports = app;

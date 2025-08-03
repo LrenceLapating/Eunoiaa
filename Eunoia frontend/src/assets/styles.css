@@ -45,6 +45,12 @@ header {
     margin-right: 10px;
 }
 
+.logo-svg {
+  height: 48px;
+  width: 48px;
+  margin-right: 12px;
+}
+
 .logo h1 {
     font-size: 24px;
     font-weight: 600;
@@ -539,4 +545,4 @@ footer {
 .step.visible {
     opacity: 1;
     transform: translateY(0);
-} 
+}

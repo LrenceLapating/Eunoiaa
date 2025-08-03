@@ -24,9 +24,14 @@
           <p class="version-description">{{ version.description }}</p>
           <p class="version-scale">Scale: {{ version.items }} items</p>
           
-          <button class="view-button" @click.stop="viewVersion(version)">
-            <i class="fas fa-eye"></i> View
-          </button>
+          <div class="version-actions">
+            <button class="preview-button" @click.stop="previewVersion(version)">
+              <i class="fas fa-search"></i> Preview
+            </button>
+            <button class="view-button" @click.stop="viewVersion(version)">
+              <i class="fas fa-download"></i> Use
+            </button>
+          </div>
         </div>
       </div>
 
@@ -56,39 +61,35 @@ export default {
       savedVersions: [
         {
           id: 1,
-          title: 'Standard Assessment',
-          description: 'Default assessment with standard introduction',
+          title: 'Comprehensive Assessment',
+          description: 'Complete 84-item assessment for detailed analysis',
           items: '84',
           type: 'complete',
           lastModified: '2023-05-15'
         },
         {
           id: 2,
-          title: 'Quick Check-in (42 items)',
-          description: 'Brief assessment for regular monitoring',
+          title: 'Brief Assessment',
+          description: 'Quick 42-item assessment for regular monitoring',
           items: '42',
           type: 'brief',
           lastModified: '2023-06-10'
-        },
-        {
-          id: 3,
-          title: 'Comprehensive Evaluation',
-          description: 'Full-scale detailed assessment',
-          items: '84',
-          type: 'complete',
-          lastModified: '2023-04-22'
         }
       ]
     };
   },
   methods: {
+    previewVersion(version) {
+      // Preview version functionality
+      this.$emit('preview-version', version);
+    },
     viewVersion(version) {
-      console.log('Viewing version:', version);
+      // Apply selected version
       this.$emit('select-version', version);
     },
     createNewVersion() {
       // This would typically navigate to a create form or open a modal
-      console.log('Creating new version');
+      // Create new version functionality
       this.$emit('create-version');
     }
   }
@@ -252,27 +253,53 @@ export default {
   font-weight: 500;
 }
 
-.view-button {
-  align-self: flex-end;
-  background-color: transparent;
-  border: 1px solid var(--primary);
-  color: var(--primary);
-  padding: 8px 15px;
-  border-radius: var(--border-radius);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
+.version-actions {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
   display: flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.2s;
-  z-index: 1;
+  gap: 8px;
+}
+
+.preview-button {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.preview-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.5);
+}
+
+.view-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .view-button:hover {
-  background-color: var(--primary);
-  color: white;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+}
+
+.preview-button i,
+.view-button i {
+  margin-right: 4px;
 }
 
 

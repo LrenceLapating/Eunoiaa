@@ -2,8 +2,10 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/database');
+const { SessionManager, verifyStudentSession, verifyCounselorSession } = require('../middleware/sessionManager');
 
 const router = express.Router();
+const sessionManager = new SessionManager();
 
 // Student login endpoint
 router.post('/student/login', async (req, res) => {
@@ -47,23 +49,38 @@ router.post('/student/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        id: student.id,
-        id_number: student.id_number,
-        email: student.email,
-        name: student.name,
-        college: student.college,
-        role: 'student'
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
+    // Create session in database
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
+    
+    const sessionData = await sessionManager.createSession(
+      student.id,
+      'student',
+      ipAddress,
+      userAgent
     );
+
+    // Log login activity
+    await sessionManager.logActivity(
+      student.id,
+      'student',
+      'login',
+      { method: 'password', id_number: student.id_number },
+      ipAddress,
+      userAgent
+    );
+
+    // Set session cookie (HTTP-only for security)
+    res.cookie('sessionToken', sessionData.sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
 
     res.json({
       message: 'Login successful',
-      token,
+      sessionId: sessionData.sessionId,
       student: {
         id: student.id,
         name: student.name,
@@ -142,33 +159,94 @@ router.post('/student/change-password', async (req, res) => {
   }
 });
 
-// Middleware to verify student JWT token
-const verifyStudentToken = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!token) {
-    return res.status(401).json({ error: 'Access denied. No token provided.' });
-  }
-
+// Add counselor login endpoint
+router.post('/counselor/login', async (req, res) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    if (decoded.role !== 'student') {
-      return res.status(403).json({ error: 'Access denied. Student role required.' });
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
     }
-    req.student = decoded;
-    next();
+
+    // Find counselor by email
+    const { data: counselors, error } = await supabase
+      .from('counselors')
+      .select('*')
+      .eq('email', email)
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!counselors || counselors.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const counselor = counselors[0];
+
+    // Check password
+    const passwordValid = await bcrypt.compare(password, counselor.password_hash);
+
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Create session in database
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
+    
+    const sessionData = await sessionManager.createSession(
+      counselor.id,
+      'counselor',
+      ipAddress,
+      userAgent
+    );
+
+    // Log login activity
+    await sessionManager.logActivity(
+      counselor.id,
+      'counselor',
+      'login',
+      { method: 'password', email: counselor.email },
+      ipAddress,
+      userAgent
+    );
+
+    // Set session cookie
+    res.cookie('sessionToken', sessionData.sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
+
+    res.json({
+      message: 'Login successful',
+      sessionId: sessionData.sessionId,
+      counselor: {
+        id: counselor.id,
+        name: counselor.name,
+        email: counselor.email,
+        department: counselor.department,
+        role: counselor.role
+      }
+    });
+
   } catch (error) {
-    res.status(400).json({ error: 'Invalid token.' });
+    console.error('Counselor login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-};
+});
 
 // Get student profile (protected route)
-router.get('/student/profile', verifyStudentToken, async (req, res) => {
+router.get('/student/profile', verifyStudentSession, async (req, res) => {
   try {
     const { data: student, error } = await supabase
       .from('students')
       .select('id, name, email, id_number, college, section, year_level, created_at')
-      .eq('id', req.student.id)
+      .eq('id', req.user.id)
       .single();
 
     if (error) {
@@ -182,4 +260,70 @@ router.get('/student/profile', verifyStudentToken, async (req, res) => {
   }
 });
 
-module.exports = { router, verifyStudentToken };
+// Get counselor profile (protected route)
+router.get('/counselor/profile', verifyCounselorSession, async (req, res) => {
+  try {
+    const { data: counselor, error } = await supabase
+      .from('counselors')
+      .select('id, name, email, department, role, created_at')
+      .eq('id', req.user.id)
+      .single();
+
+    if (error) {
+      return res.status(404).json({ error: 'Counselor not found' });
+    }
+
+    res.json({ counselor });
+  } catch (error) {
+    console.error('Profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Logout endpoint
+router.post('/logout', async (req, res) => {
+  try {
+    // Get session token from cookie or header
+    let sessionToken = req.cookies?.sessionToken;
+    
+    if (!sessionToken) {
+      const authHeader = req.header('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        sessionToken = authHeader.replace('Bearer ', '');
+      }
+    }
+
+    if (sessionToken) {
+      // Validate session to get user info for logging
+      const session = await sessionManager.validateSession(sessionToken);
+      
+      if (session) {
+        // Log logout activity
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        const userAgent = req.get('User-Agent');
+        
+        await sessionManager.logActivity(
+          session.user_id,
+          session.user_type,
+          'logout',
+          { method: 'manual' },
+          ipAddress,
+          userAgent
+        );
+      }
+
+      // Deactivate session
+      await sessionManager.deactivateSession(sessionToken);
+    }
+
+    // Clear session cookie
+    res.clearCookie('sessionToken');
+    
+    res.json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+module.exports = { router };

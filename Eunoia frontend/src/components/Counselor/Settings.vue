@@ -473,13 +473,16 @@ export default {
       }, 3000);
       
       // Here you would typically send the settings to your backend
-      console.log('Saving settings:', {
+      // Save settings configuration
+      const settingsData = {
         account: this.accountSettings,
         system: this.systemSettings,
         notifications: this.notificationSettings,
         security: this.securitySettings,
         data: this.dataSettings
-      });
+      };
+      // TODO: Implement API call to save settings
+      // await this.saveSettingsToBackend(settingsData);
     },
     
     resetToDefaults() {

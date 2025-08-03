@@ -1,8 +1,18 @@
 <template>
-  <LandingPage v-if="currentPage === 'landing'" @navigate-to-login="currentPage = 'login'" />
+  <div v-if="isLoading" class="loading-screen">
+    <div class="loading-container">
+      <!-- Gmail-style rotating logo -->
+      <div class="logo-container">
+        <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="rotating-logo">
+      </div>
+    </div>
+  </div>
+  <div v-else>
+    <LandingPage v-if="currentPage === 'landing'" @navigate-to-login="currentPage = 'login'" />
     <Login v-else-if="currentPage === 'login'" @switch-to-landing="currentPage = 'landing'" @counselor-login="currentPage = 'counselor'" @student-login="currentPage = 'student'" />
-  <CounselorDashboard v-else-if="currentPage === 'counselor'" @switch-to-landing="currentPage = 'landing'" />
-  <StudentDashboard v-else-if="currentPage === 'student'" @switch-to-landing="currentPage = 'landing'" />
+    <CounselorDashboard v-else-if="currentPage === 'counselor'" @switch-to-landing="currentPage = 'landing'" />
+    <StudentDashboard v-else-if="currentPage === 'student'" @switch-to-landing="currentPage = 'landing'" />
+  </div>
 </template>
 
 <script>
@@ -10,6 +20,7 @@ import LandingPage from './components/Main/LandingPage.vue'
 import Login from './components/Main/Login.vue'
 import CounselorDashboard from './components/Counselor/CounselorDashboard.vue'
 import StudentDashboard from './components/Student/StudentDashboard.vue'
+import authService from './services/authService'
 
 export default {
   name: 'App',
@@ -20,29 +31,59 @@ export default {
     StudentDashboard
   },
   data() {
-    let userType = localStorage.getItem('eunoia_user_type');
-    let loggedIn = localStorage.getItem('eunoia_logged_in') === 'true';
-    let currentPage = 'landing';
-    if (userType === 'counselor' && loggedIn) currentPage = 'counselor';
-    else if (userType === 'student') currentPage = 'student';
-    return { currentPage };
+    return { 
+      currentPage: null, // Don't set default page until auth check completes
+      isLoading: true
+    };
   },
-  mounted() {
-    // Listen for login/logout events to update localStorage
-    this.$on && this.$on('counselor-login', () => {
-      localStorage.setItem('eunoia_logged_in', 'true');
-      localStorage.setItem('eunoia_user_type', 'counselor');
-      this.currentPage = 'counselor';
-    });
-    this.$on && this.$on('student-login', () => {
-      localStorage.setItem('eunoia_user_type', 'student');
-      this.currentPage = 'student';
-    });
-    this.$on && this.$on('switch-to-landing', () => {
-      localStorage.removeItem('eunoia_logged_in');
-      localStorage.removeItem('eunoia_user_type');
+  async mounted() {
+    // Initialize auth service and check for existing session
+    try {
+      const authState = await authService.initialize();
+      
+      if (authState.userType === 'student') {
+        this.currentPage = 'student';
+      } else if (authState.userType === 'counselor') {
+        this.currentPage = 'counselor';
+      } else {
+        this.currentPage = 'landing';
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
       this.currentPage = 'landing';
-    });
+    } finally {
+      // Hide loading immediately after auth check
+      this.isLoading = false;
+    }
+
+    // Listen for authentication events
+    window.addEventListener('auth-event', this.handleAuthEvent);
+  },
+  beforeUnmount() {
+    // Clean up event listener
+    window.removeEventListener('auth-event', this.handleAuthEvent);
+  },
+  methods: {
+    handleAuthEvent(event) {
+      const { type, data } = event.detail;
+      
+      switch (type) {
+        case 'student-login':
+          this.currentPage = 'student';
+          break;
+        case 'counselor-login':
+          this.currentPage = 'counselor';
+          break;
+        case 'logout':
+        case 'session-expired':
+          this.currentPage = 'landing';
+          break;
+        default:
+          break;
+      }
+    },
+    
+    // Methods can be added here as needed
   }
 }
 </script>
@@ -70,7 +111,47 @@ body {
   --dim-2: #2196f3;
   --dim-3: #9c27b0;
   --dim-4: #ff9800;
-  --dim-5: #f44336;
-  --dim-6: #607d8b;
+}
+
+/* Loading Screen Styles */
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Logo Container - Gmail size */
+.logo-container {
+  width: 64px;
+  height: 64px;
+}
+
+/* Zooming Logo - Gmail style */
+.rotating-logo {
+  width: 100%;
+  height: 100%;
+  animation: gmailZoom 1.5s ease-in-out infinite;
+}
+
+@keyframes gmailZoom {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
 </style>

@@ -19,8 +19,9 @@
     </div>
 
     <!-- Saved Versions Section -->
-    <saved-versions v-if="currentView === 'versions'" 
+    <saved-versions v-if="currentView === 'versions'"
                    @select-version="selectVersion"
+                   @preview-version="previewSavedVersion"
                    @create-version="createNewVersion" />
 
     <!-- Assessment History Section -->
@@ -85,17 +86,29 @@
             </div>
             
             <ul class="selected-years-list">
-              <li v-if="college.years.first > 0">
-                <i class="fas fa-circle bullet"></i> 1st Year: {{ college.years.first }} sections
+              <li v-if="college.sectionsByYear.first.length > 0">
+                <i class="fas fa-circle bullet"></i> 1st Year:
+                <div class="sections-list">
+                  <span v-for="(section, idx) in college.sectionsByYear.first" :key="idx" class="section-name">{{ section }}</span>
+                </div>
               </li>
-              <li v-if="college.years.second > 0">
-                <i class="fas fa-circle bullet"></i> 2nd Year: {{ college.years.second }} sections
+              <li v-if="college.sectionsByYear.second.length > 0">
+                <i class="fas fa-circle bullet"></i> 2nd Year:
+                <div class="sections-list">
+                  <span v-for="(section, idx) in college.sectionsByYear.second" :key="idx" class="section-name">{{ section }}</span>
+                </div>
               </li>
-              <li v-if="college.years.third > 0">
-                <i class="fas fa-circle bullet"></i> 3rd Year: {{ college.years.third }} sections
+              <li v-if="college.sectionsByYear.third.length > 0">
+                <i class="fas fa-circle bullet"></i> 3rd Year:
+                <div class="sections-list">
+                  <span v-for="(section, idx) in college.sectionsByYear.third" :key="idx" class="section-name">{{ section }}</span>
+                </div>
               </li>
-              <li v-if="college.years.fourth > 0">
-                <i class="fas fa-circle bullet"></i> 4th Year: {{ college.years.fourth }} sections
+              <li v-if="college.sectionsByYear.fourth.length > 0">
+                <i class="fas fa-circle bullet"></i> 4th Year:
+                <div class="sections-list">
+                  <span v-for="(section, idx) in college.sectionsByYear.fourth" :key="idx" class="section-name">{{ section }}</span>
+                </div>
               </li>
             </ul>
           </div>
@@ -209,10 +222,227 @@
             <span class="preview-label">Custom Message:</span>
             <div class="preview-message">{{ customMessage || 'No custom message' }}</div>
           </div>
+          
+          <!-- 42-Item Questionnaire Preview -->
+          <div v-if="selectedVersion === '42'" class="questionnaire-preview">
+            <div class="questionnaire-header">
+              <h3>{{ questionnaire.instructions.title }}</h3>
+              <p class="questionnaire-description">{{ questionnaire.instructions.description }}</p>
+              
+              <div class="scale-legend">
+                <h4>Rating Scale:</h4>
+                <div class="scale-items">
+                  <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="scale-item">
+                    <span class="scale-number">{{ value }}</span>
+                    <span class="scale-label">{{ label }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="questionnaire-items">
+              <h4>Assessment Items ({{ questionnaire.items.length }} total):</h4>
+              <div class="items-container">
+                <div v-for="item in questionnaire.items" :key="item.id" class="questionnaire-item">
+                  <div class="item-number">{{ item.id }}.</div>
+                  <div class="item-content">
+                    <p class="item-text">{{ item.text }}</p>
+                    <div class="item-meta">
+                      <span class="dimension-tag">{{ formatDimensionName(item.dimension) }}</span>
+                      <span v-if="item.reverse" class="reverse-tag">Reverse Scored</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="secondary-button" @click="showPreview = false">Close</button>
           <button class="primary-button" @click="confirmSend">Confirm & Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Versions Modal -->
+    <div class="modal" v-if="showVersionsModal">
+      <div class="modal-content versions-modal">
+        <div class="modal-header">
+          <h2>Assessment Versions</h2>
+          <button class="close-button" @click="showVersionsModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="version-tabs">
+            <button 
+              class="version-tab" 
+              :class="{ active: selectedVersion === '84' }"
+              @click="selectedVersion = '84'"
+            >
+              84 Items (Complete)
+            </button>
+            <button 
+              class="version-tab" 
+              :class="{ active: selectedVersion === '42' }"
+              @click="selectedVersion = '42'"
+            >
+              42 Items (Brief)
+            </button>
+          </div>
+          
+          <!-- 84-Item Version Info -->
+          <div v-if="selectedVersion === '84'" class="version-content">
+            <div class="version-info">
+              <h3>84-Item Ryff Scales of Psychological Well-Being</h3>
+              <p class="version-description">
+                The complete version provides the most comprehensive assessment of psychological well-being across all six dimensions. 
+                This version offers the highest reliability and validity for research and clinical applications.
+              </p>
+              <div class="version-details">
+                <div class="detail-item">
+                  <span class="detail-label">Items per dimension:</span>
+                  <span class="detail-value">14 items each</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Estimated completion time:</span>
+                  <span class="detail-value">20-25 minutes</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Reliability:</span>
+                  <span class="detail-value">Highest (α > .85)</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 84-Item Assessment Form Preview -->
+            <div class="assessment-form">
+              <div class="form-header">
+                <h3>{{ questionnaire.instructions.title }}</h3>
+                <p class="form-description">{{ questionnaire.instructions.description }}</p>
+                
+                <div class="rating-scale-header">
+                  <h4>Please rate each statement using the scale below:</h4>
+                  <div class="scale-options">
+                    <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="scale-option">
+                      <span class="scale-value">{{ value }}</span>
+                      <span class="scale-text">{{ label }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-questions">
+                <div v-for="item in questionnaire.items" :key="item.id" class="question-item">
+                  <div class="question-header">
+                    <span class="question-number">{{ item.id }}.</span>
+                    <div class="question-content">
+                      <p class="question-text">{{ item.text }}</p>
+                      <div class="question-meta">
+                        <span class="dimension-badge">{{ formatDimensionName(item.dimension) }}</span>
+                        <span v-if="item.reverse" class="reverse-badge">Reverse Scored</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="rating-options">
+                    <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="rating-option">
+                      <input type="radio" :name="`preview-${item.id}`" :value="value" disabled>
+                      <label class="rating-label">
+                        <span class="rating-number">{{ value }}</span>
+                        <span class="rating-text">{{ label }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="preview-note">
+                  <p><strong>All {{ questionnaire.items.length }} items displayed</strong></p>
+                  <p>The complete assessment includes all {{ questionnaire.items.length }} items across 6 psychological well-being dimensions.</p>
+                </div>
+              </div>
+              
+              <div class="form-footer">
+                <div class="completion-info">
+                  <div class="info-item">
+                    <i class="fas fa-clock"></i>
+                    <span>Estimated completion: 20-25 minutes</span>
+                  </div>
+                  <div class="info-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span>{{ questionnaire.items.length }} total items</span>
+                  </div>
+                  <div class="info-item">
+                    <i class="fas fa-brain"></i>
+                    <span>6 well-being dimensions</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 42-Item Version Content -->
+           <div v-if="selectedVersion === '42'" class="version-content">
+             <div class="assessment-form">
+               <div class="form-header">
+                 <h3>{{ questionnaire.instructions.title }}</h3>
+                 <p class="form-description">{{ questionnaire.instructions.description }}</p>
+                 
+                 <div class="rating-scale-header">
+                   <h4>Please rate each statement using the scale below:</h4>
+                   <div class="scale-options">
+                     <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="scale-option">
+                       <span class="scale-value">{{ value }}</span>
+                       <span class="scale-text">{{ label }}</span>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+               
+               <div class="form-questions">
+                 <div v-for="item in questionnaire.items" :key="item.id" class="question-item">
+                   <div class="question-header">
+                     <span class="question-number">{{ item.id }}.</span>
+                     <div class="question-content">
+                       <p class="question-text">{{ item.text }}</p>
+                       <div class="question-meta">
+                         <span class="dimension-badge">{{ formatDimensionName(item.dimension) }}</span>
+                         <span v-if="item.reverse" class="reverse-badge">Reverse Scored</span>
+                       </div>
+                     </div>
+                   </div>
+                   
+                   <div class="rating-options">
+                     <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="rating-option">
+                       <input 
+                         type="radio" 
+                         :id="`q${item.id}_${value}`" 
+                         :name="`question_${item.id}`" 
+                         :value="value"
+                         disabled
+                       >
+                       <label :for="`q${item.id}_${value}`" class="rating-label">
+                         <span class="rating-number">{{ value }}</span>
+                         <span class="rating-text">{{ label }}</span>
+                       </label>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+               
+               <div class="form-footer">
+                 <div class="completion-info">
+                   <p><strong>Total Questions:</strong> {{ questionnaire.items.length }}</p>
+                   <p><strong>Estimated Time:</strong> 8-12 minutes</p>
+                   <p><strong>Dimensions Assessed:</strong> Autonomy, Environmental Mastery, Personal Growth, Positive Relations, Purpose in Life, Self-Acceptance</p>
+                 </div>
+               </div>
+             </div>
+           </div>
+        </div>
+        <div class="modal-footer">
+          <button class="secondary-button" @click="showVersionsModal = false">Close</button>
+          <button class="primary-button" @click="selectVersionFromModal">Use This Version</button>
         </div>
       </div>
     </div>
@@ -232,6 +462,8 @@ import SavedVersions from './SavedVersions.vue';
 import CollegeFilter from './CollegeFilter.vue';
 import AssessmentHistory from './AssessmentHistory.vue';
 import AutoReminders from './AutoReminders.vue'; // Kept for future use
+import { ryff42ItemQuestionnaire } from '../../assets/ryff42ItemQuestionnaire.js';
+import { ryff84ItemQuestionnaire } from '../../assets/ryff84ItemQuestionnaire.js';
 
 export default {
   name: 'BulkAssessment',
@@ -240,6 +472,10 @@ export default {
     CollegeFilter,
     AssessmentHistory,
     AutoReminders
+  },
+  async mounted() {
+    // Load colleges from backend when component mounts
+    await this.loadCollegesFromBackend();
   },
   data() {
     return {
@@ -251,18 +487,18 @@ export default {
       assessmentName: '',
       selectAllColleges: false,
       error: null,
-      colleges: [
-        { name: 'CCS', selected: false },
-        { name: 'CN', selected: false },
-        { name: 'COE', selected: false },
-        { name: 'CBA', selected: false },
-        { name: 'CAS', selected: false }
-      ],
+      colleges: [], // Will be populated from backend API
       scheduleOption: 'now',
-      scheduledDate: this.getDefaultScheduledDate(),
+      scheduledDate: (() => {
+        const now = new Date();
+        now.setDate(now.getDate() + 1); // Default to tomorrow
+        now.setHours(9, 0, 0, 0); // Default to 9:00 AM
+        return now.toISOString().slice(0, 16); // Format for datetime-local
+      })(),
       selectedVersion: '84',
       customMessage: 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.',
       showPreview: false,
+      showVersionsModal: false,
       showToast: false,
       toastMessage: '',
       isSending: false,
@@ -273,6 +509,9 @@ export default {
     }
   },
   computed: {
+    questionnaire() {
+      return this.selectedVersion === '84' ? ryff84ItemQuestionnaire : ryff42ItemQuestionnaire;
+    },
     selectedCollegesText() {
       const selected = this.colleges.filter(c => c.selected).map(c => c.name);
       return selected.length ? selected.join(', ') : 'None selected';
@@ -296,9 +535,34 @@ export default {
         .map(college => {
           const isCustomized = this.collegeFilters[college.name] !== undefined;
           const filters = this.collegeFilters[college.name] || {
-            yearCounts: { first: 8, second: 8, third: 8, fourth: 8 },
-            totalSections: 32
+            yearCounts: { first: 0, second: 0, third: 0, fourth: 0 },
+            totalSections: 0,
+            programs: [],
+            selectedSections: []
           };
+          
+          // Get actual section names grouped by year level
+          const sectionsByYear = {
+            first: [],
+            second: [],
+            third: [],
+            fourth: []
+          };
+          
+          if (filters.programs && filters.selectedSections) {
+            filters.programs.forEach(program => {
+              program.yearLevels.forEach(yearLevel => {
+                const yearKey = this.getYearKey(yearLevel.year);
+                if (yearKey) {
+                  yearLevel.sections.forEach(section => {
+                    if (filters.selectedSections.includes(section.id)) {
+                      sectionsByYear[yearKey].push(`${program.name}-${section.name}`);
+                    }
+                  });
+                }
+              });
+            });
+          }
           
           return {
             name: college.name,
@@ -309,106 +573,91 @@ export default {
               third: filters.yearCounts.third,
               fourth: filters.yearCounts.fourth
             },
-            totalSections: filters.totalSections
+            sectionsByYear: sectionsByYear,
+            totalSections: filters.totalSections,
+            totalStudents: filters.totalStudents || 0
           };
         });
     },
     totalEstimatedRecipients() {
-      // Each section is assumed to have 35 students on average
+      // Use actual student count from backend data
       let total = 0;
       this.selectedCollegesWithFilters.forEach(college => {
-        total += (college.years.first + college.years.second + college.years.third + college.years.fourth) * 35;
+        total += college.totalStudents;
       });
       return total;
     }
   },
   methods: {
+    // Helper method to format dimension names for display
+    formatDimensionName(dimension) {
+      return dimension.split('_').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+    },
+    // Helper method to convert year number to year key
+    getYearKey(year) {
+      const yearMap = {
+        1: 'first',
+        2: 'second', 
+        3: 'third',
+        4: 'fourth'
+      };
+      return yearMap[year];
+    },
+    // Load colleges data from backend
+    async loadCollegesFromBackend() {
+      try {
+        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        if (response.ok) {
+          const data = await response.json();
+          this.colleges = data.colleges.map(college => ({
+            name: college.name,
+            selected: false
+          }));
+        } else {
+          console.error('Failed to load colleges from backend');
+          // Fallback to empty array if backend fails
+          this.colleges = [];
+        }
+      } catch (error) {
+        console.error('Error loading colleges:', error);
+        // Fallback to empty array if backend fails
+        this.colleges = [];
+      }
+    },
     getDefaultScheduledDate() {
       const now = new Date();
       now.setDate(now.getDate() + 1); // Default to tomorrow
       now.setHours(9, 0, 0, 0); // Default to 9:00 AM
       return now.toISOString().slice(0, 16); // Format for datetime-local
     },
-    toggleAllColleges() {
-      this.colleges.forEach(college => {
+    async toggleAllColleges() {
+      for (const college of this.colleges) {
         college.selected = this.selectAllColleges;
         
-        // Apply default filters when selecting
+        // Load real data when selecting
         if (college.selected && !this.collegeFilters[college.name]) {
-          this.collegeFilters[college.name] = {
-            department: college.name,
-            customized: false,
-            yearCounts: {
-              first: 8,
-              second: 8,
-              third: 8,
-              fourth: 8
-            },
-            totalSections: 32,
-            totalStudents: 32 * 35 // 35 students per section
-          };
+          await this.loadCollegeRealData(college.name);
         } else if (!college.selected) {
           // Remove filters when deselecting
           delete this.collegeFilters[college.name];
         }
-      });
-    }
-  },
-  methods: {
-    getDefaultScheduledDate() {
-      const now = new Date();
-      now.setDate(now.getDate() + 1); // Default to tomorrow
-      now.setHours(9, 0, 0, 0); // Default to 9:00 AM
-      return now.toISOString().slice(0, 16); // Format for datetime-local
+      }
     },
-    toggleAllColleges() {
-      this.colleges.forEach(college => {
-        college.selected = this.selectAllColleges;
-        
-        // Apply default filters when selecting
-        if (college.selected && !this.collegeFilters[college.name]) {
-          this.collegeFilters[college.name] = {
-            department: college.name,
-            customized: false,
-            yearCounts: {
-              first: 8,
-              second: 8,
-              third: 8,
-              fourth: 8
-            },
-            totalSections: 32,
-            totalStudents: 32 * 35 // 35 students per section
-          };
-        } else if (!college.selected) {
-          // Remove filters when deselecting
-          delete this.collegeFilters[college.name];
-        }
-      });
-    },
-    updateSelectAllState() {
+    async updateSelectAllState() {
       this.selectAllColleges = this.colleges.every(college => college.selected);
       
       // When a college is checked directly (without customization)
-      this.colleges.forEach(college => {
+      for (const college of this.colleges) {
         if (college.selected && !this.collegeFilters[college.name]) {
-          // Create default filter data with all sections selected
-          this.collegeFilters[college.name] = {
-            department: college.name,
-            customized: false,
-            yearCounts: {
-              first: 8,
-              second: 8,
-              third: 8,
-              fourth: 8
-            },
-            totalSections: 32,
-            totalStudents: 32 * 35 // 35 students per section
-          };
+          // Load real data for the college
+          await this.loadCollegeRealData(college.name);
         } else if (!college.selected) {
           // If college is deselected, remove its filters
           delete this.collegeFilters[college.name];
         }
-      });
+      }
     },
     customizeCollege(college) {
       if (!college.selected) return;
@@ -471,7 +720,26 @@ export default {
       }, 1500);
     },
     showVersions() {
-      this.currentView = 'versions';
+      // Set to 42-item version by default when opening the modal
+      this.selectedVersion = '42';
+      this.showVersionsModal = true;
+    },
+    previewSavedVersion(version) {
+      // Set the version based on the saved template
+      this.selectedVersion = version.items.toString();
+      this.showVersionsModal = true;
+    },
+    selectVersionFromModal() {
+      this.showVersionsModal = false;
+      
+      // Show a toast notification
+      this.showToast = true;
+      this.toastMessage = `${this.selectedVersion}-item version selected`;
+      
+      // Hide toast after 3 seconds
+      setTimeout(() => {
+        this.showToast = false;
+      }, 3000);
     },
     selectVersion(version) {
       // Set the selected version from the saved template
@@ -489,6 +757,76 @@ export default {
       setTimeout(() => {
         this.showToast = false;
       }, 3000);
+    },
+    // Load real college data from backend
+    async loadCollegeRealData(collegeName) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Collect all section IDs for auto-selection
+          const allSectionIds = [];
+          if (data.programs) {
+            data.programs.forEach(program => {
+              program.yearLevels.forEach(yearLevel => {
+                yearLevel.sections.forEach(section => {
+                  allSectionIds.push(section.id);
+                });
+              });
+            });
+          }
+          
+          this.collegeFilters[collegeName] = {
+            department: collegeName,
+            customized: false,
+            yearCounts: {
+              first: data.yearCounts?.first || 0,
+              second: data.yearCounts?.second || 0,
+              third: data.yearCounts?.third || 0,
+              fourth: data.yearCounts?.fourth || 0
+            },
+            totalSections: data.totalSections || 0,
+            totalStudents: data.totalStudents || 0,
+            selectedSections: allSectionIds, // Auto-select all sections
+            programs: data.programs || [] // Store programs data for section names
+          };
+        } else {
+          console.error(`Failed to load data for ${collegeName}`);
+          // Fallback to default values if API fails
+          this.collegeFilters[collegeName] = {
+            department: collegeName,
+            customized: false,
+            yearCounts: {
+              first: 0,
+              second: 0,
+              third: 0,
+              fourth: 0
+            },
+            totalSections: 0,
+            totalStudents: 0,
+            selectedSections: [],
+            programs: []
+          };
+        }
+      } catch (error) {
+        console.error(`Error loading data for ${collegeName}:`, error);
+        // Fallback to default values if API fails
+        this.collegeFilters[collegeName] = {
+          department: collegeName,
+          customized: false,
+          yearCounts: {
+            first: 0,
+            second: 0,
+            third: 0,
+            fourth: 0
+          },
+          totalSections: 0,
+          totalStudents: 0,
+          selectedSections: [],
+          programs: []
+        };
+      }
     },
     createNewVersion() {
       // Reset form to default values
@@ -1025,6 +1363,24 @@ textarea.form-control {
   margin-left: 8px;
 }
 
+.sections-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+  margin-left: 20px;
+}
+
+.section-name {
+  background-color: var(--primary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .selected-years-list {
   list-style: none;
   padding: 0;
@@ -1062,6 +1418,329 @@ textarea.form-control {
   color: var(--dark);
 }
 
+/* Versions Modal Styles */
+.versions-modal {
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.version-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.version-tab {
+  flex: 1;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.version-tab:hover {
+  background-color: #f8f9fa;
+  color: var(--primary);
+}
+
+.version-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background-color: #f8f9fa;
+}
+
+.version-content {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.version-info {
+  margin-bottom: 25px;
+}
+
+.version-info h3 {
+  color: var(--primary);
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.version-description {
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.version-details {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.detail-value {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Assessment Form Styles */
+.assessment-form {
+  max-height: 70vh;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+.form-header {
+  padding: 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.form-header h3 {
+  color: #1a73e8;
+  margin-bottom: 12px;
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.form-description {
+  color: #5f6368;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.rating-scale-header {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.rating-scale-header h4 {
+  margin-bottom: 12px;
+  color: #202124;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.scale-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.scale-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.scale-value {
+  font-weight: 600;
+  color: #1a73e8;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.scale-text {
+  color: #5f6368;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.form-questions {
+  padding: 0;
+}
+
+.question-item {
+  padding: 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: white;
+}
+
+.question-item:nth-child(even) {
+  background: #fafafa;
+}
+
+.question-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.question-number {
+  font-weight: 500;
+  color: #5f6368;
+  min-width: 30px;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.question-content {
+  flex: 1;
+}
+
+.question-text {
+  margin: 0 0 8px 0;
+  color: #202124;
+  line-height: 1.5;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.question-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.dimension-badge {
+  background: #e8f0fe;
+  color: #1a73e8;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.reverse-badge {
+  background: #fef7e0;
+  color: #f9ab00;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.rating-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rating-option {
+  position: relative;
+}
+
+.rating-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rating-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+  text-align: center;
+}
+
+.rating-label:hover {
+  border-color: #1a73e8;
+  background: #f8f9fa;
+}
+
+.rating-option input[type="radio"]:checked + .rating-label {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+}
+
+.rating-number {
+  font-weight: 600;
+  color: #1a73e8;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.rating-text {
+  color: #5f6368;
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 400;
+}
+
+.preview-note {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.preview-note p {
+  margin: 4px 0;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.preview-note strong {
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.form-footer {
+  padding: 24px;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+}
+
+.completion-info {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.completion-info p {
+  margin: 8px 0;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.completion-info strong {
+  color: #202124;
+}
+
 @media (max-width: 768px) {
   .form-actions {
     flex-direction: column;
@@ -1072,6 +1751,100 @@ textarea.form-control {
   .primary-actions {
     width: 100%;
     justify-content: flex-end;
+  }
+  
+  .questionnaire-preview {
+    padding: 15px;
+  }
+  
+  .scale-items {
+    grid-template-columns: 1fr;
+  }
+  
+  .questionnaire-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .item-number {
+    min-width: auto;
+  }
+  
+  .versions-modal {
+    max-width: 95vw;
+    margin: 10px;
+  }
+  
+  .version-tabs {
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .version-tab {
+    border-bottom: 1px solid #e9ecef;
+    border-right: none;
+  }
+  
+  .version-tab.active {
+    border-bottom-color: var(--primary);
+    border-right: none;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .scale-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .form-header {
+    padding: 16px;
+  }
+  
+  .form-header h3 {
+    font-size: 20px;
+  }
+  
+  .question-item {
+    padding: 16px;
+  }
+  
+  .question-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .question-number {
+    min-width: auto;
+    align-self: flex-start;
+  }
+  
+  .rating-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  
+  .rating-label {
+    padding: 8px 4px;
+  }
+  
+  .rating-number {
+    font-size: 16px;
+  }
+  
+  .rating-text {
+    font-size: 10px;
+  }
+  
+  .form-footer {
+    padding: 16px;
+  }
+  
+  .completion-info {
+    padding: 12px;
   }
 }
 </style>

@@ -303,7 +303,7 @@ export default {
   created() {
     // Handle pre-selected data from navigation
     if (this.preSelectedStudent && this.preSelectedReportType) {
-      console.log('Pre-selecting student for report:', this.preSelectedStudent);
+      // Pre-select student for report generation
       
       // Set report type
       this.selectedReportType = this.preSelectedReportType;
@@ -315,7 +315,7 @@ export default {
       const studentAssessments = this.getStudentAssessments(this.preSelectedStudent.id);
       this.selectedAssessments = studentAssessments.map(assessment => assessment.id);
       
-      console.log('Auto-selected assessments:', this.selectedAssessments);
+      // Auto-select student assessments
     }
     
     // Populate available colleges from student data
@@ -399,8 +399,7 @@ export default {
     
     generateIndividualReport() {
       // Simulate PDF generation
-      console.log('Generating individual report for:', this.selectedStudent);
-      console.log('Selected assessments:', this.selectedAssessments);
+      // Generate individual student report
       
       // Show success message
       const assessmentCount = this.selectedAssessments.length;
@@ -417,9 +416,7 @@ export default {
     
     generateDepartmentReport() {
       // Simulate PDF generation
-      console.log('Generating department report for colleges:', this.selectedColleges);
-      console.log('Year levels:', this.selectedYearLevels);
-      console.log('Selected periods:', this.selectedPeriods);
+      // Generate department-wide report
       
       // Show success message
       const periodCount = this.selectedPeriods.length;
@@ -484,7 +481,7 @@ export default {
     preSelectedStudent: {
       handler(newStudent) {
         if (newStudent && this.preSelectedReportType) {
-          console.log('Pre-selected student changed:', newStudent);
+          // Handle pre-selected student change
           
           // Set report type
           this.selectedReportType = this.preSelectedReportType;
@@ -496,7 +493,7 @@ export default {
           const studentAssessments = this.getStudentAssessments(newStudent.id);
           this.selectedAssessments = studentAssessments.map(assessment => assessment.id);
           
-          console.log('Auto-selected assessments:', this.selectedAssessments);
+          // Auto-select available assessments
         }
       },
       immediate: false

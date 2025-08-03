@@ -11,7 +11,19 @@
         
         <p class="filter-description">Optionally select specific years and sections to target</p>
         
-        <div class="year-sections">
+        <!-- Loading indicator -->
+        <div v-if="loading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Loading sections...</p>
+        </div>
+        
+        <!-- No sections message -->
+        <div v-else-if="Object.keys(programs).length === 0" class="no-sections-container">
+          <i class="fas fa-info-circle"></i>
+          <p class="no-sections-text">No sections available for this college.</p>
+        </div>
+        
+        <div v-else class="year-sections">
           <!-- 1st Year -->
           <div class="year-container">
             <div class="year-header" @click="toggleYear('first')">
@@ -25,33 +37,9 @@
             <transition name="collapse">
               <div class="sections-container" v-if="firstYearOpen">
                 <div class="sections-grid">
-                  <div class="program-column">
-                    <div class="program-title">BSIT</div>
-                    <div class="section-option" v-for="section in programs.BSIT" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSCS</div>
-                    <div class="section-option" v-for="section in programs.BSCS" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSDA</div>
-                    <div class="section-option" v-for="section in programs.BSDA" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSIS</div>
-                    <div class="section-option" v-for="section in programs.BSIS" :key="section.id">
+                  <div class="program-column" v-for="(sections, programName) in firstYearPrograms" :key="programName">
+                    <div class="program-title">{{ programName }}</div>
+                    <div class="section-option" v-for="section in sections" :key="section.id">
                       <input type="checkbox" :id="section.id" v-model="section.selected">
                       <label :for="section.id">{{ section.name }}</label>
                     </div>
@@ -79,33 +67,9 @@
             <transition name="collapse">
               <div class="sections-container" v-if="secondYearOpen">
                 <div class="sections-grid">
-                  <div class="program-column">
-                    <div class="program-title">BSIT</div>
-                    <div class="section-option" v-for="section in programs.BSIT2" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSCS</div>
-                    <div class="section-option" v-for="section in programs.BSCS2" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSDA</div>
-                    <div class="section-option" v-for="section in programs.BSDA2" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSIS</div>
-                    <div class="section-option" v-for="section in programs.BSIS2" :key="section.id">
+                  <div class="program-column" v-for="(sections, programName) in secondYearPrograms" :key="programName">
+                    <div class="program-title">{{ programName }}</div>
+                    <div class="section-option" v-for="section in sections" :key="section.id">
                       <input type="checkbox" :id="section.id" v-model="section.selected">
                       <label :for="section.id">{{ section.name }}</label>
                     </div>
@@ -133,33 +97,9 @@
             <transition name="collapse">
               <div class="sections-container" v-if="thirdYearOpen">
                 <div class="sections-grid">
-                  <div class="program-column">
-                    <div class="program-title">BSIT</div>
-                    <div class="section-option" v-for="section in programs.BSIT3" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSCS</div>
-                    <div class="section-option" v-for="section in programs.BSCS3" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSDA</div>
-                    <div class="section-option" v-for="section in programs.BSDA3" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSIS</div>
-                    <div class="section-option" v-for="section in programs.BSIS3" :key="section.id">
+                  <div class="program-column" v-for="(sections, programName) in thirdYearPrograms" :key="programName">
+                    <div class="program-title">{{ programName }}</div>
+                    <div class="section-option" v-for="section in sections" :key="section.id">
                       <input type="checkbox" :id="section.id" v-model="section.selected">
                       <label :for="section.id">{{ section.name }}</label>
                     </div>
@@ -187,33 +127,9 @@
             <transition name="collapse">
               <div class="sections-container" v-if="fourthYearOpen">
                 <div class="sections-grid">
-                  <div class="program-column">
-                    <div class="program-title">BSIT</div>
-                    <div class="section-option" v-for="section in programs.BSIT4" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSCS</div>
-                    <div class="section-option" v-for="section in programs.BSCS4" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSDA</div>
-                    <div class="section-option" v-for="section in programs.BSDA4" :key="section.id">
-                      <input type="checkbox" :id="section.id" v-model="section.selected">
-                      <label :for="section.id">{{ section.name }}</label>
-                    </div>
-                  </div>
-                  
-                  <div class="program-column">
-                    <div class="program-title">BSIS</div>
-                    <div class="section-option" v-for="section in programs.BSIS4" :key="section.id">
+                  <div class="program-column" v-for="(sections, programName) in fourthYearPrograms" :key="programName">
+                    <div class="program-title">{{ programName }}</div>
+                    <div class="section-option" v-for="section in sections" :key="section.id">
                       <input type="checkbox" :id="section.id" v-model="section.selected">
                       <label :for="section.id">{{ section.name }}</label>
                     </div>
@@ -315,75 +231,10 @@ export default {
       secondYearOpen: false,
       thirdYearOpen: false,
       fourthYearOpen: true,
-      programs: {
-        BSIT: [
-          { id: 'bsit-1a', name: 'BSIT-1A', selected: true },
-          { id: 'bsit-1b', name: 'BSIT-1B', selected: true }
-        ],
-        BSCS: [
-          { id: 'bscs-1a', name: 'BSCS-1A', selected: true },
-          { id: 'bscs-1b', name: 'BSCS-1B', selected: true }
-        ],
-        BSDA: [
-          { id: 'bsda-1a', name: 'BSDA-1A', selected: true },
-          { id: 'bsda-1b', name: 'BSDA-1B', selected: true }
-        ],
-        BSIS: [
-          { id: 'bsis-1a', name: 'BSIS-1A', selected: true },
-          { id: 'bsis-1b', name: 'BSIS-1B', selected: true }
-        ],
-        // 2nd year sections
-        BSIT2: [
-          { id: 'bsit-2a', name: 'BSIT-2A', selected: true },
-          { id: 'bsit-2b', name: 'BSIT-2B', selected: true }
-        ],
-        BSCS2: [
-          { id: 'bscs-2a', name: 'BSCS-2A', selected: true },
-          { id: 'bscs-2b', name: 'BSCS-2B', selected: true }
-        ],
-        BSDA2: [
-          { id: 'bsda-2a', name: 'BSDA-2A', selected: true },
-          { id: 'bsda-2b', name: 'BSDA-2B', selected: true }
-        ],
-        BSIS2: [
-          { id: 'bsis-2a', name: 'BSIS-2A', selected: true },
-          { id: 'bsis-2b', name: 'BSIS-2B', selected: true }
-        ],
-        // 3rd year sections
-        BSIT3: [
-          { id: 'bsit-3a', name: 'BSIT-3A', selected: true },
-          { id: 'bsit-3b', name: 'BSIT-3B', selected: true }
-        ],
-        BSCS3: [
-          { id: 'bscs-3a', name: 'BSCS-3A', selected: true },
-          { id: 'bscs-3b', name: 'BSCS-3B', selected: true }
-        ],
-        BSDA3: [
-          { id: 'bsda-3a', name: 'BSDA-3A', selected: true },
-          { id: 'bsda-3b', name: 'BSDA-3B', selected: true }
-        ],
-        BSIS3: [
-          { id: 'bsis-3a', name: 'BSIS-3A', selected: true },
-          { id: 'bsis-3b', name: 'BSIS-3B', selected: true }
-        ],
-        // 4th year sections
-        BSIT4: [
-          { id: 'bsit-4a', name: 'BSIT-4A', selected: true },
-          { id: 'bsit-4b', name: 'BSIT-4B', selected: true }
-        ],
-        BSCS4: [
-          { id: 'bscs-4a', name: 'BSCS-4A', selected: true },
-          { id: 'bscs-4b', name: 'BSCS-4B', selected: true }
-        ],
-        BSDA4: [
-          { id: 'bsda-4a', name: 'BSDA-4A', selected: true },
-          { id: 'bsda-4b', name: 'BSDA-4B', selected: true }
-        ],
-        BSIS4: [
-          { id: 'bsis-4a', name: 'BSIS-4A', selected: true },
-          { id: 'bsis-4b', name: 'BSIS-4B', selected: true }
-        ]
-      }
+      // Programs will be populated dynamically from backend
+      programs: {},
+      sectionsData: null, // Store original sections data
+      loading: false
     };
   },
   computed: {
@@ -392,9 +243,141 @@ export default {
              this.getSelectedSections('second').length > 0 ||
              this.getSelectedSections('third').length > 0 ||
              this.getSelectedSections('fourth').length > 0;
+    },
+    
+    // Get unique program names for each year level
+    firstYearPrograms() {
+      const programs = {};
+      Object.keys(this.programs).forEach(programKey => {
+        if (!programKey.includes('2') && !programKey.includes('3') && !programKey.includes('4')) {
+          const programName = programKey;
+          programs[programName] = this.programs[programKey];
+        }
+      });
+      return programs;
+    },
+    
+    secondYearPrograms() {
+      const programs = {};
+      Object.keys(this.programs).forEach(programKey => {
+        if (programKey.includes('2')) {
+          const programName = programKey.replace('2', '');
+          programs[programName] = this.programs[programKey];
+        }
+      });
+      return programs;
+    },
+    
+    thirdYearPrograms() {
+      const programs = {};
+      Object.keys(this.programs).forEach(programKey => {
+        if (programKey.includes('3')) {
+          const programName = programKey.replace('3', '');
+          programs[programName] = this.programs[programKey];
+        }
+      });
+      return programs;
+    },
+    
+    fourthYearPrograms() {
+      const programs = {};
+      Object.keys(this.programs).forEach(programKey => {
+        if (programKey.includes('4')) {
+          const programName = programKey.replace('4', '');
+          programs[programName] = this.programs[programKey];
+        }
+      });
+      return programs;
+    }
+  },
+  watch: {
+    // Watch for changes in collegeName to load sections dynamically
+    collegeName: {
+      handler(newCollegeName) {
+        if (newCollegeName) {
+          this.loadCollegeSections(newCollegeName);
+        }
+      },
+      immediate: true
     }
   },
   methods: {
+    async loadCollegeSections(collegeName) {
+      this.loading = true;
+      try {
+        // Fetch sections and year levels for the specific college
+        const response = await fetch(`http://localhost:3000/api/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch college sections');
+        }
+        
+        const sectionsData = await response.json();
+        
+        // Store the original sections data
+        this.sectionsData = sectionsData;
+        
+        // Transform the data to match the expected format
+        this.programs = this.transformSectionsData(sectionsData);
+        
+        // Apply existing filters if they exist
+        if (this.existingFilters) {
+          this.applyExistingFilters();
+        }
+      } catch (error) {
+        console.error('Error loading college sections:', error);
+        // Fallback to empty programs if API fails
+        this.programs = {};
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    transformSectionsData(sectionsData) {
+      // Transform backend data to the expected format
+      // Expected backend format: { programs: [{ name: 'BSIT', yearLevels: [{ year: 1, sections: [{ id: 'bsit-1a', name: 'BSIT-1A' }] }] }] }
+      const transformedPrograms = {};
+      
+      if (sectionsData && sectionsData.programs) {
+        sectionsData.programs.forEach(program => {
+          program.yearLevels.forEach(yearLevel => {
+            const suffix = yearLevel.year === 1 ? '' : yearLevel.year.toString();
+            const programKey = program.name + suffix;
+            
+            transformedPrograms[programKey] = yearLevel.sections.map(section => ({
+              id: section.id,
+              name: section.name,
+              studentCount: section.studentCount || 0, // Preserve student count
+              selected: true // Default to selected
+            }));
+          });
+        });
+      }
+      
+      return transformedPrograms;
+    },
+    
+    applyExistingFilters() {
+      // Apply existing filters if provided
+      if (this.existingFilters && this.existingFilters.selectedSections) {
+        // Reset all selections first
+        Object.keys(this.programs).forEach(program => {
+          this.programs[program].forEach(section => {
+            section.selected = false;
+          });
+        });
+        
+        // Apply existing selections
+        this.existingFilters.selectedSections.forEach(sectionId => {
+          Object.keys(this.programs).forEach(program => {
+            const section = this.programs[program].find(s => s.id === sectionId);
+            if (section) {
+              section.selected = true;
+            }
+          });
+        });
+      }
+    },
+    
     toggleYear(year) {
       switch(year) {
         case 'first':
@@ -480,27 +463,42 @@ export default {
         fourth: this.getSelectedSections('fourth').length
       };
       
+      // Collect all selected section IDs
+      const selectedSections = [];
+      Object.keys(this.programs).forEach(program => {
+        this.programs[program].forEach(section => {
+          if (section.selected) {
+            selectedSections.push(section.id);
+          }
+        });
+      });
+      
       const summary = {
         department: this.collegeName,
         customized: true,
         yearCounts: yearCounts,
         totalSections: yearCounts.first + yearCounts.second + yearCounts.third + yearCounts.fourth,
-        totalStudents: this.calculateTotalStudents()
+        totalStudents: this.calculateTotalStudents(),
+        selectedSections: selectedSections,
+        programs: this.sectionsData?.programs || []
       };
       
       this.$emit('apply-filters', summary);
       this.close();
     },
     calculateTotalStudents() {
-      // In a real implementation, this would calculate the actual number of students
-      // For now, let's assume each section has 35 students on average
-      const totalSections = 
-        this.getSelectedSections('first').length + 
-        this.getSelectedSections('second').length + 
-        this.getSelectedSections('third').length + 
-        this.getSelectedSections('fourth').length;
+      // Calculate actual student count from selected sections
+      let totalStudents = 0;
       
-      return totalSections * 35;
+      Object.keys(this.programs).forEach(program => {
+        this.programs[program].forEach(section => {
+          if (section.selected) {
+            totalStudents += section.studentCount || 0;
+          }
+        });
+      });
+      
+      return totalStudents;
     },
     close() {
       this.$emit('close');
@@ -794,6 +792,43 @@ export default {
   opacity: 1;
 }
 
+/* Loading and empty states */
+.loading-container, .no-sections-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f0f0f0;
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text, .no-sections-text {
+  color: var(--text-light);
+  font-size: 14px;
+  margin: 0;
+}
+
+.no-sections-container i {
+  font-size: 24px;
+  color: var(--text-light);
+  margin-bottom: 10px;
+}
+
 .filter-actions {
   padding: 15px 20px;
   display: flex;
@@ -853,4 +888,4 @@ export default {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-</style> 
+</style>

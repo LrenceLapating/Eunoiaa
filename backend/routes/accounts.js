@@ -66,6 +66,106 @@ router.get('/colleges', async (req, res) => {
   }
 });
 
+// GET /api/accounts/colleges/:collegeName/sections - Get sections data for a specific college
+router.get('/colleges/:collegeName/sections', async (req, res) => {
+  try {
+    const { collegeName } = req.params;
+    
+    // Get all students for the specified college
+    const { data, error } = await supabase
+      .from('students')
+      .select('section, year_level')
+      .eq('college', collegeName)
+      .not('section', 'is', null)
+      .not('year_level', 'is', null);
+
+    if (error) throw error;
+
+    // Group students by year level and section
+    const yearData = {};
+    const sectionCounts = {};
+    
+    data.forEach(student => {
+      const yearLevel = student.year_level;
+      const section = student.section;
+      
+      if (!yearData[yearLevel]) {
+        yearData[yearLevel] = new Set();
+      }
+      yearData[yearLevel].add(section);
+      
+      const sectionKey = `${yearLevel}-${section}`;
+      sectionCounts[sectionKey] = (sectionCounts[sectionKey] || 0) + 1;
+    });
+
+    // Calculate year counts
+    const yearCounts = {
+      first: yearData['1st'] ? yearData['1st'].size : 0,
+      second: yearData['2nd'] ? yearData['2nd'].size : 0,
+      third: yearData['3rd'] ? yearData['3rd'].size : 0,
+      fourth: yearData['4th'] ? yearData['4th'].size : 0
+    };
+
+    const totalSections = Object.values(yearCounts).reduce((sum, count) => sum + count, 0);
+    const totalStudents = data.length;
+
+    // Create programs structure for CollegeFilter component
+    const programsMap = new Map();
+    
+    Object.keys(yearData).forEach(yearLevel => {
+      const sections = Array.from(yearData[yearLevel]);
+      
+      sections.forEach(sectionName => {
+        // Extract program name from section (e.g., 'BSIT-4A' -> 'BSIT')
+        const programName = sectionName.split('-')[0];
+        const year = parseInt(yearLevel.charAt(0));
+        const sectionKey = `${yearLevel}-${sectionName}`;
+        
+        if (!programsMap.has(programName)) {
+          programsMap.set(programName, new Map());
+        }
+        
+        if (!programsMap.get(programName).has(year)) {
+          programsMap.get(programName).set(year, []);
+        }
+        
+        programsMap.get(programName).get(year).push({
+          id: `${collegeName.toLowerCase().replace(/\s+/g, '-')}-${sectionName.toLowerCase()}`,
+          name: sectionName,
+          studentCount: sectionCounts[sectionKey] || 0
+        });
+      });
+    });
+    
+    // Convert to array format expected by frontend
+    const programs = [];
+    programsMap.forEach((yearLevels, programName) => {
+      const yearLevelArray = [];
+      yearLevels.forEach((sections, year) => {
+        yearLevelArray.push({
+          year: year,
+          sections: sections
+        });
+      });
+      
+      programs.push({
+        name: programName,
+        yearLevels: yearLevelArray
+      });
+    });
+
+    res.json({
+      yearCounts,
+      totalSections,
+      totalStudents,
+      programs
+    });
+  } catch (error) {
+    console.error('Error fetching college sections:', error);
+    res.status(500).json({ error: 'Failed to fetch college sections' });
+  }
+});
+
 // GET /api/accounts/history - Get archived students from history
 router.get('/history', async (req, res) => {
   try {

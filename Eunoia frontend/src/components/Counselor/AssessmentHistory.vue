@@ -141,68 +141,8 @@ export default {
       showDetailsModal: false,
       selectedAssessment: {},
       selectedCollege: null,
-      assessments: [
-        {
-          id: 1,
-          name: 'Semester Start Assessment',
-          targetGroup: 'All Colleges',
-          date: '2024-06-10',
-          recipients: 12,
-          completion: 100,
-          colleges: [
-            { code: 'CCS', name: 'College of Computer Studies', recipients: 5, completion: 100, completed: 5, incomplete: 0 },
-            { code: 'CN', name: 'College of Nursing', recipients: 1, completion: 100, completed: 1, incomplete: 0 },
-            { code: 'COE', name: 'College of Engineering', recipients: 2, completion: 100, completed: 2, incomplete: 0 },
-            { code: 'CBA', name: 'College of Business Administration', recipients: 2, completion: 100, completed: 2, incomplete: 0 },
-            { code: 'CAS', name: 'College of Arts and Sciences', recipients: 2, completion: 100, completed: 2, incomplete: 0 }
-          ],
-          totalCompleted: 12,
-          totalIncomplete: 0
-        },
-        {
-          id: 2,
-          name: 'Mid-term Evaluation',
-          targetGroup: 'CCS, COE',
-          date: '2023-10-20',
-          recipients: 4,
-          completion: 100,
-          colleges: [
-            { code: 'CCS', name: 'College of Computer Studies', recipients: 3, completion: 100, completed: 3, incomplete: 0 },
-            { code: 'COE', name: 'College of Engineering', recipients: 1, completion: 100, completed: 1, incomplete: 0 }
-          ],
-          totalCompleted: 4,
-          totalIncomplete: 0
-        },
-        {
-          id: 3,
-          name: 'New Student Onboarding',
-          targetGroup: 'BSIT1A, BSIT1B, BSCS1A, BSCS1B',
-          date: '2023-09-05',
-          recipients: 160,
-          completion: 89,
-          colleges: [
-            { code: 'BSIT1A', name: 'BSIT1A', recipients: 40, completion: 95, completed: 38, incomplete: 2 },
-            { code: 'BSIT1B', name: 'BSIT1B', recipients: 40, completion: 90, completed: 36, incomplete: 4 },
-            { code: 'BSCS1A', name: 'BSCS1A', recipients: 40, completion: 85, completed: 34, incomplete: 6 },
-            { code: 'BSCS1B', name: 'BSCS1B', recipients: 40, completion: 88, completed: 35, incomplete: 5 }
-          ],
-          totalCompleted: 143,
-          totalIncomplete: 17
-        },
-        {
-          id: 4,
-          name: 'Faculty Well-being Check',
-          targetGroup: 'Faculty Members',
-          date: '2023-08-10',
-          recipients: 45,
-          completion: 84,
-          colleges: [
-            { code: 'Faculty', name: 'Faculty Members', recipients: 45, completion: 84, completed: 38, incomplete: 7 }
-          ],
-          totalCompleted: 38,
-          totalIncomplete: 7
-        }
-      ],
+      // Assessment data - will be populated from backend
+      assessments: [],
       filteredAssessments: []
     };
   },
@@ -239,10 +179,31 @@ export default {
       };
     }
   },
-  created() {
+  async created() {
+    await this.loadAssessments();
     this.filteredAssessments = [...this.assessments];
   },
   methods: {
+    // Load assessment data from backend
+    async loadAssessments() {
+      try {
+        // For now, we'll use empty array since there's no backend endpoint yet
+        // TODO: Replace with actual API call when backend endpoint is available
+        // const response = await fetch('http://localhost:3000/api/assessments/history');
+        // if (response.ok) {
+        //   const data = await response.json();
+        //   this.assessments = data.assessments || [];
+        // } else {
+        //   console.error('Failed to load assessments from backend');
+        //   this.assessments = [];
+        // }
+        this.assessments = []; // Empty array until backend endpoint is implemented
+      } catch (error) {
+        console.error('Error loading assessments:', error);
+        this.assessments = [];
+      }
+    },
+    
     filterAssessments() {
       if (!this.searchQuery) {
         this.filteredAssessments = [...this.assessments];
@@ -601,4 +562,4 @@ export default {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>
