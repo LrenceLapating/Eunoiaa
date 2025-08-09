@@ -229,7 +229,7 @@ router.post('/counselor/login', async (req, res) => {
         id: counselor.id,
         name: counselor.name,
         email: counselor.email,
-        department: counselor.department,
+        college: counselor.college,
         role: counselor.role
       }
     });
@@ -265,7 +265,7 @@ router.get('/counselor/profile', verifyCounselorSession, async (req, res) => {
   try {
     const { data: counselor, error } = await supabase
       .from('counselors')
-      .select('id, name, email, department, role, created_at')
+      .select('id, name, email, college, role, created_at')
       .eq('id', req.user.id)
       .single();
 

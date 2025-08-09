@@ -7,6 +7,10 @@ require('dotenv').config();
 
 const accountRoutes = require('./routes/accounts');
 const { router: authRoutes } = require('./routes/auth');
+const bulkAssessmentRoutes = require('./routes/bulkAssessments');
+const studentAssessmentRoutes = require('./routes/studentAssessments');
+const counselorAssessmentRoutes = require('./routes/counselorAssessments');
+const dataCleanupRoutes = require('./routes/dataCleanup');
 const { supabase } = require('./config/database');
 const { SessionManager } = require('./middleware/sessionManager');
 
@@ -39,6 +43,10 @@ app.set('trust proxy', 1);
 // Routes
 app.use('/api/accounts', accountRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/bulk-assessments', bulkAssessmentRoutes);
+app.use('/api/student-assessments', studentAssessmentRoutes);
+app.use('/api/counselor-assessments', counselorAssessmentRoutes);
+app.use('/api/data-cleanup', dataCleanupRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

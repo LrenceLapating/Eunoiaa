@@ -53,7 +53,7 @@ async function setupCounselor() {
           email: 'counselor@eunoia.edu',
           name: 'Default Counselor',
           password_hash: hashedPassword,
-          department: 'Student Affairs',
+          college: 'Student Affairs',
           role: 'counselor'
         });
       

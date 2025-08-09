@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS counselors (
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    department VARCHAR(100),
+    college VARCHAR(100),
     role VARCHAR(50) DEFAULT 'counselor',
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -14,11 +14,11 @@ CREATE TABLE IF NOT EXISTS counselors (
 -- Create index on email for faster lookups
 CREATE INDEX IF NOT EXISTS idx_counselors_email ON counselors(email);
 
--- Create index on department for filtering
-CREATE INDEX IF NOT EXISTS idx_counselors_department ON counselors(department);
+-- Create index on college for filtering
+CREATE INDEX IF NOT EXISTS idx_counselors_college ON counselors(college);
 
 -- Insert default counselor account (password: counselor123)
-INSERT INTO counselors (email, name, password_hash, department, role) 
+INSERT INTO counselors (email, name, password_hash, college, role) 
 VALUES (
     'counselor@eunoia.edu',
     'Default Counselor',

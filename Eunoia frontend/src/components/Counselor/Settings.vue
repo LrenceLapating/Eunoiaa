@@ -74,12 +74,13 @@
             
             <div class="form-row">
               <div class="form-group">
-                <label for="department">Department</label>
-                <select id="department" v-model="accountSettings.department">
-                  <option value="">Select Department</option>
+                <label for="college">College</label>
+                <select id="college" v-model="accountSettings.college">
+                  <option value="">Select College</option>
                   <option value="guidance">Guidance Office</option>
-                  <option value="psychology">Psychology Department</option>
+                  <option value="psychology">Psychology College</option>
                   <option value="admin">Administration</option>
+                  <option value="student-affairs">Student Affairs</option>
                 </select>
               </div>
               <div class="form-group">
@@ -421,7 +422,7 @@ export default {
       accountSettings: {
         fullName: 'Dr. Sarah Johnson',
         email: 'sarah.johnson@university.edu',
-        department: 'guidance',
+        college: 'guidance',
         position: 'Senior Counselor',
         bio: 'Experienced counselor specializing in student mental health and well-being assessment.'
       },

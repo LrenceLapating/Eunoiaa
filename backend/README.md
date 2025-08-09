@@ -51,7 +51,6 @@ CREATE TABLE students (
   name VARCHAR(100) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   section VARCHAR(50) NOT NULL,
-  department VARCHAR(100) NOT NULL,
   id_number VARCHAR(20) UNIQUE NOT NULL,
   year_level INTEGER CHECK (year_level >= 1 AND year_level <= 6) NOT NULL,
   college VARCHAR(100) NOT NULL,
@@ -154,7 +153,7 @@ The CSV file should have the following columns:
 |--------|-------------|----------|----------|
 | Name | Student's full name | Yes | John Doe |
 | Section | Class section | Yes | BSIT-4A |
-| Department | Academic department | Yes | Information Technology |
+| College | Academic college | Yes | Information Technology |
 | ID Number | Student ID | Yes | 2020-12345 |
 | Email | Student email | Yes | john.doe@student.edu |
 | Year Level | Academic year (1-6) | Yes | 4 |
@@ -216,5 +215,5 @@ curl http://localhost:3001/api/accounts/csv-template
 
 - File uploads are temporarily stored in `./uploads` and cleaned up after processing
 - CSV validation includes email format, year level range, and required fields
-- College assignment is automatically determined from department/section data
+- College assignment is automatically determined from college/section data
 - All timestamps are stored in UTC with timezone information

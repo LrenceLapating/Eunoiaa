@@ -187,17 +187,46 @@ export default {
     // Load assessment data from backend
     async loadAssessments() {
       try {
-        // For now, we'll use empty array since there's no backend endpoint yet
-        // TODO: Replace with actual API call when backend endpoint is available
-        // const response = await fetch('http://localhost:3000/api/assessments/history');
-        // if (response.ok) {
-        //   const data = await response.json();
-        //   this.assessments = data.assessments || [];
-        // } else {
-        //   console.error('Failed to load assessments from backend');
-        //   this.assessments = [];
-        // }
-        this.assessments = []; // Empty array until backend endpoint is implemented
+        const response = await fetch('http://localhost:3000/api/bulk-assessments/history', {
+          method: 'GET',
+          credentials: 'include' // Include session cookies
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            // Transform backend data to match frontend expectations
+            this.assessments = (data.data || []).map(assessment => ({
+              id: assessment.id,
+              name: assessment.assessment_name,
+              targetGroup: Array.isArray(assessment.target_colleges) 
+                ? assessment.target_colleges.join(', ') 
+                : assessment.target_colleges || 'All Students',
+              date: this.formatDateShort(assessment.created_at),
+              recipients: assessment.total_assigned || 0,
+              completion: assessment.completion_percentage || 0,
+              // Keep original data for details modal
+              colleges: Array.isArray(assessment.target_colleges) 
+                ? assessment.target_colleges.map(college => ({ 
+                    code: college.toLowerCase().replace(/\s+/g, '_'), 
+                    name: college,
+                    recipients: Math.floor(assessment.total_assigned / assessment.target_colleges.length),
+                    completion: assessment.completion_percentage,
+                    completed: Math.floor(assessment.total_completed / assessment.target_colleges.length),
+                    incomplete: Math.floor((assessment.total_assigned - assessment.total_completed) / assessment.target_colleges.length)
+                  })) 
+                : [],
+              totalCompleted: assessment.total_completed || 0,
+              totalIncomplete: (assessment.total_assigned || 0) - (assessment.total_completed || 0)
+            }));
+          } else {
+            console.error('Failed to load assessments:', data.message);
+            this.assessments = [];
+          }
+        } else {
+          console.error('Failed to load assessments from backend');
+          this.assessments = [];
+        }
       } catch (error) {
         console.error('Error loading assessments:', error);
         this.assessments = [];
@@ -229,6 +258,16 @@ export default {
     },
     selectCollege(collegeCode) {
       this.selectedCollege = collegeCode;
+    },
+    
+    // Format date to DD-MM-YYYY
+    formatDateShort(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
     }
   }
 };

@@ -704,20 +704,63 @@ export default {
         this.showPreview = true;
       }
     },
-    confirmSend() {
+    async confirmSend() {
       this.isSending = true;
-      // Simulate API call
-      setTimeout(() => {
+      this.error = null;
+      
+      try {
+        // Prepare the request payload
+        const payload = {
+          assessmentName: this.assessmentName,
+          assessmentType: this.selectedVersion === '84' ? 'ryff_84' : 'ryff_42',
+          targetType: 'college', // Currently only supporting college targeting
+          targetColleges: this.colleges.filter(college => college.selected).map(college => college.name),
+          customMessage: this.customMessage,
+          scheduleOption: this.scheduleOption,
+          scheduledDate: this.scheduleOption === 'scheduled' ? this.scheduledDate : null
+        };
+
+        // Call the backend API
+        const response = await fetch('http://localhost:3000/api/bulk-assessments/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include', // Include session cookies
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          this.isSending = false;
+          this.showPreview = false;
+          this.showToast = true;
+          this.toastMessage = `Assessment "${this.assessmentName}" has been successfully created and sent to ${this.selectedCollegesText}`;
+          
+          // Reset form after successful submission
+          this.resetForm();
+          
+          // Hide toast after 5 seconds
+          setTimeout(() => {
+            this.showToast = false;
+          }, 5000);
+        } else {
+          throw new Error(data.message || 'Failed to create assessment');
+        }
+      } catch (error) {
+        console.error('Error creating bulk assessment:', error);
         this.isSending = false;
-        this.showPreview = false;
-        this.showToast = true;
-        this.toastMessage = `Assessment "${this.assessmentName}" has been sent to ${this.selectedCollegesText}`;
+        this.error = error.message || 'Failed to create assessment. Please try again.';
         
-        // Hide toast after 3 seconds
+        // Show error toast
+        this.showToast = true;
+        this.toastMessage = 'Error: ' + (error.message || 'Failed to create assessment');
+        
         setTimeout(() => {
           this.showToast = false;
-        }, 3000);
-      }, 1500);
+        }, 5000);
+      }
     },
     showVersions() {
       // Set to 42-item version by default when opening the modal
@@ -778,7 +821,7 @@ export default {
           }
           
           this.collegeFilters[collegeName] = {
-            department: collegeName,
+            college: collegeName,
             customized: false,
             yearCounts: {
               first: data.yearCounts?.first || 0,
@@ -795,7 +838,7 @@ export default {
           console.error(`Failed to load data for ${collegeName}`);
           // Fallback to default values if API fails
           this.collegeFilters[collegeName] = {
-            department: collegeName,
+            college: collegeName,
             customized: false,
             yearCounts: {
               first: 0,
@@ -813,7 +856,7 @@ export default {
         console.error(`Error loading data for ${collegeName}:`, error);
         // Fallback to default values if API fails
         this.collegeFilters[collegeName] = {
-          department: collegeName,
+          college: collegeName,
           customized: false,
           yearCounts: {
             first: 0,
@@ -828,15 +871,23 @@ export default {
         };
       }
     },
-    createNewVersion() {
+    resetForm() {
       // Reset form to default values
       this.assessmentName = '';
       this.selectAllColleges = false;
       this.colleges.forEach(college => college.selected = false);
       this.scheduleOption = 'now';
       this.scheduledDate = this.getDefaultScheduledDate();
-      this.selectedVersion = '42'; // Default to brief version
+      this.selectedVersion = '84'; // Default to full version
       this.customMessage = 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.';
+      this.error = null;
+      this.validationErrors = {
+        assessmentName: '',
+        colleges: ''
+      };
+    },
+    createNewVersion() {
+      this.resetForm();
       
       // Switch to form view
       this.currentView = 'form';

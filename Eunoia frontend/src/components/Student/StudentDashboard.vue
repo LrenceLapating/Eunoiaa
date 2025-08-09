@@ -103,11 +103,11 @@
                 <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="assessment-logo">
               </div>
                 <div class="assessment-info">
-                  <h3>Ryff Psychological Well-being Scale</h3>
-                  <p class="assessment-type">42-Item Comprehensive Assessment</p>
+                  <h3>{{ getAssessmentTitle }}</h3>
+                  <p class="assessment-type">{{ getAssessmentDescription }}</p>
                   <div class="assessment-meta">
-                    <span class="duration"><i class="fas fa-clock"></i> 15-20 minutes</span>
-                    <span class="due-date"><i class="fas fa-calendar"></i> Due: Nov 15, 2023</span>
+                    <span class="duration"><i class="fas fa-clock"></i> {{ getEstimatedDuration }}</span>
+                    <span class="due-date"><i class="fas fa-calendar"></i> Due: {{ getFormattedDueDate }}</span>
                   </div>
                 </div>
                 <div class="status-indicator">
@@ -223,6 +223,22 @@
             </div>
           </div>
         </div>
+
+        <!-- Assessment Taking View -->
+        <AssessmentTaking 
+          v-if="currentView === 'taking-assessment'"
+          :assessment-type="currentAssessment?.type"
+          :assigned-assessment-id="currentAssessment?.assignedAssessmentId"
+          @assessment-complete="onAssessmentComplete"
+          @return-to-dashboard="onReturnToDashboard"
+        />
+
+        <!-- Assessment Complete View -->
+        <AssessmentComplete 
+          v-if="currentView === 'assessment-complete'"
+          :assessment-type="currentAssessment?.type || '42'"
+          @return-to-dashboard="onReturnToDashboard"
+        />
 
         <!-- Settings View -->
         <div v-if="currentView === 'settings'" class="settings-view">
@@ -386,14 +402,22 @@
 
 <script>
 import authService from '@/services/authService'
+import AssessmentTaking from './AssessmentTaking.vue'
+import AssessmentComplete from './AssessmentComplete.vue'
 
 export default {
   name: 'StudentDashboard',
+  components: {
+    AssessmentTaking,
+    AssessmentComplete
+  },
   data() {
     return {
-      currentView: 'assessment',
+      currentView: 'assessment', // 'assessment', 'settings', 'taking-assessment', 'assessment-complete'
       isLoading: false,
-      hasAssignedAssessments: false, // Will be updated when we implement the bulk assessment system
+      hasAssignedAssessments: false,
+      assignedAssessments: [],
+      currentAssessment: null,
       studentProfile: {
         name: '',
         email: '',
@@ -414,8 +438,46 @@ export default {
       originalSettings: {}
     };
   },
+  computed: {
+    getAssessmentTitle() {
+      if (this.assignedAssessments.length > 0) {
+        return this.assignedAssessments[0].bulk_assessment?.assessment_name || 'Ryff Psychological Well-being Scale';
+      }
+      return 'Ryff Psychological Well-being Scale';
+    },
+    getAssessmentDescription() {
+      if (this.assignedAssessments.length > 0) {
+        const assessmentType = this.assignedAssessments[0].bulk_assessment?.assessment_type || 'ryff_42';
+        const itemCount = assessmentType === 'ryff_84' ? '84' : '42';
+        return `${itemCount}-Item Comprehensive Assessment`;
+      }
+      return '42-Item Comprehensive Assessment';
+    },
+    getEstimatedDuration() {
+      if (this.assignedAssessments.length > 0) {
+        const assessmentType = this.assignedAssessments[0].bulk_assessment?.assessment_type || 'ryff_42';
+        return assessmentType === 'ryff_84' ? '25-30 minutes' : '15-20 minutes';
+      }
+      return '15-20 minutes';
+    },
+    getFormattedDueDate() {
+      if (this.assignedAssessments.length > 0) {
+        const expiresAt = this.assignedAssessments[0].expires_at;
+        if (expiresAt) {
+          const date = new Date(expiresAt);
+          return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          });
+        }
+      }
+      return 'No due date';
+    }
+  },
   async mounted() {
     await this.fetchStudentProfile();
+    await this.fetchAssignedAssessments();
   },
   methods: {
     async fetchStudentProfile() {
@@ -439,8 +501,65 @@ export default {
       }
     },
     
+    async fetchAssignedAssessments() {
+      try {
+        console.log('Fetching assigned assessments...');
+        const response = await fetch('http://localhost:3000/api/student-assessments/assigned', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          this.assignedAssessments = result.data;
+          this.hasAssignedAssessments = result.data.length > 0;
+          console.log('Assigned assessments loaded:', result.data.length, 'assessments found');
+          console.log('Assessment details:', result.data);
+        } else {
+          console.error('Failed to fetch assigned assessments:', result.message);
+          this.hasAssignedAssessments = false;
+        }
+      } catch (error) {
+        console.error('Error fetching assigned assessments:', error);
+        this.hasAssignedAssessments = false;
+      }
+    },
+    
     startAssessment() {
-      alert('Assessment feature coming soon!');
+      if (this.assignedAssessments.length > 0) {
+        // Navigate to the first assigned assessment
+        const firstAssessment = this.assignedAssessments[0];
+        console.log('Starting assessment:', firstAssessment);
+        console.log('First assessment ID:', firstAssessment.id);
+        
+        // Determine assessment type from the bulk assessment
+        const bulkAssessmentType = firstAssessment.bulk_assessment?.assessment_type || 'ryff_42';
+        let assessmentType = '42'; // default
+        
+        if (bulkAssessmentType === 'ryff_84') {
+          assessmentType = '84';
+        } else if (bulkAssessmentType === 'ryff_42') {
+          assessmentType = '42';
+        }
+        
+        console.log('Bulk assessment type:', bulkAssessmentType, 'Parsed type:', assessmentType);
+        
+        // Set current assessment data and switch to taking view
+        this.currentAssessment = {
+          type: assessmentType,
+          assignedAssessmentId: firstAssessment.id,
+          assessmentData: firstAssessment
+        };
+        
+        console.log('Current assessment set to:', this.currentAssessment);
+        this.currentView = 'taking-assessment';
+      } else {
+        alert('No assessments available to start.');
+      }
     },
     
     async saveSettings() {
@@ -479,6 +598,26 @@ export default {
       this.userSettings.newPassword = '';
       this.userSettings.confirmPassword = '';
     },
+    async onAssessmentComplete(completionData) {
+      // Handle assessment completion
+      console.log('Assessment completed:', completionData);
+      this.currentView = 'assessment-complete';
+      // Add a longer delay to ensure database transaction is fully committed
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Refresh assigned assessments to remove completed one
+      await this.fetchAssignedAssessments();
+    },
+
+    async onReturnToDashboard() {
+      // Return to main assessment dashboard
+      this.currentView = 'assessment';
+      this.currentAssessment = null;
+      // Add a longer delay to ensure any pending operations are complete
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Refresh assigned assessments
+      await this.fetchAssignedAssessments();
+    },
+
     async logout() {
       // Animation before logout
       const sidebar = document.querySelector('.sidebar');

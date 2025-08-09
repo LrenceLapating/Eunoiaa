@@ -37,12 +37,13 @@ const upload = multer({
   }
 });
 
-// GET /api/accounts/colleges - Get all colleges with student counts
+// GET /api/accounts/colleges - Get all colleges with student counts (active students only)
 router.get('/colleges', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('students')
       .select('college')
+      .eq('status', 'active')
       .not('college', 'is', null);
 
     if (error) throw error;
@@ -66,16 +67,17 @@ router.get('/colleges', async (req, res) => {
   }
 });
 
-// GET /api/accounts/colleges/:collegeName/sections - Get sections data for a specific college
+// GET /api/accounts/colleges/:collegeName/sections - Get sections data for a specific college (active students only)
 router.get('/colleges/:collegeName/sections', async (req, res) => {
   try {
     const { collegeName } = req.params;
     
-    // Get all students for the specified college
+    // Get all active students for the specified college
     const { data, error } = await supabase
       .from('students')
       .select('section, year_level')
       .eq('college', collegeName)
+      .eq('status', 'active')
       .not('section', 'is', null)
       .not('year_level', 'is', null);
 
@@ -218,7 +220,7 @@ router.get('/history', async (req, res) => {
   }
 });
 
-// GET /api/accounts/students - Get students with filtering and pagination
+// GET /api/accounts/students - Get active students with filtering and pagination
 router.get('/students', async (req, res) => {
   try {
     const { college, search, page = 1, limit = 50 } = req.query;
@@ -227,6 +229,7 @@ router.get('/students', async (req, res) => {
     let query = supabase
       .from('students')
       .select('*', { count: 'exact' })
+      .eq('status', 'active')
       .order('created_at', { ascending: false });
 
     // Filter by college
@@ -261,6 +264,27 @@ router.get('/students', async (req, res) => {
   }
 });
 
+// POST /api/accounts/deactivate-students - Deactivate all active students
+router.post('/deactivate-students', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .rpc('deactivate_all_students');
+
+    if (error) {
+      console.error('Error deactivating students:', error);
+      return res.status(500).json({ error: 'Failed to deactivate students' });
+    }
+
+    res.json({
+      message: 'All active students have been deactivated successfully',
+      deactivatedCount: data
+    });
+  } catch (error) {
+    console.error('Error in deactivate students:', error);
+    res.status(500).json({ error: 'Failed to deactivate students' });
+  }
+});
+
 // POST /api/accounts/upload-csv - Upload and process CSV file
 router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
   try {
@@ -268,9 +292,41 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
       return res.status(400).json({ error: 'No CSV file uploaded' });
     }
 
-    const { semester } = req.body;
-    if (!semester) {
-      return res.status(400).json({ error: 'Semester is required' });
+    // Check if deactivatePrevious option is enabled
+    const deactivatePrevious = req.body.deactivatePrevious === 'true' || req.body.deactivatePrevious === true;
+    
+    // If deactivatePrevious is true, deactivate all existing students first
+    let deactivatedCount = 0;
+    if (deactivatePrevious) {
+      try {
+        const { data: deactivateData, error: deactivateError } = await supabase
+          .rpc('deactivate_all_students');
+        
+        if (deactivateError) {
+          console.error('Error deactivating previous students:', deactivateError);
+          return res.status(500).json({ error: 'Failed to deactivate previous students' });
+        }
+        
+        deactivatedCount = deactivateData || 0;
+        console.log(`Deactivated ${deactivatedCount} previous students`);
+        
+        // Archive orphaned bulk assessments after deactivating students
+        try {
+          const { data: archiveData, error: archiveError } = await supabase
+            .rpc('archive_orphaned_bulk_assessments');
+          
+          if (!archiveError && archiveData && archiveData[0]) {
+            const { archived_assessments, archived_assignments } = archiveData[0];
+            console.log(`Archived ${archived_assessments} orphaned bulk assessments and ${archived_assignments} assignments`);
+          }
+        } catch (archiveError) {
+          console.error('Warning: Failed to archive orphaned assessments:', archiveError);
+          // Don't fail the whole operation, just log the warning
+        }
+      } catch (error) {
+        console.error('Error in deactivate operation:', error);
+        return res.status(500).json({ error: 'Failed to deactivate previous students' });
+      }
     }
 
     const filePath = req.file.path;
@@ -288,7 +344,7 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
             // Validate and sanitize data
             const validationResult = validateStudentData(row, rowNumber);
             if (validationResult.isValid) {
-              const sanitizedData = sanitizeStudentData(row, semester);
+              const sanitizedData = sanitizeStudentData(row);
               students.push(sanitizedData);
             } else {
               errors.push(...validationResult.errors);
@@ -322,72 +378,35 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
       return res.status(400).json({ error: 'No valid student data found in CSV' });
     }
 
-    // Move existing students to history before inserting new data
-    try {
-      const { data: existingStudents, error: fetchError } = await supabase
-        .from('students')
-        .select('*');
-      
-      if (fetchError) {
-        console.error('Error fetching existing students:', fetchError);
-      } else if (existingStudents && existingStudents.length > 0) {
-        // Prepare history records
-        const historyRecords = existingStudents.map(student => ({
-          original_student_id: student.id,
-          name: student.name,
-          email: student.email,
-          section: student.section,
-          department: student.department,
-          id_number: student.id_number,
-          year_level: student.year_level,
-          college: student.college,
-          semester: student.semester,
-          status: student.status,
-          created_at: student.created_at,
-          updated_at: student.updated_at,
-          archived_at: new Date().toISOString()
-        }));
-
-        // Insert into history table
-        const { error: historyError } = await supabase
-          .from('students_history')
-          .insert(historyRecords);
-        
-        if (historyError) {
-          console.error('Error moving data to history:', historyError);
-          // Continue with the process even if history fails
-        } else {
-          console.log(`Moved ${existingStudents.length} students to history`);
-        }
-
-        // Clear existing students table
-        const { error: deleteError } = await supabase
-          .from('students')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
-        
-        if (deleteError) {
-          console.error('Error clearing students table:', deleteError);
-        }
-      }
-    } catch (historyError) {
-      console.error('History operation failed:', historyError);
-      // Continue with the upload process
-    }
-
-    // Insert new students into database
+    // Use upsert logic to update existing students or insert new ones
+    let processedCount = 0;
+    let updatedCount = 0;
     let insertedCount = 0;
+    
     for (const student of students) {
       try {
-        const { error } = await supabase
-          .from('students')
-          .insert(student);
+        const { data, error } = await supabase
+          .rpc('upsert_student', {
+            p_name: student.name,
+            p_email: student.email,
+            p_section: student.section,
+            p_department: student.college, // Use college for department field for backward compatibility
+            p_id_number: student.id_number,
+            p_year_level: student.year_level,
+            p_college: student.college,
+            p_semester: student.semester
+          });
         
         if (error) {
-          console.error('Error inserting student:', error);
-          errors.push(`Failed to insert student: ${student.name}`);
+          console.error('Error upserting student:', error);
+          errors.push(`Failed to process student: ${student.name}`);
         } else {
-          insertedCount++;
+          processedCount++;
+          if (data === 'updated') {
+            updatedCount++;
+          } else {
+            insertedCount++;
+          }
         }
       } catch (error) {
         console.error('Database error:', error);
@@ -395,22 +414,41 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
       }
     }
 
+    // Note: Bulk assessments are now created separately through the BulkAssessment component
+    // This allows counselors to choose the assessment type (42 or 84 items) and customize settings
+
     if (errors.length > 0) {
-      return res.status(207).json({ 
+      const partialResponse = { 
         message: 'CSV processed with some errors',
-        studentsProcessed: students.length,
+        studentsProcessed: processedCount,
         studentsInserted: insertedCount,
-        semester: semester,
+        studentsUpdated: updatedCount,
         errors: errors
-      });
+      };
+      
+      // Include deactivation info if applicable
+      if (deactivatePrevious) {
+        partialResponse.studentsDeactivated = deactivatedCount;
+        partialResponse.message = `CSV processed with some errors. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
+      }
+      
+      return res.status(207).json(partialResponse);
     }
 
-    res.json({
+    const response = {
       message: 'CSV uploaded and processed successfully',
-      studentsProcessed: students.length,
+      studentsProcessed: processedCount,
       studentsInserted: insertedCount,
-      semester: semester
-    });
+      studentsUpdated: updatedCount
+    };
+    
+    // Include deactivation info if applicable
+    if (deactivatePrevious) {
+      response.studentsDeactivated = deactivatedCount;
+      response.message = `CSV uploaded successfully. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
+    }
+    
+    res.json(response);
 
   } catch (error) {
     console.error('Error processing CSV:', error);
@@ -424,6 +462,64 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
   }
 });
 
+// POST /api/accounts/students - Create a new student
+router.post('/students', async (req, res) => {
+  try {
+    const { name, email, section, college, id_number, year_level, semester } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !id_number || !college || !year_level) {
+      return res.status(400).json({ error: 'Missing required fields: name, email, id_number, college, year_level' });
+    }
+
+    // Check if student with same ID number already exists
+    const { data: existingStudent, error: checkError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('id_number', id_number)
+      .eq('status', 'active')
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+      throw checkError;
+    }
+
+    if (existingStudent) {
+      return res.status(409).json({ error: 'Student with this ID number already exists' });
+    }
+
+    // Create new student
+    const studentData = {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      section: section ? section.trim() : null,
+      college: college.trim(),
+      id_number: id_number.trim(),
+      year_level: year_level,
+      semester: semester || '1st',
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('students')
+      .insert([studentData])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json({ 
+      message: 'Student created successfully', 
+      student: data 
+    });
+  } catch (error) {
+    console.error('Error creating student:', error);
+    res.status(500).json({ error: 'Failed to create student' });
+  }
+});
+
 // PUT /api/accounts/students/:id - Update student information
 router.put('/students/:id', async (req, res) => {
   try {
@@ -431,7 +527,7 @@ router.put('/students/:id', async (req, res) => {
     const updates = req.body;
 
     // Validate update data
-    const allowedFields = ['name', 'email', 'section', 'department', 'year_level', 'college'];
+    const allowedFields = ['name', 'email', 'section', 'year_level', 'college'];
     const filteredUpdates = {};
     
     for (const field of allowedFields) {
@@ -449,7 +545,7 @@ router.put('/students/:id', async (req, res) => {
     const { data, error } = await supabase
       .from('students')
       .update(filteredUpdates)
-      .eq('id', id)
+      .eq('id_number', id)
       .select()
       .single();
 
@@ -474,7 +570,7 @@ router.delete('/students/:id', async (req, res) => {
     const { error } = await supabase
       .from('students')
       .delete()
-      .eq('id', id);
+      .eq('id_number', id);
 
     if (error) throw error;
 
@@ -487,10 +583,12 @@ router.delete('/students/:id', async (req, res) => {
 
 // GET /api/accounts/csv-template - Download CSV template
 router.get('/csv-template', (req, res) => {
-  const csvTemplate = 'Name,Section,College,ID Number,Email,Year Level\n' +
-                     'John Doe,BSIT-4A,CCS,2020-12345,john.doe@student.edu,4\n' +
-                     'Jane Smith,BSCS-3B,CCS,2021-67890,jane.smith@student.edu,3\n' +
-                     'Mike Johnson,BSENG-2A,COE,2022-11111,mike.johnson@student.edu,2';
+  const csvTemplate = 'Name,Section,College,ID Number,Email,Year Level,Semester\n' +
+                     'John Doe,BSIT-4A,College of Computer Studies,2020-12345,john.doe@student.edu,4,1st Semester\n' +
+                     'Jane Smith,BSCS-3B,CCS,2021-67890,jane.smith@student.edu,3,1st Semester\n' +
+                     'Mike Johnson,BSENG-2A,College of Engineering,2022-11111,mike.johnson@student.edu,2,1st Semester\n' +
+                     'Sarah Wilson,BSBA-1A,Business Administration,2023-22222,sarah.wilson@student.edu,1,1st Semester\n' +
+                     'Alex Brown,BSN-2B,Nursing College,2022-33333,alex.brown@student.edu,2,1st Semester';
   
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="student_template.csv"');

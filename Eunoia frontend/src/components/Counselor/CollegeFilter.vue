@@ -474,7 +474,7 @@ export default {
       });
       
       const summary = {
-        department: this.collegeName,
+        college: this.collegeName,
         customized: true,
         yearCounts: yearCounts,
         totalSections: yearCounts.first + yearCounts.second + yearCounts.third + yearCounts.fourth,

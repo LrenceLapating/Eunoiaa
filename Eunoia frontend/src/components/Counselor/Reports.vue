@@ -7,7 +7,7 @@
       </div>
       <div class="header-content">
         <h1>Generate Reports</h1>
-        <p>Generate and export individual or department well-being reports</p>
+        <p>Generate and export individual or college well-being reports</p>
       </div>
     </div>
 
@@ -31,19 +31,19 @@
           </div>
         </div>
 
-        <!-- Department Summary Card -->
+        <!-- College Summary Card -->
         <div class="report-type-card" 
-             :class="{ active: selectedReportType === 'department' }"
-             @click="selectReportType('department')">
+             :class="{ active: selectedReportType === 'college' }"
+             @click="selectReportType('college')">
           <div class="card-icon">
             <i class="fas fa-building"></i>
           </div>
           <div class="card-content">
-            <h4>Department Summary</h4>
-            <p>Department-wide well-being overview</p>
+            <h4>College Summary</h4>
+            <p>College-wide well-being overview</p>
           </div>
           <div class="card-checkbox">
-            <i class="fas fa-check" v-if="selectedReportType === 'department'"></i>
+            <i class="fas fa-check" v-if="selectedReportType === 'college'"></i>
           </div>
         </div>
       </div>
@@ -110,9 +110,9 @@
       </div>
     </div>
 
-    <!-- Department Report Section -->
-    <div v-if="selectedReportType === 'department'" class="report-config-section">
-      <h3>Department Report Configuration</h3>
+    <!-- College Report Section -->
+    <div v-if="selectedReportType === 'college'" class="report-config-section">
+      <h3>College Report Configuration</h3>
       
       <!-- College Selection -->
       <div class="college-selection-section">
@@ -187,8 +187,8 @@
       </div>
     </div>
 
-    <!-- Assessment Period Selection for Department Report -->
-    <div v-if="selectedReportType === 'department'" class="assessment-periods-section">
+    <!-- Assessment Period Selection for College Report -->
+    <div v-if="selectedReportType === 'college'" class="assessment-periods-section">
       <h3>Select Assessment Periods</h3>
       <div class="assessment-periods">
         <div 
@@ -294,7 +294,7 @@ export default {
     canGenerateReport() {
       if (this.selectedReportType === 'individual') {
         return this.selectedStudent !== null && this.selectedAssessments.length > 0;
-      } else if (this.selectedReportType === 'department') {
+      } else if (this.selectedReportType === 'college') {
         return this.selectedColleges.length > 0 && this.selectedYearLevels.length > 0 && this.selectedPeriods.length > 0;
       }
       return false;
@@ -382,8 +382,8 @@ export default {
       const date = new Date(dateString);
       return date.toLocaleDateString('en-US', { 
         year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+        month: '2-digit', 
+        day: '2-digit' 
       });
     },
     
@@ -392,8 +392,8 @@ export default {
       
       if (this.selectedReportType === 'individual') {
         this.generateIndividualReport();
-      } else if (this.selectedReportType === 'department') {
-        this.generateDepartmentReport();
+      } else if (this.selectedReportType === 'college') {
+        this.generateCollegeReport();
       }
     },
     
@@ -414,21 +414,21 @@ export default {
       }, 2000);
     },
     
-    generateDepartmentReport() {
+    generateCollegeReport() {
       // Simulate PDF generation
-      // Generate department-wide report
+      // Generate college-wide report
       
       // Show success message
       const periodCount = this.selectedPeriods.length;
       this.$emit('show-notification', {
         type: 'success',
-        message: `Department report for ${this.selectedColleges.join(', ')} with ${periodCount} periods is being generated...`
+        message: `College report for ${this.selectedColleges.join(', ')} with ${periodCount} periods is being generated...`
       });
       
       // Simulate download after delay
       setTimeout(() => {
         const collegeNames = this.selectedColleges.join('_');
-        this.downloadPDF(`DepartmentReport_${collegeNames}_${periodCount}_periods.pdf`);
+        this.downloadPDF(`CollegeReport_${collegeNames}_${periodCount}_periods.pdf`);
       }, 2000);
     },
     

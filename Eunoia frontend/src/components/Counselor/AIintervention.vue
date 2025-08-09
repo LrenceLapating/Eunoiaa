@@ -121,7 +121,7 @@
           </thead>
           <tbody>
             <tr v-for="(student, index) in filteredCurrentStudents" :key="student?.id || index" class="student-row">
-              <td class="student-id-cell">{{ student?.id || 'N/A' }}</td>
+              <td class="student-id-cell">{{ student?.id_number || 'N/A' }}</td>
               <td>
                 <div class="student-info">
                   <span class="student-name">{{ student?.name || 'N/A' }}</span>
@@ -149,7 +149,7 @@
                     <div 
                       v-for="(score, subscale) in (student?.subscales || {})" 
                       :key="subscale"
-                      v-if="score !== undefined && isAtRisk(score * 7)"
+                      v-if="score !== undefined && score !== null && isAtRisk(score * 7)"
                       class="risk-dimension-container"
                     >
                       <div class="risk-dimension-score">
@@ -163,7 +163,7 @@
                     <div 
                       v-for="(score, subscale) in (student?.subscales || {})" 
                       :key="subscale"
-                      v-if="score !== undefined && isModerate(score * 7)"
+                      v-if="score !== undefined && score !== null && isModerate(score * 7)"
                       class="risk-dimension-container moderate-dimension"
                     >
                       <div class="risk-dimension-score">
@@ -217,7 +217,7 @@
           <div class="student-details-header">
             <div class="student-profile">
               <h4>{{ selectedStudent?.name || 'N/A' }}</h4>
-              <p>{{ selectedStudent?.id || 'N/A' }} • {{ selectedStudent?.college || 'N/A' }} • {{ selectedStudent?.section || 'N/A' }}</p>
+              <p>{{ selectedStudent?.id_number || 'N/A' }} • {{ selectedStudent?.college || 'N/A' }} • {{ selectedStudent?.section || 'N/A' }}</p>
             </div>
             <div class="assessment-summary">
               <div class="overall-score">
@@ -243,15 +243,15 @@
                 class="dimension-card" 
                 v-for="(score, subscale) in (selectedStudent?.subscales || {})" 
                 :key="subscale"
-                :class="{ 'at-risk': score !== undefined && isAtRisk(score * 7), 'moderate': score !== undefined && isModerate(score * 7), 'healthy': score !== undefined && isHealthy(score * 7) }"
+                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score * 7), 'moderate': score !== undefined && score !== null && isModerate(score * 7), 'healthy': score !== undefined && score !== null && isHealthy(score * 7) }"
               >
                 <div class="dimension-header">
                   <span class="dimension-name">{{ formatSubscaleName(subscale) }}</span>
-                  <span class="dimension-score" :class="score !== undefined ? getDimensionRiskClass(score*7) : 'no-data'">
-                    {{ score !== undefined ? Math.round(score * 7) : 'N/A' }}/49
+                  <span class="dimension-score" :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score*7) : 'no-data'">
+                    {{ (score !== undefined && score !== null) ? Math.round(score * 7) : 'N/A' }}/49
                   </span>
                 </div>
-                <div class="intervention-text" v-if="score !== undefined">
+                <div class="intervention-text" v-if="score !== undefined && score !== null">
                   <p>{{ getDimensionIntervention(subscale, score * 7) }}</p>
                 </div>
                 <div class="no-data-text" v-else>

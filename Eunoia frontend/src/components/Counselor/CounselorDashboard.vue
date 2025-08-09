@@ -59,9 +59,10 @@
               <li :class="{ active: currentView === 'ryffScoring' }">
                 <a @click="currentView = 'ryffScoring'" class="submenu-item">
                   <i class="fas fa-calculator"></i>
-                  <span v-show="sidebarExpanded">Students</span>
+                  <span v-show="sidebarExpanded">Ryff Scoring</span>
                 </a>
               </li>
+
               <li :class="{ active: currentView === 'guidance' }">
                 <a @click="currentView = 'guidance'" class="submenu-item">
                   <i class="fas fa-comment-alt"></i>
@@ -191,12 +192,12 @@
                      class="alert-item"
                      @click="showDimensionDetails(dimension)"
                      :class="{ 'clickable': true }"
-                     v-if="dimension && dimension.name && dimension.highRiskColleges">
+                     v-if="dimension && dimension.name && dimension.highRiskColleges && dimension.highRiskColleges.length > 0">
                   <div class="alert-details">
-                    <h4>{{ dimension.name }}</h4>
+                    <h4>{{ dimension.name || 'Unknown Dimension' }}</h4>
                   </div>
                   <div class="alert-colleges">
-                    <p>{{ dimension.highRiskColleges.length }} colleges</p>
+                    <p>{{ (dimension.highRiskColleges && dimension.highRiskColleges.length) || 0 }} colleges</p>
                     <span>at high risk</span>
                   </div>
                 </div>
@@ -304,6 +305,8 @@
                 :pre-selected-student="preSelectedStudent"
                 :pre-selected-report-type="preSelectedReportType" />
         
+
+        
         <!-- Settings View -->
         <Settings v-if="currentView === 'settings'" />
       </div>
@@ -352,6 +355,7 @@ import CollegeDetail from './CollegeDetail.vue'
 import Reports from './Reports.vue'
 import Settings from './Settings.vue'
 import AIintervention from './AIintervention.vue'
+
 import { calculateCollegeStats } from '../Shared/RyffScoringUtils'
 
 export default {
@@ -366,7 +370,8 @@ export default {
     CollegeDetail,
     Reports,
     Settings,
-    AIintervention
+    AIintervention,
+
   },
   data() {
     return {
@@ -448,7 +453,7 @@ export default {
         case 'intervention':
           return 'Intelligent categorization and intervention recommendations for student well-being';
         case 'status':
-          return 'Manage department accounts and user access';
+          return 'Manage college accounts and user access';
         case 'settings':
           return 'Configure system preferences and account settings';
         default:
@@ -1504,7 +1509,7 @@ export default {
   color: var(--accent);
 }
 
-/* Department Table */
+/* College Table */
 .table-container {
   padding: 0 15px 15px;
   overflow: auto;

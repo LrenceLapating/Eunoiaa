@@ -15,6 +15,9 @@
                   style="display:none" 
                   @change="handleFileUpload"
                 />
+                <button class="add-student-btn" @click="openAddStudentModal">
+                  <i class="fas fa-user-plus"></i> Add Student
+                </button>
                 <button class="upload-btn" @click="showUploadModal = true">
                   <i class="fas fa-upload"></i> Upload CSV
                 </button>
@@ -22,7 +25,7 @@
                   <i class="fas fa-download"></i> Download Template
                 </button>
               </div>
-              <span class="format-text">Format: Name, Section, College, ID Number, Email, Year Level</span>
+              <span class="format-text">Format: Name, Section, College, ID Number, Email, Year Level, Semester (optional)</span>
             </div>
           </div>
           
@@ -44,11 +47,11 @@
               </tr>
             </thead>
             <transition-group name="row-fade-slide" tag="tbody">
-              <tr v-for="(dept, idx) in departments" :key="dept.name">
-                <td>{{ dept.name }}</td>
-                <td>{{ dept.users }}</td>
+              <tr v-for="(college, idx) in colleges" :key="college.name">
+                <td>{{ college.name }}</td>
+                <td>{{ college.users }}</td>
                 <td>
-                  <button class="view-btn" @click="viewCollegeUsers(dept.name)">View</button>
+                  <button class="view-btn" @click="viewCollegeUsers(college.name)">View</button>
                 </td>
               </tr>
             </transition-group>
@@ -87,10 +90,10 @@
                 <td>{{ user.section }}</td>
                 <td>{{ user.email }}</td>
                 <td class="actions-cell">
-                  <button class="edit-btn" title="Edit User">
+                  <button class="edit-btn" title="Edit User" @click="editStudent(user)">
                     <i class="fas fa-edit"></i>
                   </button>
-                  <button class="delete-btn" title="Delete User">
+                  <button class="delete-btn" title="Delete User" @click="deleteStudent(user)">
                     <i class="fas fa-trash-alt"></i>
                   </button>
                 </td>
@@ -112,11 +115,11 @@
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label for="semester-select">Select Semester:</label>
-            <select id="semester-select" v-model="selectedSemester">
-              <option :value="null" disabled>Select a semester</option>
-              <option v-for="sem in semesters" :key="sem" :value="sem">{{ sem }}</option>
-            </select>
+            <div class="checkbox-container">
+              <label for="deactivate-checkbox" class="checkbox-label">Deactivate Previous Students</label>
+              <input type="checkbox" v-model="deactivatePrevious" class="deactivate-checkbox" id="deactivate-checkbox">
+            </div>
+            <p class="checkbox-description">Check this to deactivate students from the previous list who are not in the new upload. They will become ineligible for bulk assessments but their history will be retained.</p>
           </div>
           <div 
             class="drop-area"
@@ -135,11 +138,244 @@
             <p>Drag & Drop your CSV file here, or click to select</p>
             <p class="file-name" v-if="uploadedFileName">{{ uploadedFileName }}</p>
           </div>
-          <p class="format-text">Format: Name, Section, College, ID Number, Email, Year Level</p>
+          <p class="format-text">Format: Name, Section, College, ID Number, Email, Year Level, Semester (optional)</p>
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showUploadModal = false">Cancel</button>
-          <button class="submit-btn" @click="confirmUpload" :disabled="!uploadedFile || !selectedSemester">Upload</button>
+          <button class="submit-btn" @click="confirmUpload" :disabled="!uploadedFile">Upload</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div v-if="showAddStudentModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Add New Student</h3>
+          <button class="close-modal" @click="closeAddStudentModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="addStudent">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="student-name">Full Name *</label>
+                <input 
+                  type="text" 
+                  id="student-name" 
+                  v-model="studentForm.name" 
+                  required 
+                  placeholder="Enter student's full name"
+                >
+              </div>
+              <div class="form-group">
+                <label for="student-id">ID Number *</label>
+                <input 
+                  type="text" 
+                  id="student-id" 
+                  v-model="studentForm.id_number" 
+                  required 
+                  placeholder="Enter student ID number"
+                >
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="student-email">Email *</label>
+                <input 
+                  type="email" 
+                  id="student-email" 
+                  v-model="studentForm.email" 
+                  required 
+                  placeholder="Enter email address"
+                >
+              </div>
+              <div class="form-group">
+                <label for="student-section">Section *</label>
+                <input 
+                  type="text" 
+                  id="student-section" 
+                  v-model="studentForm.section" 
+                  required 
+                  placeholder="Enter section (e.g., CS-1A)"
+                >
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="student-college">College *</label>
+                <select id="student-college" v-model="studentForm.college" required>
+                  <option value="">Select College</option>
+                  <option v-for="college in colleges" :key="college.name" :value="college.name">
+                    {{ college.name }}
+                  </option>
+                  <option value="other">Other (specify below)</option>
+                </select>
+                <input 
+                  v-if="studentForm.college === 'other'" 
+                  type="text" 
+                  v-model="studentForm.customCollege" 
+                  placeholder="Enter college name"
+                  class="custom-college-input"
+                >
+              </div>
+              <div class="form-group">
+                <label for="student-year">Year Level *</label>
+                <select id="student-year" v-model="studentForm.year_level" required>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                  <option value="5">5th Year</option>
+                  <option value="6">6th Year</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="student-semester">Semester</label>
+              <select id="student-semester" v-model="studentForm.semester">
+                <option value="1st Semester">1st Semester</option>
+                <option value="2nd Semester">2nd Semester</option>
+                <option value="Summer">Summer</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeAddStudentModal">Cancel</button>
+          <button class="submit-btn" @click="addStudent">Add Student</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Student Modal -->
+    <div v-if="showEditStudentModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Edit Student</h3>
+          <button class="close-modal" @click="closeEditStudentModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="updateStudent">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-student-name">Full Name *</label>
+                <input 
+                  type="text" 
+                  id="edit-student-name" 
+                  v-model="studentForm.name" 
+                  required 
+                  placeholder="Enter student's full name"
+                >
+              </div>
+              <div class="form-group">
+                <label for="edit-student-id">ID Number *</label>
+                <input 
+                  type="text" 
+                  id="edit-student-id" 
+                  v-model="studentForm.id_number" 
+                  required 
+                  placeholder="Enter student ID number"
+                  :disabled="true"
+                >
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-student-email">Email *</label>
+                <input 
+                  type="email" 
+                  id="edit-student-email" 
+                  v-model="studentForm.email" 
+                  required 
+                  placeholder="Enter email address"
+                >
+              </div>
+              <div class="form-group">
+                <label for="edit-student-section">Section *</label>
+                <input 
+                  type="text" 
+                  id="edit-student-section" 
+                  v-model="studentForm.section" 
+                  required 
+                  placeholder="Enter section (e.g., CS-1A)"
+                >
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-student-college">College *</label>
+                <select id="edit-student-college" v-model="studentForm.college" required>
+                  <option value="">Select College</option>
+                  <option v-for="college in colleges" :key="college.name" :value="college.name">
+                    {{ college.name }}
+                  </option>
+                  <option value="other">Other (specify below)</option>
+                </select>
+                <input 
+                  v-if="studentForm.college === 'other'" 
+                  type="text" 
+                  v-model="studentForm.customCollege" 
+                  placeholder="Enter college name"
+                  class="custom-college-input"
+                >
+              </div>
+              <div class="form-group">
+                <label for="edit-student-year">Year Level *</label>
+                <select id="edit-student-year" v-model="studentForm.year_level" required>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                  <option value="5">5th Year</option>
+                  <option value="6">6th Year</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="edit-student-semester">Semester</label>
+              <select id="edit-student-semester" v-model="studentForm.semester">
+                <option value="1st Semester">1st Semester</option>
+                <option value="2nd Semester">2nd Semester</option>
+                <option value="Summer">Summer</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeEditStudentModal">Cancel</button>
+          <button class="submit-btn" @click="updateStudent">Update Student</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteConfirmModal" class="modal-overlay">
+      <div class="modal-content delete-modal">
+        <div class="modal-header">
+          <h3>Confirm Delete</h3>
+          <button class="close-modal" @click="showDeleteConfirmModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="delete-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Are you sure you want to delete this student?</p>
+            <div class="student-info" v-if="currentStudent">
+              <strong>{{ currentStudent.name }}</strong><br>
+              ID: {{ currentStudent.id }}<br>
+              Email: {{ currentStudent.email }}
+            </div>
+            <p class="warning-text">This action cannot be undone. The student's assessment history will be preserved but they will be marked as inactive.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showDeleteConfirmModal = false">Cancel</button>
+          <button class="delete-confirm-btn" @click="confirmDeleteStudent">Delete Student</button>
         </div>
       </div>
     </div>
@@ -163,13 +399,30 @@ export default {
         type: 'success',
         icon: 'fas fa-check-circle'
       },
-      departments: [], // Will be populated from backend API
+      colleges: [], // Will be populated from backend API
       users: [], // Will be populated from backend API
       showUploadModal: false,
-      selectedSemester: null,
-      semesters: ['1st Semester', '2nd Semester', 'Summer'],
+      deactivatePrevious: false,
       uploadedFile: null,
-      uploadedFileName: ''
+      uploadedFileName: '',
+      showAddModal: false,
+      showEditModal: false,
+      showDeleteModal: false,
+      showAddStudentModal: false,
+      showEditStudentModal: false,
+      showDeleteConfirmModal: false,
+      editingStudentId: null,
+      studentToDelete: null,
+      studentForm: {
+        name: '',
+        email: '',
+        section: '',
+        college: '',
+        id_number: '',
+        year_level: '',
+        semester: '1st Semester',
+        customCollege: ''
+      }
     }
   },
   computed: {
@@ -230,6 +483,7 @@ export default {
       // Get header row and check format
       const headers = lines[0].split(',').map(header => header.trim());
       const requiredHeaders = ['Name', 'Section', 'College', 'ID Number', 'Email', 'Year Level'];
+      const optionalHeaders = ['Semester'];
       
       // Check if all required headers are present
       const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
@@ -248,7 +502,7 @@ export default {
       
       let newColleges = 0;
       let newUsers = 0;
-      let existingDepartments = new Set(this.departments.map(dept => dept.name));
+      let existingColleges = new Set(this.colleges.map(college => college.name));
       
       // Process each data row
       for (let i = 1; i < lines.length; i++) {
@@ -268,11 +522,11 @@ export default {
         // Skip if any required field is empty
         if (!name || !section || !college || !id || !email || !yearLevel) continue;
         
-        // Check if the college exists (use college column instead of department)
-        if (!existingDepartments.has(college)) {
+        // Check if the college exists
+        if (!existingColleges.has(college)) {
           // Add new college
-          this.departments.push({ name: college, users: 0 });
-          existingDepartments.add(college);
+          this.colleges.push({ name: college, users: 0 });
+          existingColleges.add(college);
           newColleges++;
         }
         
@@ -290,9 +544,9 @@ export default {
           });
           
           // Update college user count
-          const deptIndex = this.departments.findIndex(dept => dept.name === college);
-          if (deptIndex !== -1) {
-            this.departments[deptIndex].users++;
+          const collegeIndex = this.colleges.findIndex(college_item => college_item.name === college);
+          if (collegeIndex !== -1) {
+            this.colleges[collegeIndex].users++;
           }
           
           newUsers++;
@@ -369,8 +623,8 @@ export default {
       }
     },
     async confirmUpload() {
-      if (!this.uploadedFile || !this.selectedSemester) {
-        this.showNotification('Please select a semester and upload a CSV file.', 'error', 'fas fa-exclamation-circle');
+      if (!this.uploadedFile) {
+        this.showNotification('Please upload a CSV file.', 'error', 'fas fa-exclamation-circle');
         return;
       }
 
@@ -384,7 +638,7 @@ export default {
         // Create FormData for file upload
         const formData = new FormData();
         formData.append('csvFile', this.uploadedFile);
-        formData.append('semester', this.selectedSemester);
+        formData.append('deactivatePrevious', this.deactivatePrevious);
         
         // Show loading notification
         this.showNotification('Uploading CSV file...', 'info', 'fas fa-spinner fa-spin');
@@ -400,11 +654,21 @@ export default {
         if (response.ok) {
           // Success - refresh data from backend
           await this.loadCollegesFromBackend();
-          this.showNotification(
-            `Successfully uploaded! ${result.studentsProcessed} students processed.`, 
-            'success', 
-            'fas fa-check-circle'
-          );
+          
+          // If currently viewing a specific college, refresh the student list too
+          if (this.selectedCollege) {
+            await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
+          }
+          
+          let message = `Successfully uploaded! ${result.studentsProcessed} students processed. ` +
+                       `${result.studentsInserted} new students added, ${result.studentsUpdated} students updated.`;
+          
+          // Include deactivation info if applicable
+          if (result.studentsDeactivated !== undefined) {
+            message += ` ${result.studentsDeactivated} previous students deactivated.`;
+          }
+          
+          this.showNotification(message, 'success', 'fas fa-check-circle');
         } else {
           // Handle validation errors
           if (result.errors && result.errors.length > 0) {
@@ -422,7 +686,7 @@ export default {
         this.showUploadModal = false;
         this.uploadedFile = null;
         this.uploadedFileName = '';
-        this.selectedSemester = null;
+        this.deactivatePrevious = false;
       }
     },
     
@@ -432,7 +696,7 @@ export default {
         const response = await fetch('http://localhost:3000/api/accounts/colleges');
         if (response.ok) {
           const data = await response.json();
-          this.departments = data.colleges.map(college => ({
+          this.colleges = data.colleges.map(college => ({
             name: college.name,
             users: college.totalUsers
           }));
@@ -497,6 +761,185 @@ export default {
       }));
       
       this.$emit('students-updated', studentsWithAssessmentData);
+    },
+
+    // Individual student management methods
+    openAddStudentModal() {
+      this.resetStudentForm();
+      this.showAddStudentModal = true;
+    },
+
+    closeAddStudentModal() {
+      this.showAddStudentModal = false;
+      this.resetStudentForm();
+    },
+
+    closeEditStudentModal() {
+      this.showEditStudentModal = false;
+      this.resetStudentForm();
+    },
+
+    closeDeleteConfirmModal() {
+      this.showDeleteConfirmModal = false;
+      this.studentToDelete = null;
+    },
+
+    editStudent(user) {
+      this.studentForm = {
+        name: user.name,
+        email: user.email,
+        section: user.section,
+        college: user.college,
+        id_number: user.id,
+        year_level: user.yearLevel,
+        semester: user.semester || '1st Semester',
+        customCollege: ''
+      };
+      this.editingStudentId = user.id;
+      this.showEditStudentModal = true;
+    },
+
+    deleteStudent(user) {
+      this.studentToDelete = user;
+      this.showDeleteConfirmModal = true;
+    },
+
+    addStudent() {
+      this.saveStudent();
+    },
+
+    updateStudent() {
+      this.saveStudent();
+    },
+
+    resetStudentForm() {
+      this.studentForm = {
+        name: '',
+        email: '',
+        section: '',
+        college: '',
+        id_number: '',
+        year_level: '',
+        semester: '1st Semester',
+        customCollege: ''
+      };
+      this.editingStudentId = null;
+    },
+
+    async saveStudent() {
+      try {
+        // Validate form
+        if (!this.studentForm.name || !this.studentForm.email || !this.studentForm.id_number || 
+            !this.studentForm.college || !this.studentForm.year_level) {
+          this.showNotification('Please fill in all required fields', 'error', 'fas fa-exclamation-circle');
+          return;
+        }
+
+        // Handle custom college
+        let collegeName = this.studentForm.college;
+        if (this.studentForm.college === 'other' && this.studentForm.customCollege) {
+          collegeName = this.studentForm.customCollege.trim();
+        }
+
+        // Prepare student data
+        const studentData = {
+          name: this.studentForm.name.trim(),
+          email: this.studentForm.email.trim(),
+          section: this.studentForm.section.trim(),
+          college: collegeName,
+          id_number: this.studentForm.id_number.trim(),
+          year_level: this.studentForm.year_level,
+          semester: this.studentForm.semester
+        };
+
+        let response;
+        if (this.editingStudentId) {
+          // Update existing student
+          response = await fetch(`http://localhost:3000/api/accounts/students/${this.editingStudentId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(studentData)
+          });
+        } else {
+          // Add new student
+          response = await fetch('http://localhost:3000/api/accounts/students', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(studentData)
+          });
+        }
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Success - refresh data
+          await this.loadCollegesFromBackend();
+          if (this.selectedCollege) {
+            await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
+          }
+
+          const action = this.editingStudentId ? 'updated' : 'added';
+          this.showNotification(`Student ${action} successfully!`, 'success', 'fas fa-check-circle');
+          
+          // Close modal
+          this.showAddStudentModal = false;
+          this.showEditStudentModal = false;
+          this.resetStudentForm();
+        } else {
+          this.showNotification(result.error || `Failed to ${this.editingStudentId ? 'update' : 'add'} student`, 'error', 'fas fa-exclamation-circle');
+        }
+      } catch (error) {
+        console.error('Error saving student:', error);
+        this.showNotification('Network error. Please check if the backend server is running.', 'error', 'fas fa-exclamation-circle');
+      }
+    },
+
+    async confirmDeleteStudent() {
+      try {
+        const response = await fetch(`http://localhost:3000/api/accounts/students/${this.studentToDelete.id}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Success - refresh data
+          await this.loadCollegesFromBackend();
+          if (this.selectedCollege) {
+            await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
+          }
+
+          this.showNotification('Student deleted successfully!', 'success', 'fas fa-check-circle');
+          
+          // Close modal
+          this.showDeleteConfirmModal = false;
+          this.studentToDelete = null;
+        } else {
+          this.showNotification(result.error || 'Failed to delete student', 'error', 'fas fa-exclamation-circle');
+        }
+      } catch (error) {
+        console.error('Error deleting student:', error);
+        this.showNotification('Network error. Please check if the backend server is running.', 'error', 'fas fa-exclamation-circle');
+      }
+    },
+
+    cancelAddStudent() {
+      this.showAddModal = false;
+      this.resetStudentForm();
+    },
+
+    cancelEditStudent() {
+      this.showEditModal = false;
+      this.resetStudentForm();
+    },
+
+    cancelDelete() {
+      this.showDeleteModal = false;
+      this.studentToDelete = null;
     }
   }
 }
@@ -546,6 +989,27 @@ export default {
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.add-student-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 179, 176, 0.2);
+}
+
+.add-student-btn:hover {
+  background: linear-gradient(135deg, #00a09d 0%, #008f8c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.3);
 }
 
 .upload-btn {
@@ -661,69 +1125,90 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #f9fafb;
+  padding: 20px 24px;
+  border-bottom: 2px solid #e5e7eb;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .college-header h3 {
   margin: 0;
-  color: var(--dark);
-  font-size: 18px;
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 700;
   position: absolute;
-  left: 20px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.college-header h3::before {
+  content: '🏫';
+  font-size: 18px;
 }
 
 .search-container {
   position: relative;
-  width: 400px;
+  width: 420px;
   max-width: 50%;
 }
 
 .search-container i {
   position: absolute;
-  left: 12px;
+  left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: #78909c;
+  color: #9ca3af;
+  font-size: 16px;
 }
 
 .search-container input {
   width: 100%;
-  padding: 10px 12px 10px 36px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #546e7a;
+  padding: 12px 16px 12px 44px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #374151;
+  background-color: #ffffff;
+  transition: all 0.3s ease;
 }
 
 .search-container input:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(0, 179, 176, 0.1);
+  border-color: #00b3b0;
+  box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.1);
+  background-color: #fafbfc;
+}
+
+.search-container input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
 }
 
 .back-btn {
-  background-color: transparent;
-  color: #546e7a;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 8px 16px;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #4b5563;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   position: absolute;
-  right: 20px;
+  right: 24px;
 }
 
 .back-btn:hover {
-  background-color: #f5f5f5;
-  color: var(--primary);
-  border-color: var(--primary);
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
+  color: white;
+  border-color: #00b3b0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 179, 176, 0.2);
 }
 
 .back-btn i {
@@ -733,77 +1218,108 @@ export default {
 .account-table {
   width: 100%;
   border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .account-table th {
   text-align: left;
-  padding: 16px 20px;
-  color: #546e7a;
-  font-weight: 600;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 18px 20px;
+  color: #374151;
+  font-weight: 700;
+  font-size: 0.9em;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e5e7eb;
   position: sticky;
   top: 0;
   z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .account-table td {
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #546e7a;
+  padding: 18px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #4b5563;
+  font-weight: 500;
 }
 
 .account-table tr:hover {
-  background-color: #f9fafb;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  transform: scale(1.001);
+  transition: all 0.2s ease;
+}
+
+.account-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.account-table tbody tr:nth-child(even) {
+  background-color: #fafbfc;
 }
 
 .view-btn {
-  background-color: transparent;
-  color: #00b3b0;
-  border: 1px solid #00b3b0;
-  border-radius: 4px;
-  padding: 6px 16px;
-  font-weight: 500;
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 0.85em;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 179, 176, 0.2);
 }
 
 .view-btn:hover {
-  background-color: #e0f7fa;
+  background: linear-gradient(135deg, #00a09d 0%, #008f8c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 179, 176, 0.3);
 }
 
 .actions-cell {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  align-items: center;
 }
 
 .edit-btn, .delete-btn {
   background-color: transparent;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
+  border: 2px solid transparent;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  font-size: 14px;
 }
 
 .edit-btn {
-  color: var(--primary);
+  color: #00b3b0;
+  border-color: #e0f7fa;
 }
 
 .edit-btn:hover {
-  background-color: rgba(0, 179, 176, 0.1);
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 179, 176, 0.2);
 }
 
 .delete-btn {
-  color: var(--accent);
+  color: #ef4444;
+  border-color: #fef2f2;
 }
 
 .delete-btn:hover {
-  background-color: rgba(255, 107, 107, 0.1);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
 }
 
 /* Animations */
@@ -867,32 +1383,51 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 25px;
-  background-color: #f5f7fa;
-  border-bottom: 1px solid #eee;
+  padding: 24px 30px;
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
+  border-bottom: none;
+  color: white;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.4em;
-  color: #333;
+  font-size: 1.5em;
+  font-weight: 600;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-header h3::before {
+  content: '👤';
+  font-size: 1.2em;
 }
 
 .close-modal {
-  background: none;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
-  font-size: 1.8em;
-  color: #888;
+  font-size: 1.4em;
+  color: white;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .close-modal:hover {
-  color: #555;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .modal-body {
-  padding: 25px;
+  padding: 30px;
+  background-color: #fafbfc;
+  min-height: 200px;
 }
 
 .form-group {
@@ -902,25 +1437,90 @@ export default {
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  font-weight: bold;
-  color: #555;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95em;
 }
 
+.form-group input,
 .form-group select {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
   border-radius: 8px;
   font-size: 1em;
-  color: #333;
+  transition: all 0.3s ease;
   background-color: #fff;
-  appearance: none; /* Remove default select arrow */
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M7%2010l5%205%205-5H7z%22%2F%3E%3C%2Fsvg%3E');
-  background-repeat: no-repeat;
-  background-position: right 15px top 50%;
-  background-size: 12px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #00b3b0;
+  box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.1);
+  background-color: #fafafa;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}
+
+/* Checkbox Styles */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px; /* Adds space inside the container */
+  border: 1px solid #e5e7eb; /* Subtle border */
+  border-radius: 8px;
+  background-color: #f9fafb;
+  margin-bottom: 15px;
+}
+
+.checkbox-label {
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+}
+
+.deactivate-checkbox {
+  width: 16px; /* Match font size */
+  height: 16px; /* Match font size */
+  cursor: pointer;
+  accent-color: #00b3b0;
+  margin-left: auto; /* Pushes checkbox to the right */
+}
+
+.deactivate-checkbox:focus {
+  outline: 2px solid #00b3b0;
+  outline-offset: 2px;
+}
+
+.checkbox-description {
+  margin: 0 0 16px 0;
+  font-size: 0.85em;
+  color: #6b7280;
+  line-height: 1.4;
+  font-weight: 400;
 }
 
 .drop-area {
@@ -962,43 +1562,66 @@ export default {
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 18px 25px;
-  border-top: 1px solid #eee;
-  background-color: #f5f7fa;
+  gap: 12px;
+  padding: 24px 30px;
+  border-top: 1px solid #e5e7eb;
+  background-color: #fff;
 }
 
 .modal-footer button {
-  padding: 10px 20px;
+  padding: 12px 24px;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-weight: 600;
+  font-size: 0.95em;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  min-width: 100px;
 }
 
 .cancel-btn {
-  background-color: #e0e0e0;
-  color: #555;
-  border: none;
-  margin-right: 10px;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border-color: #d1d5db;
 }
 
 .cancel-btn:hover {
-  background-color: #d0d0d0;
+  background-color: #e5e7eb;
+  color: #4b5563;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .submit-btn {
-  background-color: #007bff;
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
   color: #fff;
-  border: none;
+  border-color: #00b3b0;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background-color: #0056b3;
+  background: linear-gradient(135deg, #00a09d 0%, #008f8c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.3);
 }
 
 .submit-btn:disabled {
-  background-color: #a0c8f5;
+  background-color: #d1d5db;
+  color: #9ca3af;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.delete-confirm-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  border-color: #ef4444;
+}
+
+.delete-confirm-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 /* Animations */

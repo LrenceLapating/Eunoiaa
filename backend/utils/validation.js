@@ -58,13 +58,13 @@ const validateStudentData = (row, rowNumber) => {
 /**
  * Sanitize and format student data for database insertion
  * @param {Object} row - CSV row data
- * @param {string} semester - Semester information
  * @returns {Object} - Sanitized student data
  */
-const sanitizeStudentData = (row, semester) => {
+const sanitizeStudentData = (row) => {
   // Extract data from CSV columns
   const section = row['Section'].toString().trim();
   const college = row['College'].toString().trim();
+  const semester = row['Semester'] ? row['Semester'].toString().trim() : '1st Semester';
   
   // Use the College column directly from CSV
   // This allows for automatic creation of new colleges from CSV data
@@ -94,7 +94,6 @@ const sanitizeStudentData = (row, semester) => {
     name: validator.escape(row['Name'].toString().trim()),
     email: validator.normalizeEmail(row['Email'].toString().trim()),
     section: validator.escape(section),
-    department: finalCollege, // Use college as department for backward compatibility
     id_number: validator.escape(row['ID Number'].toString().trim()),
     year_level: parseInt(row['Year Level']),
     college: finalCollege,

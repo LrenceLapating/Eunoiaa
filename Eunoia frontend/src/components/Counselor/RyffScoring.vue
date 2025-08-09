@@ -111,7 +111,7 @@
                 <span class="student-name">{{ student?.name || 'N/A' }}</span>
               </div>
             </td>
-            <td class="student-id-cell">{{ student?.id || 'N/A' }}</td>
+            <td class="student-id-cell">{{ student?.id_number || 'N/A' }}</td>
             <td>{{ student?.college || 'N/A' }}</td>
             <td>{{ student?.section || 'N/A' }}</td>
             <td>{{ student?.submissionDate || 'N/A' }}</td>
@@ -137,7 +137,7 @@
                   <div 
                     v-for="(score, subscale) in (student?.subscales || {})" 
                     :key="subscale"
-                    v-if="score !== undefined && (isAtRisk(score * 7) || isModerate(score * 7))"
+                    v-if="score !== undefined && score !== null && (isAtRisk(score * 7) || isModerate(score * 7))"
                     class="risk-dimension-container"
                   >
                     <div class="risk-dimension-score" :class="getDimensionRiskClass(score * 7)">
@@ -171,7 +171,7 @@
         </thead>
         <tbody>
           <tr v-for="(student, index) in filteredStudents" :key="student?.id || index" class="student-row">
-            <td>{{ student?.id || 'N/A' }}</td>
+            <td>{{ student?.id_number || 'N/A' }}</td>
             <td>{{ student?.name || 'N/A' }}</td>
             <td>{{ student?.college || 'N/A' }}</td>
             <td>
@@ -197,7 +197,7 @@
           <div class="student-details-header">
             <div class="student-profile">
             <h4>{{ selectedStudent?.name || 'N/A' }}</h4>
-            <p>{{ selectedStudent?.id || 'N/A' }} • {{ selectedStudent?.college || 'N/A' }} • {{ selectedStudent?.section || 'N/A' }}</p>
+            <p>{{ selectedStudent?.id_number || 'N/A' }} • {{ selectedStudent?.college || 'N/A' }} • {{ selectedStudent?.section || 'N/A' }}</p>
           </div>
           <div class="assessment-info">
             <div class="info-item">
@@ -228,21 +228,21 @@
                 class="subscale-item" 
                 v-for="(score, subscale) in (selectedStudent?.subscales || {})" 
                 :key="subscale"
-                :class="{ 'at-risk': score !== undefined && isAtRisk(score * 7) }"
+                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score * 7) }"
               >
                 <div class="subscale-header">
                   <span class="subscale-name">{{ formatSubscaleName(subscale) }}</span>
-                  <span class="subscale-score">{{ score !== undefined ? Math.round(score * 7) : 'N/A' }}/49</span>
+                  <span class="subscale-score">{{ (score !== undefined && score !== null) ? Math.round(score * 7) : 'N/A' }}/49</span>
                 </div>
                 <div class="progress-bar">
                   <div 
                     class="progress-fill" 
-                    :style="score !== undefined ? { width: (score*7/49*100) + '%', backgroundColor: getDimensionScoreColor(score*7) } : { width: '0%' }"
+                    :style="(score !== undefined && score !== null) ? { width: (score*7/49*100) + '%', backgroundColor: getDimensionScoreColor(score*7) } : { width: '0%' }"
                   ></div>
                 </div>
                 <div class="risk-status">
-                  <span :class="score !== undefined ? getDimensionRiskClass(score*7) : 'no-data'">
-                    {{ score !== undefined ? getDimensionRiskLabel(score*7) : 'No Data' }}
+                  <span :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score*7) : 'no-data'">
+                    {{ (score !== undefined && score !== null) ? getDimensionRiskLabel(score*7) : 'No Data' }}
                   </span>
                 </div>
               </div>
@@ -274,7 +274,7 @@
           <div class="student-details-header">
             <div class="student-info">
               <h4>{{ selectedStudentForHistory.name }}</h4>
-              <p>ID: {{ selectedStudentForHistory.id }} | College: {{ selectedStudentForHistory.college }} | Section: {{ selectedStudentForHistory.section }}</p>
+              <p>ID: {{ selectedStudentForHistory.id_number }} | College: {{ selectedStudentForHistory.college }} | Section: {{ selectedStudentForHistory.section }}</p>
             </div>
           </div>
           
@@ -361,7 +361,7 @@
               </div>
               <div class="info-row">
                 <span class="label">Generated:</span>
-                <span class="value">{{ new Date().toLocaleDateString() }}</span>
+                <span class="value">{{ formatDateShort(new Date().toISOString()) }}</span>
               </div>
             </div>
           </div>
@@ -526,7 +526,7 @@ export default {
     },
     students: {
       type: Array,
-      required: true
+      default: () => []
     }
   },
   data() {
@@ -560,9 +560,9 @@ export default {
       }
     };
   },
-  created() {
-    // Initialize filteredStudents with the prop data
-    this.filteredStudents = [...this.students];
+  async created() {
+    // Fetch real assessment data from backend
+    await this.fetchAssessmentResults();
     
     // Apply filters from props if they exist
     if (this.selectedDimension || this.selectedCollege !== 'all') {
@@ -581,6 +581,81 @@ export default {
     }
   },
   methods: {
+    // Fetch real assessment results from backend
+    async fetchAssessmentResults() {
+      try {
+        // Request all results by setting a high limit
+        const response = await fetch('http://localhost:3000/api/counselor-assessments/results?limit=1000', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include' // Use session-based authentication
+        });
+
+        if (response.ok) {
+          const apiResponse = await response.json();
+          console.log('Fetched assessment results:', apiResponse);
+          console.log('Total assessments available:', apiResponse.pagination?.total);
+          console.log('Received assessments count:', apiResponse.data?.length);
+          
+          if (apiResponse.success && apiResponse.data) {
+            // Transform the backend data to match the component's expected format
+            const transformedStudents = apiResponse.data.map(assessment => {
+              console.log('Processing assessment:', assessment);
+              
+              // Ensure scores exist and are properly formatted
+              const scores = assessment.scores || {};
+              console.log('Assessment scores:', scores);
+              
+              return {
+                id: assessment.student?.id || assessment.student_id,
+                name: assessment.student?.name || assessment.student_name || 'Unknown Student',
+                college: assessment.student?.college || assessment.student_college || 'Unknown College',
+                section: assessment.student?.section || assessment.student_section || 'Unknown Section',
+                email: assessment.student?.email || assessment.student_email || '',
+                submissionDate: assessment.completed_at || assessment.submission_date,
+                subscales: {
+                   autonomy: parseFloat(scores.autonomy) || 0,
+                   environmentalMastery: parseFloat(scores.environmental_mastery) || 0,
+                   personalGrowth: parseFloat(scores.personal_growth) || 0,
+                   positiveRelations: parseFloat(scores.positive_relations) || 0,
+                   purposeInLife: parseFloat(scores.purpose_in_life) || 0,
+                   selfAcceptance: parseFloat(scores.self_acceptance) || 0
+                 },
+                overallScore: assessment.overall_score,
+                atRiskDimensions: assessment.at_risk_dimensions || [],
+                assessmentType: assessment.assessment_type,
+                assignmentId: assessment.assignment?.id,
+                riskLevel: assessment.risk_level,
+                id_number: assessment.student?.id_number || assessment.student_id
+              };
+            });
+            
+            console.log('Transformed students data:', transformedStudents);
+            
+            // Update the students data with real assessment results
+            this.filteredStudents = transformedStudents;
+            
+            // Emit the updated data to parent component if needed
+            this.$emit('students-updated', transformedStudents);
+          } else {
+            console.error('Invalid API response structure:', apiResponse);
+            // Fallback to prop data if API response is invalid
+            this.filteredStudents = [...this.students];
+          }
+        } else {
+          console.error('Failed to fetch assessment results:', response.statusText);
+          // Fallback to prop data if API fails
+          this.filteredStudents = [...this.students];
+        }
+      } catch (error) {
+        console.error('Error fetching assessment results:', error);
+        // Fallback to prop data if API fails
+        this.filteredStudents = [...this.students];
+      }
+    },
+
     // Calculate overall score as sum of all dimension scores (scaled from 0-5 to 7-49)
     calculateOverallScore(student) {
       if (!student || !student.subscales) return 0;
@@ -683,7 +758,9 @@ export default {
     },
     
     filterStudents() {
-      let result = [...this.students];
+      // Use filteredStudents as base if available, otherwise fall back to students prop
+      const baseStudents = this.filteredStudents.length > 0 ? this.filteredStudents : this.students;
+      let result = [...baseStudents];
       
       // Apply college filter
       if (this.collegeFilter !== 'all') {
@@ -771,8 +848,9 @@ export default {
         return;
       }
       
-      // Start with all students
-      let result = [...this.students];
+      // Start with all students - use fetched data if available, otherwise fall back to prop data
+      const baseStudents = this.filteredStudents.length > 0 ? this.filteredStudents : this.students;
+      let result = [...baseStudents];
       // Filter students based on criteria
       
       // Apply both filters at once to ensure correct results
@@ -852,7 +930,7 @@ export default {
         `I hope this email finds you well. I am reaching out regarding your recent psychological well-being assessment submission.\n\n` +
         `Student Details:\n` +
         `- Name: ${student.name}\n` +
-        `- Student ID: ${student.id}\n` +
+        `- Student ID: ${student.id_number}\n` +
         `- College: ${student.college}\n` +
         `- Section: ${student.section}\n` +
         `- Assessment Date: ${student.submissionDate}\n\n` +
@@ -979,7 +1057,10 @@ export default {
     formatDateShort(dateString) {
       if (!dateString) return 'N/A';
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
     },
 
     getDimensionScore(assessment, dimensionKey) {
