@@ -287,7 +287,8 @@ export default {
         }
       ],
       availableColleges: [],
-      availableYearLevels: ['1st Year', '2nd Year', '3rd Year', '4th Year']
+      availableYearLevels: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
+      collegesFromBackend: [] // Store colleges fetched from backend
     };
   },
   computed: {
@@ -300,7 +301,10 @@ export default {
       return false;
     }
   },
-  created() {
+  async created() {
+    // Load colleges from backend first
+    await this.loadCollegesFromBackend();
+    
     // Handle pre-selected data from navigation
     if (this.preSelectedStudent && this.preSelectedReportType) {
       // Pre-select student for report generation
@@ -365,17 +369,16 @@ export default {
           id: index + 1,
           number: index + 1,
           date: assessment.submissionDate,
-          score: Math.round(this.calculateAssessmentScore(assessment) * 7) // Convert to 7-49 scale
+          score: Math.round(this.calculateAssessmentScore(assessment)) // Raw score from database
         }));
       }
       return [];
     },
     
     calculateAssessmentScore(assessment) {
-      if (!assessment.subscales) return 0;
-      const subscales = assessment.subscales;
-      const total = Object.values(subscales).reduce((sum, score) => sum + score, 0);
-      return total / Object.keys(subscales).length; // Average score
+      if (!assessment) return 0;
+      // Return the overall_score directly from the database
+      return assessment.overallScore || 0;
     },
     
     formatDate(dateString) {
@@ -432,35 +435,91 @@ export default {
       }, 2000);
     },
     
-    populateAvailableColleges() {
-      // Extract unique colleges from student data
-      const collegeMap = new Map();
-      
-      this.students.forEach(student => {
-        if (student.college) {
-          const collegeCode = student.college;
-          if (collegeMap.has(collegeCode)) {
-            collegeMap.get(collegeCode).studentCount++;
-          } else {
-            // Map college codes to full names
-            const collegeNames = {
-              'CCS': 'College of Computer Studies',
-              'CN': 'College of Nursing', 
-              'COE': 'College of Engineering',
-              'CBA': 'College of Business Administration',
-              'CAS': 'College of Arts and Sciences'
-            };
-            
-            collegeMap.set(collegeCode, {
-              code: collegeCode,
-              name: collegeNames[collegeCode] || collegeCode,
-              studentCount: 1
-            });
-          }
+    async loadCollegesFromBackend() {
+      try {
+        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        if (response.ok) {
+          const data = await response.json();
+          this.collegesFromBackend = data.colleges.map(college => ({
+            name: college.name,
+            studentCount: college.totalUsers
+          }));
+        } else {
+          console.error('Failed to load colleges from backend');
         }
-      });
-      
-      this.availableColleges = Array.from(collegeMap.values());
+      } catch (error) {
+        console.error('Error loading colleges:', error);
+      }
+    },
+    
+    populateAvailableColleges() {
+      // Use colleges from backend if available, otherwise extract from student data
+      if (this.collegesFromBackend.length > 0) {
+        // Use backend colleges and count students from current student data
+        const collegeMap = new Map();
+        
+        // Initialize with backend colleges
+        this.collegesFromBackend.forEach(college => {
+          collegeMap.set(college.name, {
+            code: this.generateCollegeCode(college.name),
+            name: college.name,
+            studentCount: 0
+          });
+        });
+        
+        // Count students from current data
+        this.students.forEach(student => {
+          if (student.college) {
+            // Try to match by college name or code
+            const matchingCollege = Array.from(collegeMap.values()).find(college => 
+              college.name === student.college || college.code === student.college
+            );
+            if (matchingCollege) {
+              collegeMap.get(matchingCollege.name).studentCount++;
+            }
+          }
+        });
+        
+        this.availableColleges = Array.from(collegeMap.values());
+      } else {
+        // Fallback to extracting from student data with hardcoded mappings
+        const collegeMap = new Map();
+        
+        this.students.forEach(student => {
+          if (student.college) {
+            const collegeCode = student.college;
+            if (collegeMap.has(collegeCode)) {
+              collegeMap.get(collegeCode).studentCount++;
+            } else {
+              // Map college codes to full names (fallback)
+              const collegeNames = {
+                'CCS': 'College of Computer Studies',
+                'CN': 'College of Nursing', 
+                'COE': 'College of Engineering',
+                'CBA': 'College of Business Administration',
+                'CAS': 'College of Arts and Sciences'
+              };
+              
+              collegeMap.set(collegeCode, {
+                code: collegeCode,
+                name: collegeNames[collegeCode] || collegeCode,
+                studentCount: 1
+              });
+            }
+          }
+        });
+        
+        this.availableColleges = Array.from(collegeMap.values());
+      }
+    },
+    
+    generateCollegeCode(collegeName) {
+      // Generate a code from college name for backward compatibility
+      const words = collegeName.split(' ');
+      if (words.length === 1) {
+        return words[0].substring(0, 3).toUpperCase();
+      }
+      return words.map(word => word.charAt(0)).join('').toUpperCase();
     },
     
     downloadPDF(filename) {

@@ -125,16 +125,10 @@ function calculateRyffScores(responses, assessmentType = 'ryff_42') {
     dimensionCounts[dimension] += 1;
   });
   
-  // Calculate average scores for each dimension
+  // Return raw total scores for each dimension (no averaging)
   const dimensionScores = {};
   Object.keys(dimensionTotals).forEach(dimension => {
-    if (dimensionCounts[dimension] > 0) {
-      dimensionScores[dimension] = parseFloat(
-        (dimensionTotals[dimension] / dimensionCounts[dimension]).toFixed(2)
-      );
-    } else {
-      dimensionScores[dimension] = 0;
-    }
+    dimensionScores[dimension] = dimensionTotals[dimension];
   });
   
   return dimensionScores;
@@ -148,30 +142,25 @@ function calculateRyffScores(responses, assessmentType = 'ryff_42') {
  * @returns {string} - 'low', 'moderate', or 'high' risk
  */
 function determineRiskLevel(dimensionScores, overallScore, assessmentType = 'ryff_42') {
-  // Define tertile thresholds based on assessment type
-  const thresholds = {
+  // Define tertile thresholds for overall scores (sum of all 6 dimensions)
+  const overallThresholds = {
     ryff_42: {
-      atRisk: 18,    // 7-18: At-Risk
-      moderate: 30   // 19-30: Moderate, 31-42: Healthy
+      atRisk: 111,    // ≤111: At-Risk (42-111)
+      moderate: 181   // 112-181: Moderate, ≥182: Healthy (182-252)
     },
     ryff_84: {
-      atRisk: 36,    // 14-36: At-Risk
-      moderate: 60   // 37-60: Moderate, 61-84: Healthy
+      atRisk: 223,    // ≤223: At-Risk (84-223)
+      moderate: 363   // 224-363: Moderate, ≥364: Healthy (364-504)
     }
   };
   
-  const threshold = thresholds[assessmentType] || thresholds.ryff_42;
+  const threshold = overallThresholds[assessmentType] || overallThresholds.ryff_42;
   
-  // Count dimensions with at-risk scores
-  const atRiskDimensions = Object.values(dimensionScores).filter(score => score <= threshold.atRisk).length;
-  
-  // Calculate overall raw score (sum of all dimensions)
-  const totalRawScore = Object.values(dimensionScores).reduce((sum, score) => sum + score, 0);
-  
+  // Use the passed overallScore parameter (which is now the sum of all dimensions)
   // Determine risk level based on tertile thresholds
-  if (totalRawScore > threshold.moderate) {
+  if (overallScore > threshold.moderate) {
     return 'low';
-  } else if (totalRawScore > threshold.atRisk) {
+  } else if (overallScore > threshold.atRisk) {
     return 'moderate';
   } else {
     return 'high';
@@ -204,7 +193,15 @@ function getAtRiskDimensions(dimensionScores, assessmentType = 'ryff_42') {
  * @returns {string} - Formatted dimension name
  */
 function formatDimensionName(dimension) {
-  return dimension
+  const nameMap = {
+    autonomy: 'Autonomy',
+    environmental_mastery: 'Environmental Mastery',
+    personal_growth: 'Personal Growth',
+    positive_relations: 'Positive Relations with Others',
+    purpose_in_life: 'Purpose in Life',
+    self_acceptance: 'Self-Acceptance'
+  };
+  return nameMap[dimension] || dimension
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
@@ -225,7 +222,7 @@ function getDimensionColor(score, assessmentType = 'ryff_42') {
     },
     ryff_84: {
       atRisk: 36,    // 14-36: At-Risk
-      moderate: 60   // 37-60: Moderate, 61-84: Healthy
+      moderate: 59   // 37-59: Moderate, 60-84: Healthy
     }
   };
   

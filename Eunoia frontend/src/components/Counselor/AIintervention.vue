@@ -149,11 +149,11 @@
                     <div 
                       v-for="(score, subscale) in (student?.subscales || {})" 
                       :key="subscale"
-                      v-if="score !== undefined && score !== null && isAtRisk(score * 7)"
+                      v-if="score !== undefined && score !== null && isAtRisk(score)"
                       class="risk-dimension-container"
                     >
                       <div class="risk-dimension-score">
-                        {{ Math.round(score * 7) }}
+                        {{ Math.round(score) }}
                         <div class="hover-label">{{ formatSubscaleName(subscale) }}</div>
                       </div>
                     </div>
@@ -163,11 +163,11 @@
                     <div 
                       v-for="(score, subscale) in (student?.subscales || {})" 
                       :key="subscale"
-                      v-if="score !== undefined && score !== null && isModerate(score * 7)"
+                      v-if="score !== undefined && score !== null && isModerate(score)"
                       class="risk-dimension-container moderate-dimension"
                     >
                       <div class="risk-dimension-score">
-                        {{ Math.round(score * 7) }}
+                        {{ Math.round(score) }}
                         <div class="hover-label">{{ formatSubscaleName(subscale) }}</div>
                       </div>
                     </div>
@@ -222,7 +222,7 @@
             <div class="assessment-summary">
               <div class="overall-score">
                 <span class="score-label">Overall Score:</span>
-                <span class="score-value" :class="getOverallRiskClass(selectedStudent)">{{ calculateOverallScore(selectedStudent) }}/49</span>
+                <span class="score-value" :class="getOverallRiskClass(selectedStudent)">{{ calculateOverallScore(selectedStudent) }}/252</span>
               </div>
             </div>
           </div>
@@ -243,16 +243,16 @@
                 class="dimension-card" 
                 v-for="(score, subscale) in (selectedStudent?.subscales || {})" 
                 :key="subscale"
-                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score * 7), 'moderate': score !== undefined && score !== null && isModerate(score * 7), 'healthy': score !== undefined && score !== null && isHealthy(score * 7) }"
+                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score), 'moderate': score !== undefined && score !== null && isModerate(score), 'healthy': score !== undefined && score !== null && isHealthy(score) }"
               >
                 <div class="dimension-header">
                   <span class="dimension-name">{{ formatSubscaleName(subscale) }}</span>
-                  <span class="dimension-score" :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score*7) : 'no-data'">
-                    {{ (score !== undefined && score !== null) ? Math.round(score * 7) : 'N/A' }}/49
+                  <span class="dimension-score" :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score) : 'no-data'">
+                {{ (score !== undefined && score !== null) ? Math.round(score) : 'N/A' }}/42
                   </span>
                 </div>
                 <div class="intervention-text" v-if="score !== undefined && score !== null">
-                  <p>{{ getDimensionIntervention(subscale, score * 7) }}</p>
+                  <p>{{ getDimensionIntervention(subscale, score) }}</p>
                 </div>
                 <div class="no-data-text" v-else>
                   <p>No assessment data available for this dimension.</p>
@@ -340,7 +340,7 @@ export default {
         { key: 'autonomy', name: 'Autonomy' },
         { key: 'environmentalMastery', name: 'Environmental Mastery' },
         { key: 'personalGrowth', name: 'Personal Growth' },
-        { key: 'positiveRelations', name: 'Positive Relations' },
+        { key: 'positiveRelations', name: 'Positive Relations with Others' },
         { key: 'purposeInLife', name: 'Purpose in Life' },
         { key: 'selfAcceptance', name: 'Self-Acceptance' }
       ],
@@ -453,7 +453,7 @@ export default {
     hasAnyRiskDimension(student) {
       if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale])) {
           return true;
         }
       }
@@ -463,7 +463,7 @@ export default {
       if (!student || !student.subscales) return 0;
       let count = 0;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale])) {
           count++;
         }
       }
@@ -472,7 +472,7 @@ export default {
     hasModerateScores(student) {
       if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale])) {
           return true;
         }
       }
@@ -482,7 +482,7 @@ export default {
       if (!student || !student.subscales) return 0;
       let count = 0;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale])) {
           count++;
         }
       }
@@ -491,7 +491,7 @@ export default {
     isAllDimensionsHealthy(student) {
       if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && !this.isHealthy(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && !this.isHealthy(student.subscales[subscale])) {
           return false;
         }
       }
@@ -500,16 +500,9 @@ export default {
     
     // Utility methods
     calculateOverallScore(student) {
-      if (!student || !student.subscales) return 0;
-      let total = 0;
-      let count = 0;
-      for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined) {
-          total += student.subscales[subscale] * 7;
-          count++;
-        }
-      }
-      return count > 0 ? Math.round(total / count) : 0;
+      if (!student) return 0;
+      // Return the overall_score directly from the database
+      return student.overallScore || 0;
     },
     formatSubscaleName(subscale) {
       const dimension = this.ryffDimensionsList.find(d => d.key === subscale);
@@ -598,7 +591,7 @@ export default {
       if (student?.subscales) {
         Object.entries(student.subscales).forEach(([subscale, score]) => {
           if (score !== undefined) {
-            interventions[subscale] = this.getDimensionIntervention(subscale, score * 7);
+            interventions[subscale] = this.getDimensionIntervention(subscale, score);
           }
         });
       }
@@ -723,7 +716,7 @@ export default {
       // Dimension-specific actions
       if (student?.subscales) {
         Object.entries(student.subscales).forEach(([subscale, score]) => {
-          if (score !== undefined && this.isAtRisk(score * 7)) {
+          if (score !== undefined && this.isAtRisk(score)) {
             switch(subscale) {
               case 'autonomy':
                 actions.push("Practice making one independent decision daily");

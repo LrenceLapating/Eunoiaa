@@ -173,7 +173,7 @@ router.post('/archive-orphaned', verifyCounselorSession, async (req, res) => {
 // Get fresh assessment data summary (only active students)
 router.get('/fresh-data-summary', verifyCounselorSession, async (req, res) => {
   try {
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
 
     // Get active students count
     const { count: activeStudents, error: studentsError } = await supabase

@@ -11,12 +11,19 @@ export const ryffDimensions = [
 
 export const formatDimensionName = (name) => {
   const nameMap = {
+    // camelCase format
     autonomy: 'Autonomy',
     environmentalMastery: 'Environmental Mastery',
     personalGrowth: 'Personal Growth',
-    positiveRelations: 'Positive Relations',
+    positiveRelations: 'Positive Relations with Others',
     purposeInLife: 'Purpose in Life',
-    selfAcceptance: 'Self-Acceptance'
+    selfAcceptance: 'Self-Acceptance',
+    // snake_case format (from backend)
+    environmental_mastery: 'Environmental Mastery',
+    personal_growth: 'Personal Growth',
+    positive_relations: 'Positive Relations with Others',
+    purpose_in_life: 'Purpose in Life',
+    self_acceptance: 'Self-Acceptance'
   };
   return nameMap[name] || name;
 };
@@ -34,19 +41,49 @@ export const getDimensionColor = (name) => {
 };
 
 export const calculateOverallScore = (student) => {
-  if (!student || !student.subscales) return 0;
-  const scores = Object.values(student.subscales);
-  // Sum all dimension scores (each on 7-49 scale) for total score (42-294 range)
-  const total = scores.reduce((sum, score) => sum + (score * 7), 0);
-  return Math.round(total);
+  if (!student) return 0;
+  // Return the overall_score directly from the database
+  return student.overallScore || 0;
 };
 
 export const getDimensionRiskLevel = (score) => {
-  // Score is already on 1-7 scale, convert to 7-49 scale for tertile calculation
-  const scaledScore = score * 7; // Convert to 7-49 scale
-  if (scaledScore <= 17) return 'At Risk';  // T1: ≤17
-  if (scaledScore <= 38) return 'Moderate'; // T2: 18-38
-  return 'Healthy';                         // T3: ≥39
+  // Score is raw total from database (7-42 range for Ryff-42)
+  if (score <= 18) return 'At Risk';   // ≤18 = At-Risk
+  if (score <= 30) return 'Moderate';  // 19-30 = Moderate
+  return 'Healthy';                    // ≥31 = Healthy
+};
+
+// New college-level risk assessment using raw score tertiles
+export const getCollegeDimensionRiskLevel = (rawScore, assessmentType = null) => {
+  // Auto-detect assessment type if not provided based on score range
+  let detectedType = assessmentType;
+  if (!detectedType) {
+    // 42-item: 7-42 range, 84-item: 14-84 range
+    detectedType = rawScore > 42 ? 'ryff_84' : 'ryff_42';
+  }
+  
+  if (detectedType === 'ryff_84') {
+    // 84-item assessment: 14 items per dimension (14-84 range)
+    if (rawScore <= 36) return 'At Risk';   // ≤36 = At-Risk
+    if (rawScore <= 59) return 'Moderate';  // 37-59 = Moderate  
+    return 'Healthy';                       // ≥60 = Healthy
+  } else {
+    // 42-item assessment: 7 items per dimension (7-42 range)
+    if (rawScore <= 18) return 'At Risk';   // ≤18 = At-Risk
+    if (rawScore <= 30) return 'Moderate';  // 19-30 = Moderate  
+    return 'Healthy';                       // ≥31 = Healthy
+  }
+};
+
+// Get color for college dimension based on risk level
+export const getCollegeDimensionColor = (rawScore, assessmentType = null) => {
+  const riskLevel = getCollegeDimensionRiskLevel(rawScore, assessmentType);
+  switch (riskLevel) {
+    case 'At Risk': return '#ff4d4d';   // Red - matches legend
+    case 'Moderate': return '#ffff66';  // Yellow - matches legend
+    case 'Healthy': return '#66ff66';   // Green - matches legend
+    default: return '#6c757d';          // Gray for no data
+  }
 };
 
 export const getAtRiskDimensions = (student) => {
@@ -65,8 +102,8 @@ export const hasAnyRiskDimension = (student) => {
 };
 
 export const getOverallRiskLevel = (student) => {
-  const overallScore = calculateOverallScore(student); // Already on 42-294 scale
-  // Tertile method: (294-42)/3 = 84 interval, but using specified thresholds
+  const overallScore = calculateOverallScore(student); // Sum of all 6 dimensions (42-252 range)
+  // Tertile thresholds for overall score
   // T1: ≤111 (At Risk), T2: 112-181 (Moderate), T3: ≥182 (Healthy)
   if (overallScore <= 111) return 'At Risk';
   if (overallScore <= 181) return 'Moderate';
@@ -100,17 +137,22 @@ export const calculateCollegeStats = (students) => {
     const overallScore = calculateOverallScore(student);
     stats.totalScore += overallScore;
     
-    Object.entries(student.subscales).forEach(([dim, score]) => {
-      stats.dimensions[dim].total += score * 7;
-      stats.dimensions[dim].count++;
-    });
+    // Only process subscales if they exist and are not null
+    if (student.subscales && typeof student.subscales === 'object') {
+      Object.entries(student.subscales).forEach(([dim, score]) => {
+        // Score is already raw total from database (7-42 range)
+        stats.dimensions[dim].total += score;
+        stats.dimensions[dim].count++;
+      });
+    }
   });
   
-  // Calculate averages
+  // Calculate averages (college mean raw scores)
   Object.values(collegeStats).forEach(stats => {
     stats.avgScore = Math.round(stats.totalScore / stats.students);
     Object.values(stats.dimensions).forEach(dim => {
-      dim.score = Math.round(dim.total / dim.count); // Keep as whole numbers out of 7
+      // College average raw score (7-42 range)
+      dim.score = Math.round(dim.total / dim.count);
     });
   });
   

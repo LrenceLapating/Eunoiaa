@@ -17,7 +17,7 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
       scheduledDate
     } = req.body;
 
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
 
     // Validate required fields
     if (!assessmentName || !assessmentType || !targetType) {
@@ -137,7 +137,7 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
 // Get bulk assessment history for counselor
 router.get('/history', verifyCounselorSession, async (req, res) => {
   try {
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
     const { page = 1, limit = 10 } = req.query;
     
     const offset = (page - 1) * limit;
@@ -195,7 +195,7 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
 router.get('/:id/details', verifyCounselorSession, async (req, res) => {
   try {
     const { id } = req.params;
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
 
     // Get bulk assessment details (exclude archived)
     const { data: assessment, error: assessmentError } = await supabase
@@ -258,7 +258,7 @@ router.get('/:id/details', verifyCounselorSession, async (req, res) => {
 router.patch('/:id/cancel', verifyCounselorSession, async (req, res) => {
   try {
     const { id } = req.params;
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
 
     // Update assessment status to cancelled
     const { data, error } = await supabase
@@ -295,7 +295,7 @@ router.patch('/:id/cancel', verifyCounselorSession, async (req, res) => {
 // Get dashboard statistics
 router.get('/stats', verifyCounselorSession, async (req, res) => {
   try {
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
 
     // Get total assessments created (exclude archived)
     const { count: totalAssessments, error: totalError } = await supabase

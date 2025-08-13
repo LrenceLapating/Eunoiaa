@@ -413,7 +413,7 @@ export default {
         autonomy: 'Autonomy',
         environmentalMastery: 'Environmental Mastery',
         personalGrowth: 'Personal Growth',
-        positiveRelations: 'Positive Relations',
+        positiveRelations: 'Positive Relations with Others',
         purposeInLife: 'Purpose in Life',
         selfAcceptance: 'Self-Acceptance'
       }

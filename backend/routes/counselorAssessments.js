@@ -1,99 +1,236 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/database');
+const { createClient } = require('@supabase/supabase-js');
 const { verifyCounselorSession } = require('../middleware/sessionManager');
 const { formatDimensionName, getDimensionColor, getAtRiskDimensions } = require('../utils/ryffScoring');
+
+// Create admin client to bypass RLS for reading assessment data
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // Get all assessment results for counselor's bulk assessments
 router.get('/results', verifyCounselorSession, async (req, res) => {
   try {
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
     const { page = 1, limit = 20, riskLevel, assessmentType, college } = req.query;
+    
+
     
     const offset = (page - 1) * parseInt(limit);
     const limitNum = parseInt(limit);
 
-    // Build query using manual joins since Supabase relationships aren't properly configured
-    const { data: assessments, error } = await supabase
-      .rpc('get_counselor_assessment_results', {
-        counselor_id_param: counselorId,
-        limit_param: limitNum,
-        offset_param: offset
-      });
+    // Determine which table to query based on assessment type
+    let tableName = 'assessments'; // Default to unified view
+    if (assessmentType === 'ryff_42') {
+      tableName = 'assessments_42items';
+    } else if (assessmentType === 'ryff_84') {
+      tableName = 'assessments_84items';
+    }
 
-    if (error) {
-      console.error('Error fetching assessment results:', error);
-      // Fallback to manual query if RPC doesn't exist
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('assessments')
+    // Manual approach: Get data step by step to avoid Supabase schema cache issues
+    let assessments = [];
+    
+    if (tableName === 'assessments_42items') {
+      console.log('🎯 Fetching 42-item assessments directly from table...');
+      
+      // SIMPLIFIED: Direct query to assessments_42items table
+      const { data: assessmentData, error: assessmentError } = await supabase
+        .from('assessments_42items')
         .select('*')
         .limit(limitNum)
         .range(offset, offset + limitNum - 1);
-      
-      if (fallbackError) {
+
+      if (assessmentError) {
+        console.error('Error fetching 42-item assessments:', assessmentError);
         return res.status(500).json({
           success: false,
-          message: 'Failed to fetch assessment results'
+          message: 'Failed to fetch 42-item assessments'
         });
       }
       
-      // Manually fetch related data for each assessment
-      const enrichedData = [];
-      for (const assessment of fallbackData) {
-        // Get student data (only active students)
-        const { data: student } = await supabase
+      console.log(`✅ Found ${assessmentData?.length || 0} 42-item assessments`);
+      
+      if (!assessmentData || assessmentData.length === 0) {
+        assessments = [];
+      } else {
+        // Get student data for these assessments
+        const studentIds = [...new Set(assessmentData.map(a => a.student_id))];
+        
+        const { data: students, error: studentError } = await supabase
           .from('students')
           .select('id, id_number, name, college, section, email')
-          .eq('id', assessment.student_id)
-          .eq('status', 'active')  // Only include active students
-          .single();
+          .in('id', studentIds)
+          .eq('status', 'active');
         
-        // Get assignment data
-        const { data: assignment } = await supabase
-          .from('assessment_assignments')
-          .select('id, assigned_at, completed_at, bulk_assessment_id')
-          .eq('id', assessment.assignment_id)
-          .single();
-        
-        // Get bulk assessment data if assignment exists
-        let bulkAssessment = null;
-        if (assignment) {
-          const { data: bulk } = await supabase
-            .from('bulk_assessments')
-            .select('id, assessment_name, counselor_id')
-            .eq('id', assignment.bulk_assessment_id)
-            .eq('counselor_id', counselorId)
-            .neq('status', 'archived')  // Exclude archived bulk assessments
-            .single();
-          bulkAssessment = bulk;
-        }
-        
-        // Only include if it belongs to this counselor AND student is active
-        if (bulkAssessment && student) {
-          enrichedData.push({
-            ...assessment,
-            student,
-            assignment: {
-              ...assignment,
-              bulk_assessment: bulkAssessment
-            }
+        if (studentError) {
+          console.error('Error fetching students:', studentError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch student data'
           });
         }
+        
+        // Combine assessment and student data (simplified structure)
+        assessments = assessmentData.map(assessment => {
+          const student = students.find(s => s.id === assessment.student_id);
+          
+          return {
+            ...assessment,
+            student: student,
+            assignment: {
+              id: assessment.assignment_id || 'N/A',
+              assigned_at: assessment.created_at,
+              completed_at: assessment.completed_at,
+              bulk_assessment_id: 'direct-fetch',
+              bulk_assessment: {
+                assessment_name: '42-Item Ryff Assessment',
+                assessment_type: 'ryff_42'
+              }
+            }
+          };
+        }).filter(a => a.student); // Only include assessments with valid students
+      }
+    } else if (tableName === 'assessments_84items') {
+      console.log('🎯 Fetching 84-item assessments directly from table...');
+      
+      // SIMPLIFIED: Direct query to assessments_84items table using admin client to bypass RLS
+      const { data: assessmentData, error: assessmentError } = await supabaseAdmin
+        .from('assessments_84items')
+        .select('*')
+        .limit(limitNum)
+        .range(offset, offset + limitNum - 1);
+
+      if (assessmentError) {
+        console.error('Error fetching 84-item assessments:', assessmentError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch 84-item assessments'
+        });
       }
       
-      const assessments = enrichedData;
+      console.log(`✅ Found ${assessmentData?.length || 0} 84-item assessments`);
+      
+      if (!assessmentData || assessmentData.length === 0) {
+        assessments = [];
+      } else {
+        // Get student data for these assessments
+        const studentIds = [...new Set(assessmentData.map(a => a.student_id))];
+        
+        const { data: students, error: studentError } = await supabase
+          .from('students')
+          .select('id, id_number, name, college, section, email')
+          .in('id', studentIds)
+          .eq('status', 'active');
+        
+        if (studentError) {
+          console.error('Error fetching students:', studentError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch student data'
+          });
+        }
+        
+        // Combine assessment and student data (simplified structure)
+        assessments = assessmentData.map(assessment => {
+          const student = students.find(s => s.id === assessment.student_id);
+          
+          console.log(`🔍 84-item assessment type in DB: ${assessment.assessment_type}`);
+          
+          return {
+            ...assessment,
+            student: student,
+            assignment: {
+              id: assessment.assignment_id || 'N/A',
+              assigned_at: assessment.created_at,
+              completed_at: assessment.completed_at,
+              bulk_assessment_id: 'direct-fetch',
+              bulk_assessment: {
+                assessment_name: '84-Item Ryff Assessment',
+                assessment_type: 'ryff_84'
+              }
+            }
+          };
+        }).filter(a => a.student); // Only include assessments with valid students
+      }
+    } else {
+      // For unified view - fetch from both tables
+      console.log('🎯 Fetching all assessments from unified view...');
+      
+      // Get both 42-item and 84-item assessments
+      const [result42, result84] = await Promise.all([
+        supabase.from('assessments_42items').select('*').limit(limitNum).range(offset, offset + limitNum - 1),
+        supabase.from('assessments_84items').select('*').limit(limitNum).range(offset, offset + limitNum - 1)
+      ]);
+      
+      let allAssessments = [];
+      
+      if (result42.data) allAssessments = allAssessments.concat(result42.data);
+      if (result84.data) allAssessments = allAssessments.concat(result84.data);
+      
+      console.log(`✅ Found ${allAssessments.length} total assessments (${result42.data?.length || 0} 42-item + ${result84.data?.length || 0} 84-item)`);
+      
+      if (allAssessments.length === 0) {
+        assessments = [];
+      } else {
+        // Get student data
+        const studentIds = [...new Set(allAssessments.map(a => a.student_id))];
+        
+        const { data: students, error: studentError } = await supabase
+          .from('students')
+          .select('id, id_number, name, college, section, email')
+          .in('id', studentIds)
+          .eq('status', 'active');
+        
+        if (studentError) {
+          console.error('Error fetching students:', studentError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch student data'
+          });
+        }
+        
+        // Combine data
+        assessments = allAssessments.map(assessment => {
+          const student = students.find(s => s.id === assessment.student_id);
+          
+          return {
+            ...assessment,
+            student: student,
+            assignment: {
+              id: assessment.assignment_id || 'N/A',
+              assigned_at: assessment.created_at,
+              completed_at: assessment.completed_at,
+              bulk_assessment_id: 'direct-fetch',
+              bulk_assessment: {
+                assessment_name: `${assessment.assessment_type === 'ryff_84' ? '84' : '42'}-Item Ryff Assessment`,
+                assessment_type: assessment.assessment_type
+              }
+            }
+          };
+        }).filter(a => a.student);
+      }
     }
 
     // Apply filters to the enriched data
     let filteredAssessments = assessments;
+    console.log(`🔍 Before filtering: ${filteredAssessments.length} assessments`);
+    
     if (riskLevel) {
       filteredAssessments = filteredAssessments.filter(a => a.risk_level === riskLevel);
+      console.log(`🔍 After risk level filter: ${filteredAssessments.length} assessments`);
     }
     if (assessmentType) {
+      console.log(`🔍 Applying assessment type filter: ${assessmentType}`);
+      const beforeTypeFilter = filteredAssessments.length;
       filteredAssessments = filteredAssessments.filter(a => a.assessment_type === assessmentType);
+      console.log(`🔍 After assessment type filter: ${filteredAssessments.length} assessments (was ${beforeTypeFilter})`);
     }
     if (college) {
       filteredAssessments = filteredAssessments.filter(a => a.student?.college === college);
+      console.log(`🔍 After college filter: ${filteredAssessments.length} assessments`);
     }
 
     // Sort by completion date
@@ -144,56 +281,129 @@ router.get('/results', verifyCounselorSession, async (req, res) => {
 router.get('/results/:assessmentId', verifyCounselorSession, async (req, res) => {
   try {
     const { assessmentId } = req.params;
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
 
-    // Get assessment with full details
+    // Get assessment details
     const { data: assessment, error } = await supabase
       .from('assessments')
-      .select(`
-        *,
-        students!inner(
-          id,
-          name,
-          email,
-          id_number,
-          college,
-          section,
-          year_level
-        ),
-        assessment_assignments!inner(
-          id,
-          assigned_at,
-          completed_at,
-          bulk_assessments!inner(
-            id,
-            assessment_name,
-            counselor_id,
-            custom_message
-          )
-        ),
-        assessment_analytics(
-          time_taken_minutes,
-          question_times,
-          navigation_pattern
-        )
-      `)
+      .select('*')
       .eq('id', assessmentId)
-      .eq('assessment_assignments.bulk_assessments.counselor_id', counselorId)
       .single();
 
     if (error || !assessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment not found'
+      });
+    }
+
+    // Determine which table to query based on assessment type
+    let tableName = 'assessments'; // Default to unified view
+    if (assessment.assessment_type === 'ryff_42') {
+      tableName = 'assessments_42items';
+    } else if (assessment.assessment_type === 'ryff_84') {
+      tableName = 'assessments_84items';
+    }
+
+    // Get assessment with all related data - different approach for specific tables vs unified view
+    let assessmentData, assessmentError;
+    
+    if (tableName === 'assessments') {
+      // Use the original query for the unified view (which has assignment_id)
+      const result = await supabase
+        .from(tableName)
+        .select(`
+          *,
+          student:students!inner(
+            id, name, email, id_number, college, section, year_level
+          ),
+          assignment:assessment_assignments!inner(
+            id, assigned_at, completed_at, bulk_assessment_id,
+            bulk_assessment:bulk_assessments!inner(
+              id, assessment_name, counselor_id, custom_message
+            )
+          ),
+          analytics:assessment_analytics(
+            time_taken_minutes, question_times, navigation_pattern
+          )
+        `)
+        .eq('id', assessmentId)
+        .eq('students.status', 'active')
+        .eq('assessment_assignments.bulk_assessments.counselor_id', counselorId)
+        .single();
+      assessmentData = result.data;
+      assessmentError = result.error;
+    } else {
+      // For specific tables, query without assignment joins and manually fetch related data
+      // Use admin client for assessments_84items to bypass RLS
+      const client = tableName === 'assessments_84items' ? supabaseAdmin : supabase;
+      const result = await client
+        .from(tableName)
+        .select(`
+          *,
+          student:students!inner(
+            id, name, email, id_number, college, section, year_level
+          ),
+          analytics:assessment_analytics(
+            time_taken_minutes, question_times, navigation_pattern
+          )
+        `)
+        .eq('id', assessmentId)
+        .eq('students.status', 'active')
+        .single();
+      
+      if (result.error || !result.data) {
+        assessmentData = null;
+        assessmentError = result.error;
+      } else {
+        // Manually fetch assignment data for this student
+        const { data: assignments } = await supabase
+          .from('assessment_assignments')
+          .select(`
+            id, assigned_at, completed_at, bulk_assessment_id,
+            bulk_assessment:bulk_assessments!inner(
+              id, assessment_name, counselor_id, custom_message
+            )
+          `)
+          .eq('student_id', result.data.student_id)
+          .eq('bulk_assessments.counselor_id', counselorId)
+          .neq('bulk_assessments.status', 'archived')
+          .order('assigned_at', { ascending: false })
+          .limit(1);
+        
+        if (assignments && assignments.length > 0) {
+          assessmentData = {
+            ...result.data,
+            assignment: assignments[0]
+          };
+          assessmentError = null;
+        } else {
+          assessmentData = null;
+          assessmentError = { message: 'No valid assignment found for this assessment' };
+        }
+      }
+    }
+
+    if (assessmentError || !assessmentData) {
       return res.status(404).json({
         success: false,
         message: 'Assessment not found or access denied'
       });
     }
 
+    // Extract data from joined result
+    const assessmentResult = assessmentData;
+    const student = assessmentData.student;
+    const assignment = assessmentData.assignment;
+    const bulkAssessment = assessmentData.assignment.bulk_assessment;
+    const analytics = assessmentData.analytics;
+
     // Get at-risk dimensions
-    const assessmentTypeParam = assessment.assessment_type || 'ryff_42';
-    const atRiskDimensions = getAtRiskDimensions(assessment.scores, assessmentTypeParam);
+    const assessmentTypeParam = assessmentResult.assessment_type || 'ryff_42';
+    const atRiskDimensions = getAtRiskDimensions(assessmentResult.scores, assessmentTypeParam);
     
     // Format dimension scores
-    const formattedScores = Object.entries(assessment.scores).map(([dimension, score]) => ({
+    const formattedScores = Object.entries(assessmentResult.scores).map(([dimension, score]) => ({
       dimension: formatDimensionName(dimension),
       raw_dimension: dimension,
       score: parseFloat(score).toFixed(2),
@@ -203,22 +413,22 @@ router.get('/results/:assessmentId', verifyCounselorSession, async (req, res) =>
 
     // Calculate response patterns
     const responseAnalysis = {
-      total_responses: Object.keys(assessment.responses).length,
-      average_response: Object.values(assessment.responses).reduce((sum, val) => sum + val, 0) / Object.keys(assessment.responses).length,
+      total_responses: Object.keys(assessmentResult.responses).length,
+      average_response: Object.values(assessmentResult.responses).reduce((sum, val) => sum + val, 0) / Object.keys(assessmentResult.responses).length,
       response_distribution: {
-        1: Object.values(assessment.responses).filter(r => r === 1).length,
-        2: Object.values(assessment.responses).filter(r => r === 2).length,
-        3: Object.values(assessment.responses).filter(r => r === 3).length,
-        4: Object.values(assessment.responses).filter(r => r === 4).length,
-        5: Object.values(assessment.responses).filter(r => r === 5).length,
-        6: Object.values(assessment.responses).filter(r => r === 6).length
+        1: Object.values(assessmentResult.responses).filter(r => r === 1).length,
+        2: Object.values(assessmentResult.responses).filter(r => r === 2).length,
+        3: Object.values(assessmentResult.responses).filter(r => r === 3).length,
+        4: Object.values(assessmentResult.responses).filter(r => r === 4).length,
+        5: Object.values(assessmentResult.responses).filter(r => r === 5).length,
+        6: Object.values(assessmentResult.responses).filter(r => r === 6).length
       }
     };
 
     res.json({
       success: true,
       data: {
-        ...assessment,
+        ...assessmentResult,
         at_risk_dimensions: atRiskDimensions,
         formatted_scores: formattedScores,
         response_analysis: responseAnalysis
@@ -237,7 +447,7 @@ router.get('/results/:assessmentId', verifyCounselorSession, async (req, res) =>
 // Get assessment statistics and analytics
 router.get('/statistics', verifyCounselorSession, async (req, res) => {
   try {
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
 
     // Get overall statistics
     const { data: stats, error: statsError } = await supabase
@@ -351,7 +561,7 @@ router.get('/statistics', verifyCounselorSession, async (req, res) => {
 // Get students by risk level
 router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
   try {
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
     const { riskLevel = 'at_risk', page = 1, limit = 20 } = req.query;
     
     const offset = (page - 1) * limit;
@@ -432,55 +642,120 @@ router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
 // Export assessment data (CSV format)
 router.get('/export', verifyCounselorSession, async (req, res) => {
   try {
-    const counselorId = req.session.user_id;
+    const counselorId = req.user.id;
     const { format = 'csv', riskLevel, assessmentType } = req.query;
 
-    // Get all assessment data
-    let query = supabase
-      .from('assessments')
-      .select(`
-        *,
-        student:students(
-          name,
-          email,
-          id_number,
-          college,
-          section,
-          year_level,
-          status
-        ),
-        assignment:assessment_assignments!inner(
-          assigned_at,
-          completed_at,
-          bulk_assessment:bulk_assessments!inner(
-            assessment_name,
-            counselor_id,
-            status
+    // Determine which table to query based on assessment type
+    let tableName = 'assessments'; // Default to unified view
+    if (assessmentType === 'ryff_42') {
+      tableName = 'assessments_42items';
+    } else if (assessmentType === 'ryff_84') {
+      tableName = 'assessments_84items';
+    }
+
+    // Get all assessment data - different approach for specific tables vs unified view
+    let rawAssessments, error;
+    
+    if (tableName === 'assessments') {
+      // Use the original query for the unified view (which has assignment_id)
+      let query = supabase
+        .from(tableName)
+        .select(`
+          *,
+          student:students!inner(
+            name, email, id_number, college, section, year_level, status
+          ),
+          assignment:assessment_assignments!inner(
+            assigned_at, completed_at, bulk_assessment_id,
+            bulk_assessment:bulk_assessments!inner(
+              assessment_name, counselor_id, status
+            )
           )
-        )
-      `)
-      .eq('assignment.bulk_assessment.counselor_id', counselorId)
-      .eq('student.status', 'active')  // Only include active students
-      .neq('assignment.bulk_assessment.status', 'archived')  // Exclude archived bulk assessments
-      .order('completed_at', { ascending: false });
+        `)
+        .eq('students.status', 'active')
+        .eq('assessment_assignments.bulk_assessments.counselor_id', counselorId)
+        .neq('assessment_assignments.bulk_assessments.status', 'archived')
+        .order('completed_at', { ascending: false });
 
-    // Apply filters
-    if (riskLevel) {
-      query = query.eq('risk_level', riskLevel);
-    }
-    if (assessmentType) {
-      query = query.eq('assessment_type', assessmentType);
-    }
+      // Apply filters
+      if (riskLevel) {
+        query = query.eq('risk_level', riskLevel);
+      }
 
-    const { data: assessments, error } = await query;
+      const result = await query;
+      rawAssessments = result.data;
+      error = result.error;
+    } else {
+      // For specific tables, query without assignment joins and manually fetch related data
+      let query = supabase
+        .from(tableName)
+        .select(`
+          *,
+          student:students!inner(
+            name, email, id_number, college, section, year_level, status
+          )
+        `)
+        .eq('students.status', 'active')
+        .order('completed_at', { ascending: false });
+
+      // Apply filters
+      if (riskLevel) {
+        query = query.eq('risk_level', riskLevel);
+      }
+
+      const result = await query;
+      
+      if (result.error) {
+        rawAssessments = null;
+        error = result.error;
+      } else {
+        // Manually enrich with assignment data
+        const enrichedData = [];
+        for (const assessment of result.data) {
+          // Find assignments for this student
+          const { data: assignments } = await supabase
+            .from('assessment_assignments')
+            .select(`
+              assigned_at, completed_at, bulk_assessment_id,
+              bulk_assessment:bulk_assessments!inner(
+                assessment_name, counselor_id, status
+              )
+            `)
+            .eq('student_id', assessment.student_id)
+            .eq('bulk_assessments.counselor_id', counselorId)
+            .neq('bulk_assessments.status', 'archived')
+            .order('assigned_at', { ascending: false })
+            .limit(1);
+          
+          if (assignments && assignments.length > 0) {
+            enrichedData.push({
+              ...assessment,
+              assignment: assignments[0]
+            });
+          }
+        }
+        rawAssessments = enrichedData;
+        error = null;
+      }
+    }
 
     if (error) {
-      console.error('Error fetching export data:', error);
+      console.error('Error fetching assessments:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch export data'
+        message: 'Failed to fetch assessments'
       });
     }
+
+    // Process the joined data
+    const assessments = rawAssessments.map(assessment => ({
+      ...assessment,
+      student: assessment.student,
+      assignment: {
+        ...assessment.assignment,
+        bulk_assessment: assessment.assignment.bulk_assessment
+      }
+    }));
 
     if (format === 'csv') {
       // Generate CSV content

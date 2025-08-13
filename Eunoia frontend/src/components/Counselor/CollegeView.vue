@@ -3,6 +3,24 @@
     <h2>College Summary</h2>
     <p>View and analyze assessment results by college.</p>
     
+    <!-- Assessment Type Navigation -->
+    <div class="assessment-type-nav">
+      <button 
+        class="nav-button" 
+        :class="{ active: assessmentTypeFilter === '42-item' }"
+        @click="setAssessmentType('42-item')"
+      >
+        42-item
+      </button>
+      <button 
+        class="nav-button" 
+        :class="{ active: assessmentTypeFilter === '84-item' }"
+        @click="setAssessmentType('84-item')"
+      >
+        84-item
+      </button>
+    </div>
+    
     <div v-if="error" class="error-message">
       <i class="fas fa-exclamation-circle"></i>
       {{ error }}
@@ -17,7 +35,7 @@
         <div class="college-metrics">
           <div class="metric">
             <span class="metric-label">Overall Score</span>
-            <span class="metric-value">{{ Math.round(college.avgScore) }}</span>
+            <span class="metric-value">{{ college.avgScore.toFixed(2) }}</span>
           </div>
           <div class="metric">
             <span class="metric-label">At Risk Students</span>
@@ -28,9 +46,9 @@
           <div class="dimension-bar" v-for="(dim, dimName) in college.dimensions" :key="dimName">
             <span class="dimension-name">{{ formatDimName(dimName) }}</span>
             <div class="progress-track">
-              <div class="progress-fill" :style="{ width: `${(dim.score/7)*100}%`, backgroundColor: getDimensionColor(dimName) }"></div>
-            </div>
-            <span class="dimension-score">{{ Math.round(dim.score) }}/7</span>
+              <div class="progress-fill" :style="{ width: `${(dim.score/maxScore)*100}%`, backgroundColor: getCollegeDimensionColor(dim.score, assessmentTypeFilter) }"></div>
+          </div>
+          <span class="dimension-score" style="color: black;">{{ dim.score.toFixed(2) }}/{{ maxScore }}</span>
           </div>
         </div>
       </div>
@@ -42,60 +60,180 @@
 import {
   formatDimensionName,
   getDimensionColor,
-  calculateCollegeStats,
-  ryffDimensions
+  ryffDimensions,
+  getCollegeDimensionColor,
+  getCollegeDimensionRiskLevel
 } from '../Shared/RyffScoringUtils';
 
 export default {
   name: 'CollegeView',
-  props: {
-    students: {
-      type: Array,
-      required: true
-    }
-  },
   data() {
     return {
-      error: null
+      error: null,
+      collegesFromBackend: [], // Store colleges fetched from backend
+      collegeScores: [], // Store computed college scores from backend
+      assessmentTypeFilter: '42-item' // Default to 42-item
     };
   },
+  async mounted() {
+    await this.loadCollegesFromBackend();
+    await this.loadCollegeScores();
+  },
+  watch: {
+    // Watch for changes in collegeScores to ensure reactivity
+    collegeScores: {
+      handler(newScores, oldScores) {
+        console.log(`👀 CollegeScores changed: ${oldScores?.length || 0} -> ${newScores?.length || 0}`);
+        // Force re-computation of colleges computed property
+        this.$forceUpdate();
+      },
+      deep: true
+    },
+    assessmentTypeFilter: {
+      handler(newType, oldType) {
+        console.log(`🔄 Assessment filter changed: ${oldType} -> ${newType}`);
+      }
+    }
+  },
   computed: {
+    maxScore() {
+      return this.assessmentTypeFilter === '42-item' ? 42 : 84;
+    },
     colleges() {
       try {
-        if (!this.students || !Array.isArray(this.students)) {
-          console.warn('Invalid or missing students data');
-          return this.getDefaultCollegeData();
+        console.log(`🔄 Computing colleges() - Assessment Type: ${this.assessmentTypeFilter}, CollegeScores: ${this.collegeScores.length}`);
+        
+        // Use colleges from backend - if not loaded, return empty array to show the error
+        if (this.collegesFromBackend.length === 0) {
+          console.error('No colleges loaded from backend');
+          return [];
         }
+        
+        const collegeData = this.collegesFromBackend.map(college => ({
+          name: college.name,
+          code: this.generateCollegeCode(college.name),
+          users: college.users
+        }));
 
-        const stats = calculateCollegeStats(this.students);
-        const collegeData = [
-          { name: 'College of Computer Studies', code: 'CCS' },
-          { name: 'College of Nursing', code: 'CN' },
-          { name: 'College of Engineering', code: 'COE' },
-          { name: 'College of Business Administration', code: 'CBA' },
-          { name: 'College of Arts and Sciences', code: 'CAS' }
-        ];
-
-        return collegeData.map(college => ({
-          ...college,
-          students: stats[college.code]?.students || 0,
-          avgScore: stats[college.code]?.avgScore || 0,
-          atRisk: stats[college.code]?.atRisk || 0,
-          dimensions: stats[college.code]?.dimensions || this.getDefaultDimensions()
-        })).filter(college => college.students > 0); // Remove colleges with no data
+        // Filter and map only colleges that have score data for the selected assessment type
+        return collegeData
+          .map(college => {
+            // Find matching college scores from backend
+            const collegeScore = this.collegeScores.find(score => 
+              score.name === college.name
+            );
+            
+            console.log(`🏫 Processing ${college.name}: Found score data:`, !!collegeScore);
+            
+            if (collegeScore) {
+              // Calculate overall average and at-risk count from dimensions
+              const dimensions = collegeScore.dimensions;
+              const dimensionScores = Object.values(dimensions).map(dim => dim.score);
+              const avgScore = dimensionScores.length > 0 
+                ? dimensionScores.reduce((sum, score) => sum + score, 0) / dimensionScores.length 
+                : 0;
+              
+              // Count at-risk dimensions
+              const atRiskCount = Object.values(dimensions).filter(dim => 
+                dim.riskLevel === 'At Risk'
+              ).length;
+              
+              return {
+                ...college,
+                students: collegeScore.studentCount || 0,
+                avgScore: avgScore,
+                atRisk: atRiskCount,
+                dimensions: this.formatDimensionsForDisplay(dimensions)
+              };
+            } else {
+              // Return null for colleges without score data - will be filtered out
+              return null;
+            }
+          })
+          .filter(college => college !== null); // Remove colleges without score data
       } catch (err) {
-        console.error('Error calculating college stats:', err);
+        console.error('Error processing college data:', err);
         this.error = 'Error loading college statistics';
-        return this.getDefaultCollegeData();
+        return [];
       }
     }
   },
   methods: {
+    async loadCollegesFromBackend() {
+      try {
+        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        if (response.ok) {
+          const data = await response.json();
+          this.collegesFromBackend = data.colleges.map(college => ({
+            name: college.name,
+            users: college.totalUsers
+          }));
+        } else {
+          console.error('Failed to load colleges from backend');
+          this.error = 'Failed to load college data from server';
+        }
+      } catch (error) {
+        console.error('Error loading colleges:', error);
+        this.error = 'Network error. Please check if the backend server is running.';
+      }
+    },
+    async loadCollegeScores() {
+      try {
+        // Convert frontend filter format to backend format
+        const assessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
+        console.log(`🔍 Loading college scores for assessment type: ${assessmentType}`);
+        
+        // First, trigger computation of college scores with assessment type filter
+        console.log(`⚙️ Computing scores for ${assessmentType}...`);
+        await fetch('http://localhost:3000/api/accounts/colleges/compute-scores', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ assessmentType })
+        });
+        
+        // Then fetch the computed scores with assessment type filter
+        console.log(`📥 Fetching computed scores for ${assessmentType}...`);
+        const response = await fetch(`http://localhost:3000/api/accounts/colleges/scores?assessmentType=${assessmentType}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ Received ${data.colleges?.length || 0} colleges for ${assessmentType}:`, data.colleges?.map(c => c.name));
+          
+          // Clear old data first to ensure reactivity
+          this.collegeScores = [];
+          this.$nextTick(() => {
+            this.collegeScores = data.colleges || [];
+            console.log(`📊 Updated collegeScores array:`, this.collegeScores.length, 'colleges');
+          });
+        } else {
+          console.error('Failed to load college scores from backend');
+          this.error = 'Failed to load college scores from server';
+        }
+      } catch (error) {
+        console.error('Error loading college scores:', error);
+        this.error = 'Network error while loading college scores.';
+      }
+    },
+    generateCollegeCode(collegeName) {
+      // Generate a code from college name for backward compatibility
+      const words = collegeName.split(' ');
+      if (words.length === 1) {
+        return words[0].substring(0, 3).toUpperCase();
+      }
+      return words.map(word => word.charAt(0)).join('').toUpperCase();
+    },
     formatDimName(name) {
       return formatDimensionName(name);
     },
     getDimensionColor(name) {
       return getDimensionColor(name);
+    },
+    getCollegeDimensionColor(rawScore) {
+      return getCollegeDimensionColor(rawScore, this.assessmentTypeFilter);
+    },
+    getCollegeDimensionRiskLevel(rawScore) {
+      return getCollegeDimensionRiskLevel(rawScore);
     },
     getDefaultDimensions() {
       return ryffDimensions.reduce((acc, dim) => {
@@ -103,26 +241,35 @@ export default {
         return acc;
       }, {});
     },
-    getDefaultCollegeData() {
-      const collegeData = [
-        { name: 'College of Computer Studies', code: 'CCS' },
-        { name: 'College of Nursing', code: 'CN' },
-        { name: 'College of Engineering', code: 'COE' },
-        { name: 'College of Business Administration', code: 'CBA' },
-        { name: 'College of Arts and Sciences', code: 'CAS' }
-      ];
-      
-      return collegeData.map(college => ({
-        ...college,
-        students: 0,
-        avgScore: 0,
-        atRisk: 0,
-        dimensions: this.getDefaultDimensions()
-      }));
+    formatDimensionsForDisplay(dimensions) {
+      // Convert backend dimension format to frontend display format
+      const formatted = {};
+      Object.keys(dimensions).forEach(dimName => {
+        const dim = dimensions[dimName];
+        // Use the formatted dimension name as the key instead of the raw backend key
+        const formattedName = formatDimensionName(dimName);
+        formatted[formattedName] = {
+          score: dim.score || 0,
+          riskLevel: dim.riskLevel || 'Healthy'
+        };
+      });
+      return formatted;
+    },
+
+    setAssessmentType(type) {
+      console.log(`🔄 Switching assessment type from ${this.assessmentTypeFilter} to ${type}`);
+      this.assessmentTypeFilter = type;
+      console.log(`📊 Current collegeScores before reload:`, this.collegeScores.length, 'colleges');
+      this.loadCollegeScores(); // Reload data with new filter
     },
     navigateToCollegeDetail(college) {
       // Emit event to parent component to handle navigation
-      this.$emit('navigate-to-college', college);
+      // Include assessment type information
+      const collegeWithAssessmentType = {
+        ...college,
+        assessmentType: this.assessmentTypeFilter
+      };
+      this.$emit('navigate-to-college', collegeWithAssessmentType);
     }
   }
 };
@@ -254,7 +401,7 @@ p {
   width: 40px;
   font-size: 13px;
   font-weight: 500;
-  color: #1a2e35;
+  color: black;
   text-align: right;
 }
 
@@ -272,5 +419,45 @@ p {
 
 .error-message i {
   font-size: 16px;
+}
+
+/* Assessment Type Navigation Styles */
+.assessment-type-nav {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.nav-button {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.nav-button:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.nav-button.active {
+  background: #007bff;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+.nav-button.active:hover {
+  background: #0056b3;
+  color: white;
 }
 </style>

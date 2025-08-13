@@ -285,12 +285,12 @@
 
         <!-- Guidance Feedback View -->
         <college-view v-if="currentView === 'guidance' && !selectedCollegeDetail" 
-                     :students="students" 
                      @navigate-to-college="showCollegeDetail" />
         
         <!-- College Detail View -->
         <college-detail v-if="currentView === 'guidance' && selectedCollegeDetail" 
                        :selected-college="selectedCollegeDetail"
+                       :assessment-type="selectedCollegeDetail.assessmentType"
                        @go-back="hideCollegeDetail" />
 
         <!-- AI Intervention View -->
@@ -312,7 +312,7 @@
       </div>
 
       <!-- Dimension Details Modal -->
-      <div class="modal" v-if="showModal" @click.self="closeModal">
+      <div class="modal" v-if="showModal && selectedDimension" @click.self="closeModal">
         <div class="modal-content dimension-details">
           <div class="modal-header">
             <h3>{{ selectedDimension.name }} - Colleges at High Risk</h3>
@@ -549,9 +549,8 @@ export default {
       const yearDimensions = {};
       Object.keys(baseDimensions).forEach(dimKey => {
         const baseScore = baseDimensions[dimKey].score;
-        // Add some variation to make it more realistic
-        const variation = (Math.random() - 0.5) * 4; // ±2 points variation
-        const newScore = Math.max(1, Math.min(35, Math.round(baseScore * multiplier + variation)));
+        // Use consistent multiplier without random variation to ensure stable scores
+        const newScore = Math.max(1, Math.min(42, Math.round(baseScore * multiplier)));
         yearDimensions[dimKey] = { score: newScore };
       });
       return yearDimensions;
@@ -631,7 +630,7 @@ export default {
         'Autonomy': 'autonomy',
         'Environmental Mastery': 'environmentalMastery',
         'Personal Growth': 'personalGrowth',
-        'Positive Relations': 'positiveRelations',
+        'Positive Relations with Others': 'positiveRelations',
         'Purpose in Life': 'purposeInLife',
         'Self-Acceptance': 'selfAcceptance'
       };
@@ -652,7 +651,7 @@ export default {
           }
           
           // Check if this dimension is at risk for this student
-          const score = student.subscales[propertyName] * 7; // Scale to 7-49 range
+          const score = student.subscales[propertyName]; // Raw score from database
           if (score <= this.riskThreshold) {
             // Add this college to the list if not already present
             if (!collegeRisks[student.college]) {

@@ -113,9 +113,9 @@
       
     <div class="dimensions-grid">
       <div class="dimension-card" v-for="(dimension, index) in dimensions" :key="index">
-        <div class="dimension-header" :style="{ borderLeft: `4px solid ${getDimensionColor(dimension.dimensionKey)}` }">
+        <div class="dimension-header" :style="{ borderLeft: `4px solid ${getDimensionColor(dimension)}` }">
           <div class="dimension-title-section">
-            <div class="dimension-color-indicator" :style="{ backgroundColor: getDimensionColor(dimension.dimensionKey) }"></div>
+            <div class="dimension-color-indicator" :style="{ backgroundColor: getDimensionColor(dimension) }"></div>
             <h3>{{ dimension.name }}</h3>
           </div>
           <button class="expand-btn">
@@ -125,9 +125,9 @@
         
         <div class="dimension-content">
           <div class="dimension-score-section">
-            <div class="score-display" :style="{ borderLeft: `4px solid ${getDimensionColor(dimension.dimensionKey)}` }">
+            <div class="score-display" :style="{ borderLeft: `4px solid ${getDimensionColor(dimension)}` }">
               <span class="score-label">Dimension Score:</span>
-              <span class="score-value" :style="{ color: getDimensionColor(dimension.dimensionKey) }">{{ dimension.averageScore }}</span>
+              <span class="score-value" style="color: black;">{{ dimension.averageScore }}</span>
             </div>
             <div class="score-interpretation">
               <h4>Score Interpretation</h4>
@@ -187,7 +187,7 @@
 </template>
 
 <script>
-import { getDimensionColor } from '../Shared/RyffScoringUtils';
+import { getDimensionColor, getCollegeDimensionColor, formatDimensionName, getCollegeDimensionRiskLevel } from '../Shared/RyffScoringUtils';
 
 export default {
   name: 'CollegeDetail',
@@ -195,6 +195,10 @@ export default {
     selectedCollege: {
       type: Object,
       required: true
+    },
+    assessmentType: {
+      type: String,
+      default: '42-item'
     }
   },
   data() {
@@ -357,7 +361,8 @@ export default {
             completionRate: Math.round(totalCompletion / totalStudents) + '%',
             overallScore: Math.round(totalScore / totalStudents),
             atRiskCount: totalAtRisk,
-            dimensions: this.getAggregatedDimensions(this.selectedHistoryData.yearData),
+            // Use original historical dimensions instead of averaging synthetic year data
+            dimensions: this.selectedHistoryData.dimensions,
             assessmentName: this.selectedHistoryData.assessmentName
           };
         } else {
@@ -393,7 +398,8 @@ export default {
             completionRate: Math.round(totalCompletion / totalStudents) + '%',
             overallScore: Math.round(totalScore / totalStudents),
             atRiskCount: totalAtRisk,
-            dimensions: this.getAggregatedDimensions(this.selectedCollege.yearData),
+            // Use original college dimensions instead of averaging synthetic year data
+            dimensions: this.selectedCollege.dimensions,
             assessmentName: 'Current Assessment'
           };
         } else {
@@ -403,55 +409,86 @@ export default {
       }
     },
     dimensions() {
-      const dimensionData = {
-        autonomy: {
-          name: 'Autonomy',
-          interpretation: 'Moderate autonomy levels indicate students have some independence in decision-making but may benefit from additional support in developing self-reliance and confidence in their choices.',
-          recommendation: 'IT students show moderate autonomy scores. Consider offering more opportunities for independent project work to strengthen decision-making confidence and reduce over-reliance on peer pressure.'
-        },
-        environmentalMastery: {
-          name: 'Environmental Mastery',
-          interpretation: 'Below-average environmental mastery suggests students may struggle with managing their surroundings and daily responsibilities effectively.',
-          recommendation: 'Environmental Mastery scores suggest students may benefit from better time management strategies and workload distribution techniques, especially for complex technical projects.'
-        },
-        personalGrowth: {
-          name: 'Personal Growth',
-          interpretation: 'Lower personal growth scores indicate students may feel stagnant or lack a sense of continuous development and improvement in their personal lives.',
-          recommendation: 'The lower Personal Growth scores indicate students may benefit from clearly defined skill progression paths and recognition of incremental learning achievements in technology areas.'
-        },
-        positiveRelations: {
-          name: 'Positive Relations',
-          interpretation: 'Moderate positive relations scores suggest students have satisfactory social connections but could benefit from stronger interpersonal relationships and support networks.',
-          recommendation: 'While showing moderate scores, Positive Relations could be enhanced through more collaborative coding projects and peer programming activities to build communication skills.'
-        },
-        purposeInLife: {
-          name: 'Purpose in Life',
-          interpretation: 'Moderate purpose in life scores indicate students have some sense of direction and meaning but may benefit from clearer goal-setting and career guidance.',
-          recommendation: 'Students would benefit from career connections between coursework and industry applications, and clarity applications. All peer guidance updates and embrace initiatives can be learning opportunities.'
-        },
-        selfAcceptance: {
-          name: 'Self-Acceptance',
-          interpretation: 'Below-average self-acceptance scores suggest students may struggle with self-worth and accepting their personal qualities, both positive and negative.',
-          recommendation: 'The notably lower Self-Acceptance scores suggest implementing programming workshops that emphasize the debugging process and embrace mistakes as learning opportunities.'
-        }
+      // Dynamic interpretations based on risk levels
+      const getInterpretation = (dimensionKey, riskLevel) => {
+        const interpretations = {
+          'Autonomy': {
+            'Healthy': 'The individual demonstrates a strong sense of independence and self-direction. They are capable of resisting social pressures and make decisions based on internal values and personal standards. Their behavior is regulated from within, and they tend to evaluate themselves rather than rely on others\' judgments.',
+            'Moderate': 'The individual shows a balanced level of autonomy. While they are able to make independent decisions in many situations, they may still be somewhat influenced by social expectations or others\' opinions. They strive to maintain personal standards but occasionally seek validation or adjust behavior to align with external input.',
+            'At Risk': 'The individual appears to be highly influenced by the expectations and evaluations of others. They tend to rely on external judgments when making important decisions and are likely to conform to social norms and pressures. Their behavior is shaped more by external approval than by internal convictions.'
+          },
+          'Environmental Mastery': {
+            'Healthy': 'The individual shows a strong sense of competence in managing life\'s demands and shaping their environment. They effectively handle external responsibilities and are able to identify and act on opportunities that align with their goals and values. They demonstrate adaptability and initiative in creating a supportive context for themselves.',
+            'Moderate': 'The individual shows a reasonable level of environmental mastery. They are generally able to cope with everyday tasks and make use of their environment, though they may occasionally feel uncertain or passive when facing more complex or overwhelming situations. They demonstrate some control but may benefit from additional support or strategies for navigating external demands.',
+            'At Risk': 'The individual experiences difficulty managing their environment and daily responsibilities. They may feel powerless to influence or improve their circumstances and often miss or fail to act on available opportunities. There is a general sense of disconnection or lack of control in relation to the external world.'
+          },
+          'Personal Growth': {
+            'Healthy': 'The individual demonstrates a strong sense of ongoing personal development. They perceive themselves as growing and expanding over time, showing openness to new experiences and a clear awareness of their evolving potential. Their self-perception reflects continuous learning, increased effectiveness, and meaningful behavioral change.',
+            'Moderate': 'The individual shows some indicators of personal growth but may not consistently feel a strong sense of progress. They occasionally engage in self-reflection and development but might struggle with direction or motivation at times. While there is evidence of change, it may be slow, uncertain, or sporadic.',
+            'At Risk': 'The individual reports feeling stagnant and disconnected from a sense of personal development. They may lack interest in new experiences and struggle to adopt new perspectives or behaviors. Life may feel monotonous, and they often experience a diminished sense of growth or self-improvement.'
+          },
+          'Positive Relations with Others': {
+            'Healthy': 'The individual demonstrates the capacity to form deep, trusting, and emotionally fulfilling relationships. They show concern for others\' well-being and exhibit empathy, affection, and intimacy in their interactions. They understand the reciprocal nature of relationships and value emotional closeness and connection.',
+            'Moderate': 'The individual shows some ability to maintain positive relationships but may experience difficulty with deeper emotional engagement or consistent relational satisfaction. While they value connection, they might hold back emotionally, avoid vulnerability, or find it challenging to maintain long-term relational closeness.',
+            'At Risk': 'The individual has difficulty establishing or maintaining trusting and meaningful relationships. They may feel emotionally disconnected, isolated, or frustrated with their interactions. A lack of warmth, openness, or willingness to compromise may hinder their ability to build lasting social bonds.'
+          },
+          'Purpose in Life': {
+             'Healthy': 'The individual demonstrates a strong sense of purpose and direction in life. They have clearly defined goals and derive meaning from both their past and present experiences. Their beliefs help guide their actions, giving their life a coherent and motivating structure.',
+             'Moderate': 'The individual shows some awareness of purpose and direction but may experience periods of uncertainty or lack of clarity. They may have short-term goals or aspirations but struggle to connect them with a deeper sense of meaning. While they seek purpose, it may not yet feel fully established.',
+             'At Risk': 'The individual appears to lack clear goals, direction, or a sense of meaning in life. They may feel disconnected from both their past experiences and future aspirations. A lack of guiding beliefs or motivating objectives may contribute to a sense of aimlessness or confusion.'
+           },
+           'Self-Acceptance': {
+              'Healthy': 'The individual demonstrates a positive and accepting attitude toward themselves. They are aware of and embrace both their strengths and shortcomings, and they reflect on their life history with a sense of appreciation and self-respect. They exhibit psychological maturity and inner peace.',
+              'Moderate': 'The individual shows partial self-acceptance. While they acknowledge some personal strengths, they may also experience recurring doubts or dissatisfaction with certain aspects of themselves or their past. They are working toward greater self-understanding but have not fully resolved internal conflicts.',
+              'At Risk': 'The individual expresses dissatisfaction with themselves and their life history. They may feel regretful or critical about past experiences and troubled by aspects of their personality. There is a persistent desire to be different, indicating challenges with self-worth and personal acceptance.'
+            }
+        };
+        
+        return interpretations[dimensionKey]?.[riskLevel] || 'No interpretation available.';
       };
 
       // Use actual scores from current data (either selected history or current college)
-      return Object.entries(this.currentData.dimensions || {}).map(([key, dimData]) => ({
-        name: dimensionData[key]?.name || key,
-        averageScore: dimData.score || 0,
-        dimensionKey: key,
-        interpretation: dimensionData[key]?.interpretation || 'No interpretation available.',
-        recommendation: dimensionData[key]?.recommendation || 'No recommendation available.'
-      }));
+      const dimensionsData = this.currentData.dimensions || {};
+      
+      return Object.entries(dimensionsData).map(([key, dimData]) => {
+        // Handle both structures: {score: X, riskLevel: Y} from CollegeView and {score: X} from yearData
+        const score = dimData.score || dimData || 0;
+        const riskLevel = dimData.riskLevel || this.getRiskLevelFromScore(score);
+        
+        const interpretation = getInterpretation(key, riskLevel);
+        
+        return {
+          name: formatDimensionName(key),
+          averageScore: score,
+          dimensionKey: key,
+          interpretation: interpretation,
+          recommendation: 'No recommendation available.' // Keep existing recommendations for now
+        };
+      });
     }
   },
   methods: {
     goBack() {
       this.$emit('go-back');
     },
-    getDimensionColor(dimensionKey) {
-      return getDimensionColor(dimensionKey);
+    getRiskLevelFromScore(score) {
+      return getCollegeDimensionRiskLevel(score, this.assessmentType);
+    },
+    getDimensionColor(dimensionOrKey) {
+      // Handle both dimension object and dimension key
+      let dimension;
+      if (typeof dimensionOrKey === 'object') {
+        // If passed a dimension object, use it directly
+        dimension = dimensionOrKey;
+      } else {
+        // If passed a dimension key, find the dimension
+        dimension = this.dimensions.find(d => d.dimensionKey === dimensionOrKey);
+      }
+      
+      if (dimension && dimension.averageScore !== undefined && dimension.averageScore !== null) {
+        return getCollegeDimensionColor(dimension.averageScore, this.assessmentType);
+      }
+      return '#6c757d'; // Gray for no data
     },
     closeHistoryPanel() {
       this.showHistoryPanel = false;
@@ -483,8 +520,12 @@ export default {
         years.forEach(year => {
           totalScore += yearData[year].dimensions[dimKey].score;
         });
+        
+        // If only one year, return the exact score as integer to avoid unnecessary decimals
+        // If multiple years, format to 2 decimal places for proper averaging
+        const averageScore = totalScore / years.length;
         aggregatedDimensions[dimKey] = {
-          score: Math.round((totalScore / years.length) * 10) / 10
+          score: years.length === 1 ? Math.round(averageScore) : parseFloat(averageScore.toFixed(2))
         };
       });
       

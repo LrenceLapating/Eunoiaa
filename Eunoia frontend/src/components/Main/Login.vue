@@ -79,7 +79,7 @@
           </div>
           <div class="floating-item item2">
             <i class="fas fa-users"></i>
-            <span>Positive Relations</span>
+            <span>Positive Relations with Others</span>
           </div>
           <div class="floating-item item3">
             <i class="fas fa-brain"></i>

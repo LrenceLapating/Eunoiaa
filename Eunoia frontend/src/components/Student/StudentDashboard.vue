@@ -117,7 +117,7 @@
               
               <div class="card-body">
                 <div class="assessment-description">
-                  <p>Evaluate your psychological well-being across six key dimensions: autonomy, environmental mastery, personal growth, positive relations, purpose in life, and self-acceptance.</p>
+                  <p>Evaluate your psychological well-being across six key dimensions: autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance.</p>
                 </div>
                 
                 <div class="progress-section">
@@ -148,7 +148,7 @@
                     </div>
                     <div class="dimension-item">
                       <i class="fas fa-users"></i>
-                      <span>Positive Relations</span>
+                      <span>Positive Relations with Others</span>
                     </div>
                     <div class="dimension-item">
                       <i class="fas fa-bullseye"></i>

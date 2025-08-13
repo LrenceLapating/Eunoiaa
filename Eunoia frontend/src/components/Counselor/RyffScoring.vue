@@ -72,6 +72,14 @@
         </div>
         
         <div class="filter-dropdown" v-if="currentTab === 'student'">
+          <select v-model="assessmentTypeFilter">
+            <option value="42-item">42-Item Assessment</option>
+            <option value="84-item">84-Item Assessment</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+        
+        <div class="filter-dropdown" v-if="currentTab === 'student'">
           <select v-model="riskLevelFilter">
             <option value="all">All Levels</option>
             <option value="At Risk">At Risk</option>
@@ -137,11 +145,11 @@
                   <div 
                     v-for="(score, subscale) in (student?.subscales || {})" 
                     :key="subscale"
-                    v-if="score !== undefined && score !== null && (isAtRisk(score * 7) || isModerate(score * 7))"
+                    v-if="score !== undefined && score !== null && (isAtRisk(score) || isModerate(score))"
                     class="risk-dimension-container"
                   >
-                    <div class="risk-dimension-score" :class="getDimensionRiskClass(score * 7)">
-                      {{ Math.round(score * 7) }}
+                    <div class="risk-dimension-score" :class="getDimensionRiskClass(score)">
+                      {{ Math.round(score) }}
                       <div class="hover-label">{{ formatSubscaleName(subscale) }}</div>
                     </div>
                   </div>
@@ -207,6 +215,9 @@
               <div class="info-item">
                 <span class="info-label">Overall Score:</span>
                 <span class="info-value score">{{ calculateOverallScore(selectedStudent) }}</span>
+                <span class="overall-risk-indicator" :class="getOverallRiskClass(selectedStudent)">
+                  {{ getOverallRiskLabel(selectedStudent) }}
+                </span>
               </div>
               <div class="info-item">
                 <span class="info-label">At-Risk Dimensions:</span>
@@ -228,21 +239,21 @@
                 class="subscale-item" 
                 v-for="(score, subscale) in (selectedStudent?.subscales || {})" 
                 :key="subscale"
-                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score * 7) }"
+                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score) }"
               >
                 <div class="subscale-header">
                   <span class="subscale-name">{{ formatSubscaleName(subscale) }}</span>
-                  <span class="subscale-score">{{ (score !== undefined && score !== null) ? Math.round(score * 7) : 'N/A' }}/49</span>
+                  <span class="subscale-score">{{ (score !== undefined && score !== null) ? Math.round(score) : 'N/A' }}/{{ maxScore }}</span>
                 </div>
                 <div class="progress-bar">
                   <div 
                     class="progress-fill" 
-                    :style="(score !== undefined && score !== null) ? { width: (score*7/49*100) + '%', backgroundColor: getDimensionScoreColor(score*7) } : { width: '0%' }"
+                    :style="(score !== undefined && score !== null) ? { width: (score/maxScore*100) + '%', backgroundColor: getDimensionScoreColor(score) } : { width: '0%' }"
                   ></div>
                 </div>
                 <div class="risk-status">
-                  <span :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score*7) : 'no-data'">
-                    {{ (score !== undefined && score !== null) ? getDimensionRiskLabel(score*7) : 'No Data' }}
+                  <span :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score) : 'no-data'">
+                      {{ (score !== undefined && score !== null) ? getDimensionRiskLabel(score) : 'No Data' }}
                   </span>
                 </div>
               </div>
@@ -536,6 +547,7 @@ export default {
       searchQuery: '',
       collegeFilter: 'all',
       sectionFilter: 'all',
+      assessmentTypeFilter: '42-item',
       riskLevelFilter: 'all',
       sortField: 'submissionDate',
       sortDirection: 'desc',
@@ -549,16 +561,43 @@ export default {
         { key: 'autonomy', name: 'Autonomy' },
         { key: 'environmentalMastery', name: 'Environmental Mastery' },
         { key: 'personalGrowth', name: 'Personal Growth' },
-        { key: 'positiveRelations', name: 'Positive Relations' },
+        { key: 'positiveRelations', name: 'Positive Relations with Others' },
         { key: 'purposeInLife', name: 'Purpose in Life' },
         { key: 'selfAcceptance', name: 'Self-Acceptance' }
       ],
-      // Use the same risk threshold as the dashboard
-      riskThresholds: {
-        q1: 17, // Below or equal to this is "At Risk" (Q1)
-        q4: 39  // Above or equal to this is "Healthy" (Q4)
+      // Base risk thresholds for 42-item assessment
+      baseRiskThresholds: {
+        '42-item': {
+          q1: 18, // Below or equal to this is "At Risk" (7-18)
+          q4: 31  // Above or equal to this is "Healthy" (31-42)
+        },
+        '84-item': {
+          q1: 36, // Below or equal to this is "At Risk" (14-36)
+          q4: 59  // Above or equal to this is "Healthy" (60-84)
+        }
+      },
+      // Overall score risk thresholds
+      overallRiskThresholds: {
+        '42-item': {
+          atRisk: 111,    // 42-111 (At Risk)
+          healthy: 182    // 182-252 (Healthy), 112-181 (Moderate)
+        },
+        '84-item': {
+          atRisk: 223,    // 84-223 (At Risk)
+          healthy: 364    // 364-504 (Healthy), 224-363 (Moderate)
+        }
       }
     };
+  },
+  computed: {
+    // Get max score based on assessment type
+    maxScore() {
+      return this.assessmentTypeFilter === '84-item' ? 84 : 42;
+    },
+    // Get risk thresholds based on assessment type
+    riskThresholds() {
+      return this.baseRiskThresholds[this.assessmentTypeFilter] || this.baseRiskThresholds['42-item'];
+    }
   },
   async created() {
     // Fetch real assessment data from backend
@@ -584,8 +623,20 @@ export default {
     // Fetch real assessment results from backend
     async fetchAssessmentResults() {
       try {
+        // Build query parameters including assessment type filter
+        const params = new URLSearchParams({
+          limit: '1000'
+        });
+        
+        // Add assessment type filter if not showing all
+        if (this.assessmentTypeFilter && this.assessmentTypeFilter !== 'all') {
+          // Convert frontend filter format to backend format
+          const assessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
+          params.append('assessmentType', assessmentType);
+        }
+        
         // Request all results by setting a high limit
-        const response = await fetch('http://localhost:3000/api/counselor-assessments/results?limit=1000', {
+        const response = await fetch(`http://localhost:3000/api/counselor-assessments/results?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -608,6 +659,12 @@ export default {
               const scores = assessment.scores || {};
               console.log('Assessment scores:', scores);
               
+              // Map backend assessment type to frontend format
+              const assessmentTypeMapping = {
+                'ryff_42': '42-item',
+                'ryff_84': '84-item'
+              };
+              
               return {
                 id: assessment.student?.id || assessment.student_id,
                 name: assessment.student?.name || assessment.student_name || 'Unknown Student',
@@ -625,7 +682,7 @@ export default {
                  },
                 overallScore: assessment.overall_score,
                 atRiskDimensions: assessment.at_risk_dimensions || [],
-                assessmentType: assessment.assessment_type,
+                assessmentType: assessmentTypeMapping[assessment.assessment_type] || '42-item',
                 assignmentId: assessment.assignment?.id,
                 riskLevel: assessment.risk_level,
                 id_number: assessment.student?.id_number || assessment.student_id
@@ -656,16 +713,11 @@ export default {
       }
     },
 
-    // Calculate overall score as sum of all dimension scores (scaled from 0-5 to 7-49)
+    // Get overall score from database (already calculated and stored)
     calculateOverallScore(student) {
-      if (!student || !student.subscales) return 0;
-      let total = 0;
-      for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined) {
-          total += Math.round(student.subscales[subscale] * 7);
-        }
-      }
-      return total;
+      if (!student) return 0;
+      // Return the overall_score directly from the database
+      return student.overallScore || 0;
     },
     
     // Check if a dimension score is at risk (in Q1)
@@ -677,7 +729,7 @@ export default {
     hasAnyRiskDimension(student) {
       if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale])) {
           return true;
         }
       }
@@ -689,7 +741,7 @@ export default {
       if (!student || !student.subscales) return 0;
       let count = 0;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale] * 7)) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale])) {
           count++;
         }
       }
@@ -702,7 +754,7 @@ export default {
       let count = 0;
       for (const subscale in student.subscales) {
         if (student.subscales[subscale] !== undefined) {
-          const score = student.subscales[subscale] * 7;
+          const score = student.subscales[subscale];
           if (score > this.riskThresholds.q1 && score < this.riskThresholds.q4) {
             count++;
           }
@@ -717,7 +769,7 @@ export default {
       let count = 0;
       for (const subscale in student.subscales) {
         if (student.subscales[subscale] !== undefined) {
-          const score = student.subscales[subscale] * 7;
+          const score = student.subscales[subscale];
           if (score >= this.riskThresholds.q4) {
             count++;
           }
@@ -757,6 +809,31 @@ export default {
       return 'HEALTHY';
     },
     
+    // Get overall risk category based on overall score
+    getOverallRiskCategory(student) {
+      const overallScore = this.calculateOverallScore(student);
+      const thresholds = this.overallRiskThresholds[this.assessmentTypeFilter];
+      
+      if (overallScore <= thresholds.atRisk) {
+        return 'At Risk';
+      } else if (overallScore < thresholds.healthy) {
+        return 'Moderate';
+      } else {
+        return 'Healthy';
+      }
+    },
+    
+    // Get overall risk class for styling
+    getOverallRiskClass(student) {
+      const category = this.getOverallRiskCategory(student);
+      return category.toLowerCase().replace(' ', '-');
+    },
+    
+    // Get overall risk label with styling
+    getOverallRiskLabel(student) {
+      return this.getOverallRiskCategory(student).toUpperCase();
+    },
+    
     filterStudents() {
       // Use filteredStudents as base if available, otherwise fall back to students prop
       const baseStudents = this.filteredStudents.length > 0 ? this.filteredStudents : this.students;
@@ -771,6 +848,9 @@ export default {
       if (this.sectionFilter !== 'all') {
         result = result.filter(student => student.section === this.sectionFilter);
       }
+      
+      // Apply assessment type filter
+      result = result.filter(student => student.assessmentType === this.assessmentTypeFilter);
       
       // Apply risk level filter - based on overall student risk profile
       if (this.riskLevelFilter !== 'all') {
@@ -826,6 +906,7 @@ export default {
     filterByDimensionAndCollege() {
       // Reset other filters
       this.sectionFilter = 'all';
+      this.assessmentTypeFilter = '42-item';
       this.riskLevelFilter = 'all';
       this.searchQuery = '';
       
@@ -836,7 +917,7 @@ export default {
         'Autonomy': 'autonomy',
         'Environmental Mastery': 'environmentalMastery',
         'Personal Growth': 'personalGrowth',
-        'Positive Relations': 'positiveRelations',
+        'Positive Relations with Others': 'positiveRelations',
         'Purpose in Life': 'purposeInLife',
         'Self-Acceptance': 'selfAcceptance'
       };
@@ -863,7 +944,7 @@ export default {
         // Check dimension filter if applicable
         let dimensionMatch = true;
         if (subscaleKey && student.subscales[subscaleKey] !== undefined) {
-          const score = student.subscales[subscaleKey] * 7; // Scale to 7-49 range
+          const score = student.subscales[subscaleKey]; // Raw score from database
           dimensionMatch = score <= this.riskThresholds.q1;
           // Student risk assessment check
         } else if (subscaleKey) {
@@ -897,7 +978,7 @@ export default {
       if (subscale === 'autonomy') return 'Autonomy';
       if (subscale === 'environmentalMastery') return 'Environmental Mastery';
       if (subscale === 'personalGrowth') return 'Personal Growth';
-      if (subscale === 'positiveRelations') return 'Positive Relations';
+      if (subscale === 'positiveRelations') return 'Positive Relations with Others';
       if (subscale === 'purposeInLife') return 'Purpose in Life';
       if (subscale === 'selfAcceptance') return 'Self-Acceptance';
       
@@ -1015,20 +1096,11 @@ export default {
       return student.assessmentHistory;
     },
     
-    // Calculate overall score for a specific assessment
+    // Get overall score from database (already calculated and stored)
     calculateAssessmentOverallScore(assessment) {
-      if (!assessment || !assessment.subscales) return 0;
-      let total = 0;
-      let count = 0;
-      
-      Object.values(assessment.subscales).forEach(score => {
-        if (score !== undefined && score !== null) {
-          total += score * 7; // Scale from 1-5 to 7-35
-          count++;
-        }
-      });
-      
-      return count > 0 ? Math.round(total / count) : 0;
+      if (!assessment) return 0;
+      // Return the overall_score directly from the database
+      return assessment.overallScore || 0;
     },
     
     // Check if an assessment has any risk dimensions
@@ -1037,8 +1109,7 @@ export default {
       
       return Object.values(assessment.subscales).some(score => {
         if (score === undefined || score === null) return false;
-        const scaledScore = score * 7; // Scale to 7-49 range
-        return scaledScore <= this.riskThresholds.q1;
+        return score <= this.riskThresholds.q1;
       });
     },
 
@@ -1047,7 +1118,7 @@ export default {
       if (!assessment || !assessment.subscales) return 0;
       let count = 0;
       for (const subscale in assessment.subscales) {
-        if (assessment.subscales[subscale] !== undefined && this.isAtRisk(assessment.subscales[subscale] * 7)) {
+        if (assessment.subscales[subscale] !== undefined && this.isAtRisk(assessment.subscales[subscale])) {
           count++;
         }
       }
@@ -1067,14 +1138,14 @@ export default {
       if (!assessment || !assessment.subscales || assessment.subscales[dimensionKey] === undefined) {
         return 'N/A';
       }
-      return Math.round(assessment.subscales[dimensionKey] * 7);
+      return Math.round(assessment.subscales[dimensionKey]);
     },
 
     getDimensionScoreClass(assessment, dimensionKey) {
       if (!assessment || !assessment.subscales || assessment.subscales[dimensionKey] === undefined) {
         return 'no-data';
       }
-      const score = assessment.subscales[dimensionKey] * 7;
+      const score = assessment.subscales[dimensionKey];
       return this.getDimensionRiskClass(score);
     },
 
@@ -1082,8 +1153,8 @@ export default {
       if (!assessment || !assessment.subscales || assessment.subscales[dimensionKey] === undefined) {
         return { width: '0%', backgroundColor: '#e0e0e0' };
       }
-      const score = assessment.subscales[dimensionKey] * 7;
-      const percentage = (score / 49) * 100;
+      const score = assessment.subscales[dimensionKey];
+      const percentage = (score / this.maxScore) * 100;
       return {
         width: percentage + '%',
         backgroundColor: this.getDimensionScoreColor(score)
@@ -1119,7 +1190,7 @@ export default {
       
       const scores = history.map(assessment => {
         if (!assessment.subscales || assessment.subscales[dimensionKey] === undefined) return null;
-        return assessment.subscales[dimensionKey] * 7;
+        return assessment.subscales[dimensionKey];
       }).filter(score => score !== null);
       
       if (scores.length < 2) return 'no-trend';
@@ -1185,8 +1256,8 @@ export default {
       const lastAssessment = history[history.length - 1];
       
       this.ryffDimensionsList.forEach(dimension => {
-        const firstScore = firstAssessment.subscales?.[dimension.key] ? firstAssessment.subscales[dimension.key] * 7 : null;
-        const lastScore = lastAssessment.subscales?.[dimension.key] ? lastAssessment.subscales[dimension.key] * 7 : null;
+        const firstScore = firstAssessment.subscales?.[dimension.key] ? firstAssessment.subscales[dimension.key] : null;
+        const lastScore = lastAssessment.subscales?.[dimension.key] ? lastAssessment.subscales[dimension.key] : null;
         
         if (firstScore !== null && lastScore !== null) {
           const firstRisk = this.isAtRisk(firstScore);
@@ -1321,6 +1392,7 @@ export default {
     resetFilters() {
       this.collegeFilter = 'all';
       this.sectionFilter = 'all';
+      this.assessmentTypeFilter = '42-item';
       this.riskLevelFilter = 'all';
       this.selectedDimension = null;
       this.searchQuery = '';
@@ -1342,6 +1414,11 @@ export default {
       }
     },
     sectionFilter() {
+      this.filterStudents();
+    },
+    async assessmentTypeFilter() {
+      // Refetch data from backend when assessment type filter changes
+      await this.fetchAssessmentResults();
       this.filterStudents();
     },
     riskLevelFilter() {
@@ -1588,6 +1665,35 @@ export default {
 .risk-badge.low-risk {
   background-color: #e8f5e9;
   color: #4caf50;
+}
+
+/* Overall risk indicator styles */
+.overall-risk-indicator {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.overall-risk-indicator.at-risk {
+  background-color: #ffebee;
+  color: #f44336;
+  border: 1px solid #ffcdd2;
+}
+
+.overall-risk-indicator.moderate {
+  background-color: #fff3e0;
+  color: #ff9800;
+  border: 1px solid #ffcc02;
+}
+
+.overall-risk-indicator.healthy {
+  background-color: #e8f5e9;
+  color: #4caf50;
+  border: 1px solid #c8e6c9;
 }
 
 .view-button {

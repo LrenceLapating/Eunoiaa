@@ -1,13 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/database');
+const { createClient } = require('@supabase/supabase-js');
 const { verifyStudentSession } = require('../middleware/sessionManager');
 const { calculateRyffScores, determineRiskLevel } = require('../utils/ryffScoring');
+
+// Create service role client for bypassing RLS
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // Get assigned assessments for student
 router.get('/assigned', verifyStudentSession, async (req, res) => {
   try {
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
 
     // Get assigned assessments that are not completed or expired
     const { data: assignments, error } = await supabase
@@ -53,7 +60,7 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
 router.get('/take/:assignmentId', verifyStudentSession, async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
 
     // Get assignment details
     const { data: assignment, error: assignmentError } = await supabase
@@ -106,7 +113,7 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
   try {
     const { assignmentId } = req.params;
     const { responses } = req.body;
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
 
     // Validate responses
     if (!responses || typeof responses !== 'object') {
@@ -161,12 +168,18 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
 
     // Calculate scores using the scoring utility
     const scores = calculateRyffScores(responses, assessmentType);
-    const overallScore = Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.keys(scores).length;
+    const overallScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
     const riskLevel = determineRiskLevel(scores, overallScore, assessmentType);
 
-    // Create assessment record
-    const { data: assessmentRecord, error: assessmentInsertError } = await supabase
-      .from('assessments')
+    // Determine which table to insert into based on assessment type
+    let tableName = 'assessments_42items'; // Default to 42-item table
+    if (assessmentType === 'ryff_84') {
+      tableName = 'assessments_84items';
+    }
+
+    // Create assessment record in the appropriate table using admin client to bypass RLS
+    const { data: assessmentRecord, error: assessmentInsertError } = await supabaseAdmin
+      .from(tableName)
       .insert({
         student_id: studentId,
         assignment_id: assignmentId,
@@ -188,8 +201,8 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
       });
     }
 
-    // Update assignment status to completed
-    const { error: updateError } = await supabase
+    // Update assignment status to completed using admin client
+    const { error: updateError } = await supabaseAdmin
       .from('assessment_assignments')
       .update({
         status: 'completed',
@@ -225,7 +238,7 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
 // Get student's assessment history
 router.get('/history', verifyStudentSession, async (req, res) => {
   try {
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
     const { page = 1, limit = 10 } = req.query;
     
     const offset = (page - 1) * limit;
@@ -263,7 +276,7 @@ router.get('/history', verifyStudentSession, async (req, res) => {
 // Get latest assessment results
 router.get('/latest', verifyStudentSession, async (req, res) => {
   try {
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
 
     // Get most recent assessment
     const { data: assessment, error } = await supabase
@@ -300,7 +313,7 @@ router.get('/latest', verifyStudentSession, async (req, res) => {
 router.post('/progress/:assignmentId', verifyStudentSession, async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
     const { currentQuestionIndex, responses, startTime, assessmentType } = req.body;
 
     // Verify assignment belongs to student
@@ -329,8 +342,7 @@ router.post('/progress/:assignmentId', verifyStudentSession, async (req, res) =>
         current_question_index: currentQuestionIndex,
         responses: responses,
         start_time: startTime,
-        last_saved: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        last_saved: new Date().toISOString()
       }, {
         onConflict: 'student_id,assignment_id'
       })
@@ -364,7 +376,7 @@ router.post('/progress/:assignmentId', verifyStudentSession, async (req, res) =>
 router.get('/progress/:assignmentId', verifyStudentSession, async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
 
     // Get progress record
     const { data: progress, error: progressError } = await supabase
@@ -400,7 +412,7 @@ router.get('/progress/:assignmentId', verifyStudentSession, async (req, res) => 
 router.delete('/progress/:assignmentId', verifyStudentSession, async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const studentId = req.session.user_id;
+    const studentId = req.user.id;
 
     const { error: deleteError } = await supabase
       .from('assessment_progress')

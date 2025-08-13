@@ -434,7 +434,7 @@
                  <div class="completion-info">
                    <p><strong>Total Questions:</strong> {{ questionnaire.items.length }}</p>
                    <p><strong>Estimated Time:</strong> 8-12 minutes</p>
-                   <p><strong>Dimensions Assessed:</strong> Autonomy, Environmental Mastery, Personal Growth, Positive Relations, Purpose in Life, Self-Acceptance</p>
+                   <p><strong>Dimensions Assessed:</strong> Autonomy, Environmental Mastery, Personal Growth, Positive Relations with Others, Purpose in Life, Self-Acceptance</p>
                  </div>
                </div>
              </div>

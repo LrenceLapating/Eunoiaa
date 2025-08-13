@@ -57,7 +57,7 @@
                             <div class="dimension-icon">
                                 <i class="fas fa-users"></i>
                             </div>
-                            <div class="dimension-label">Positive Relations</div>
+                            <div class="dimension-label">Positive Relations with Others</div>
                         </div>
                         <div class="dimension dimension-3">
                             <div class="dimension-icon">
@@ -412,7 +412,7 @@
                                         <div class="dimension-icon">
                                             <i class="fas fa-users"></i>
                                         </div>
-                                        <div class="dimension-name">Positive Relations</div>
+                                        <div class="dimension-name">Positive Relations with Others</div>
                                     </div>
                                 </div>
                                 <div class="ryff-dimension ryff-dimension-3" style="--angle: 120deg; --color: #9b59b6;">

@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { supabase } = require('../config/database');
 const { validateStudentData, sanitizeStudentData } = require('../utils/validation');
+const { computeAndStoreCollegeScores, getCollegeScores } = require('../utils/collegeScoring');
 
 const router = express.Router();
 
@@ -593,6 +594,60 @@ router.get('/csv-template', (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="student_template.csv"');
   res.send(csvTemplate);
+});
+
+// GET /api/accounts/colleges/scores - Get computed college scores
+router.get('/colleges/scores', async (req, res) => {
+  try {
+    const { college, assessmentType } = req.query;
+    const result = await getCollegeScores(college, assessmentType);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        colleges: result.colleges
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching college scores:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch college scores'
+    });
+  }
+});
+
+// POST /api/accounts/colleges/compute-scores - Compute and store college scores
+router.post('/colleges/compute-scores', async (req, res) => {
+  try {
+    const { college, assessmentType } = req.body;
+    const result = await computeAndStoreCollegeScores(college, assessmentType);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        collegeCount: result.collegeCount,
+        scoreCount: result.scoreCount
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('Error computing college scores:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to compute college scores'
+    });
+  }
 });
 
 module.exports = router;
