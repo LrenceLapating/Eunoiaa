@@ -6,7 +6,6 @@
         <div v-if="!selectedCollege" class="account-table-wrapper">
           <div class="account-header">
             <div class="header-actions">
-              <h2>Account Management</h2>
               <div class="action-buttons">
                 <input 
                   type="file" 
@@ -666,6 +665,11 @@ export default {
           // Include deactivation info if applicable
           if (result.studentsDeactivated !== undefined) {
             message += ` ${result.studentsDeactivated} previous students deactivated.`;
+            // Emit event to notify other components about deactivation
+            this.$emit('students-deactivated', {
+              deactivatedCount: result.studentsDeactivated,
+              timestamp: new Date().toISOString()
+            });
           }
           
           this.showNotification(message, 'success', 'fas fa-check-circle');

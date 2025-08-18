@@ -11,8 +11,13 @@ const bulkAssessmentRoutes = require('./routes/bulkAssessments');
 const studentAssessmentRoutes = require('./routes/studentAssessments');
 const counselorAssessmentRoutes = require('./routes/counselorAssessments');
 const dataCleanupRoutes = require('./routes/dataCleanup');
+const studentInterventionRoutes = require('./routes/studentInterventions');
+const counselorInterventionRoutes = require('./routes/counselorInterventions');
+const counselorManagementRoutes = require('./routes/counselorManagement');
+const aiInterventionRoutes = require('./routes/aiInterventions');
 const { supabase } = require('./config/database');
 const { SessionManager } = require('./middleware/sessionManager');
+const autoInterventionService = require('./services/autoInterventionService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,6 +52,10 @@ app.use('/api/bulk-assessments', bulkAssessmentRoutes);
 app.use('/api/student-assessments', studentAssessmentRoutes);
 app.use('/api/counselor-assessments', counselorAssessmentRoutes);
 app.use('/api/data-cleanup', dataCleanupRoutes);
+app.use('/api/student-interventions', studentInterventionRoutes);
+app.use('/api/counselor-interventions', counselorInterventionRoutes);
+app.use('/api/counselor-management', counselorManagementRoutes);
+app.use('/api/ai-interventions', aiInterventionRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
@@ -98,12 +107,22 @@ setInterval(async () => {
   }
 }, 60 * 60 * 1000); // 1 hour
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 EUNOIA Backend Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:8080'}`);
   console.log(`🔐 Session-based authentication enabled`);
   console.log(`🧹 Session cleanup job scheduled every hour`);
+  
+  // Initialize auto intervention service for automatic AI intervention generation
+  console.log(`🤖 AI Intervention Service: Automatic mode enabled`);
+  
+  try {
+    await autoInterventionService.initialize();
+    console.log('✅ Auto intervention service initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize auto intervention service:', error);
+  }
 });
 
 module.exports = app;

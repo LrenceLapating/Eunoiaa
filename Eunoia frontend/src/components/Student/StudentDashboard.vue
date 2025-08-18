@@ -21,6 +21,14 @@
               <span>Assessment</span>
             </a>
           </li>
+          <li :class="{ active: currentView === 'ai-interventions' }">
+            <a @click="currentView = 'ai-interventions'" class="menu-item">
+              <div class="menu-icon">
+                <i class="fas fa-comments"></i>
+              </div>
+              <span>Guidance Feedback</span>
+            </a>
+          </li>
           <li :class="{ active: currentView === 'settings' }">
             <a @click="currentView = 'settings'" class="menu-item">
               <div class="menu-icon">
@@ -46,8 +54,8 @@
       <!-- Top Navigation Bar -->
       <header class="top-nav">
         <div class="page-title">
-          <h1>{{ currentView === 'assessment' ? 'Assessment Dashboard' : 'Settings' }}</h1>
-          <p>{{ currentView === 'assessment' ? 'Complete your psychological well-being assessment' : 'Manage your account settings' }}</p>
+          <h1>{{ getPageTitle }}</h1>
+          <p>{{ getPageSubtitle }}</p>
         </div>
         <div class="nav-actions">
           <div class="user-profile">
@@ -107,7 +115,6 @@
                   <p class="assessment-type">{{ getAssessmentDescription }}</p>
                   <div class="assessment-meta">
                     <span class="duration"><i class="fas fa-clock"></i> {{ getEstimatedDuration }}</span>
-                    <span class="due-date"><i class="fas fa-calendar"></i> Due: {{ getFormattedDueDate }}</span>
                   </div>
                 </div>
                 <div class="status-indicator">
@@ -117,7 +124,7 @@
               
               <div class="card-body">
                 <div class="assessment-description">
-                  <p>Evaluate your psychological well-being across six key dimensions: autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance.</p>
+                  <p>{{ getCustomMessage }}</p>
                 </div>
                 
                 <div class="progress-section">
@@ -239,6 +246,175 @@
           :assessment-type="currentAssessment?.type || '42'"
           @return-to-dashboard="onReturnToDashboard"
         />
+
+        <!-- Guidance Feedback View -->
+        <div v-if="currentView === 'ai-interventions'" class="guidance-feedback-view">
+          <!-- Loading State -->
+          <div v-if="loadingInterventions" class="loading-state">
+            <div class="loading-card">
+              <div class="loading-spinner">
+                <div class="spinner-ring">
+                  <div></div>
+                  <div></div>
+                  <div></div>
+                  <div></div>
+                </div>
+              </div>
+              <h3>Loading Your Guidance</h3>
+              <p>Retrieving your personalized recommendations...</p>
+            </div>
+          </div>
+
+          <!-- No Interventions State -->
+          <div v-else-if="aiInterventions.length === 0" class="empty-state">
+            <div class="empty-card">
+              <div class="empty-illustration">
+                <div class="empty-icon">
+                  <i class="fas fa-comments"></i>
+                </div>
+                <div class="empty-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+              <div class="empty-content">
+                <h3>No Guidance Available Yet</h3>
+                <p>Your counselor hasn't sent any personalized recommendations yet. Complete your psychological assessment to receive tailored guidance for your well-being journey.</p>
+                <button class="cta-button" @click="currentView = 'assessment'">
+                  <i class="fas fa-clipboard-list"></i>
+                  <span>Take Assessment</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Professional Guidance Content -->
+          <div v-else class="guidance-content">
+            <!-- Summary Header -->
+            <div class="guidance-header">
+              <div class="header-info">
+                <h2>Your Personalized Guidance</h2>
+                <p>Professional recommendations tailored to your well-being assessment</p>
+              </div>
+            </div>
+
+            <!-- Professional Intervention Cards -->
+            <div class="professional-interventions">
+              <div 
+                v-for="intervention in aiInterventions" 
+                :key="intervention.id"
+                class="professional-intervention-card"
+                :class="{ 'reviewed': intervention.is_read }"
+              >
+                <!-- Student Header -->
+                <div class="intervention-header">
+                  <div class="student-info">
+                    <div class="student-avatar">
+                      <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="student-details">
+                      <h3>{{ studentProfile.name || 'Student' }}</h3>
+                      <p>{{ studentProfile.id_number || 'ID: N/A' }} • {{ studentProfile.college || 'College' }} • {{ formatDate(intervention.created_at) }}</p>
+                    </div>
+                  </div>
+                  <div class="intervention-meta">
+                    <div class="overall-score">
+                      <span class="score-label">Overall Score</span>
+                      <span class="score-value" :class="getRiskLevelClass(intervention.risk_level)">{{ getRiskLevelScore(intervention.risk_level) }}</span>
+                    </div>
+                    <div class="status-badge" :class="intervention.is_read ? 'reviewed' : 'new'">
+                      <i class="fas" :class="intervention.is_read ? 'fa-check-circle' : 'fa-circle'"></i>
+                      {{ intervention.is_read ? 'Reviewed' : 'New' }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Overall Strategy Section -->
+                <div class="strategy-section">
+                  <div class="section-header">
+                    <i class="fas fa-lightbulb"></i>
+                    <h4>Overall Mental Health Strategy</h4>
+                  </div>
+                  <div class="strategy-content">
+                    <p>{{ intervention.overall_strategy || intervention.intervention_text }}</p>
+                  </div>
+                </div>
+
+                <!-- Dimension Interventions Section -->
+                <div class="dimensions-section" v-if="intervention.dimension_interventions">
+                  <div class="section-header">
+                    <i class="fas fa-chart-bar"></i>
+                    <h4>Dimension Scores & Targeted Interventions</h4>
+                  </div>
+                  <div class="dimensions-grid">
+                    <div 
+                      v-for="(interventionText, dimension) in parseDimensionInterventions(intervention.dimension_interventions)" 
+                      :key="dimension"
+                      class="dimension-card"
+                    >
+                      <div class="dimension-header">
+                        <h5>{{ formatDimensionName(dimension) }}</h5>
+                        <div class="dimension-score" :class="getDimensionScoreClass(intervention.dimension_scores, dimension)">
+                          {{ getDimensionScore(intervention.dimension_scores, dimension) }}
+                        </div>
+                      </div>
+                      <div class="dimension-content">
+                        <p>{{ interventionText || 'No specific intervention provided.' }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Action Plan Section -->
+                <div class="action-plan-section" v-if="intervention.action_plan">
+                  <div class="section-header">
+                    <i class="fas fa-tasks"></i>
+                    <h4>Recommended Action Plan</h4>
+                  </div>
+                  <div class="action-plan-content">
+                    <ul class="action-list">
+                      <li v-for="(action, index) in parseActionPlan(intervention.action_plan)" :key="index" class="action-item">
+                        <div class="action-checkbox">
+                          <i class="fas fa-circle"></i>
+                        </div>
+                        <span>{{ action }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- Card Footer -->
+                <div class="intervention-footer">
+                  <div class="counselor-info">
+                    <div class="counselor-avatar">
+                      <i class="fas fa-user-md"></i>
+                    </div>
+                    <div class="counselor-details">
+                      <span class="counselor-label">Guidance provided by</span>
+                      <span class="counselor-name">Your Counselor</span>
+                    </div>
+                  </div>
+                  
+                  <div class="action-buttons">
+                    <button 
+                      v-if="!intervention.is_read" 
+                      class="mark-reviewed-btn"
+                      @click="markAsRead(intervention.id)"
+                    >
+                      <i class="fas fa-check"></i>
+                      Mark as Reviewed
+                    </button>
+                    <div v-else class="reviewed-indicator">
+                      <i class="fas fa-check-circle"></i>
+                      <span>Reviewed</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Settings View -->
         <div v-if="currentView === 'settings'" class="settings-view">
@@ -413,11 +589,13 @@ export default {
   },
   data() {
     return {
-      currentView: 'assessment', // 'assessment', 'settings', 'taking-assessment', 'assessment-complete'
+      currentView: 'assessment', // 'assessment', 'ai-interventions', 'settings', 'taking-assessment', 'assessment-complete'
       isLoading: false,
       hasAssignedAssessments: false,
       assignedAssessments: [],
       currentAssessment: null,
+      loadingInterventions: false,
+      aiInterventions: [],
       studentProfile: {
         name: '',
         email: '',
@@ -460,24 +638,50 @@ export default {
       }
       return '15-20 minutes';
     },
-    getFormattedDueDate() {
+    getCustomMessage() {
       if (this.assignedAssessments.length > 0) {
-        const expiresAt = this.assignedAssessments[0].expires_at;
-        if (expiresAt) {
-          const date = new Date(expiresAt);
-          return date.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-          });
+        const customMessage = this.assignedAssessments[0].bulk_assessment?.custom_message;
+        if (customMessage && customMessage.trim()) {
+          return customMessage;
         }
       }
-      return 'No due date';
+      return 'Evaluate your psychological well-being across six key dimensions: autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance.';
+    },
+    getPageTitle() {
+      switch (this.currentView) {
+        case 'assessment':
+          return 'Assessment Dashboard';
+        case 'ai-interventions':
+          return 'Guidance Feedback';
+        case 'settings':
+          return 'Settings';
+        default:
+          return 'Dashboard';
+      }
+    },
+    getPageSubtitle() {
+      switch (this.currentView) {
+        case 'assessment':
+          return 'Complete your psychological well-being assessment';
+        case 'ai-interventions':
+          return 'View personalized guidance and recommendations from your counselor';
+        case 'settings':
+          return 'Manage your account settings';
+        default:
+          return '';
+      }
     }
   },
   async mounted() {
     await this.fetchStudentProfile();
     await this.fetchAssignedAssessments();
+  },
+  watch: {
+    currentView(newView) {
+      if (newView === 'ai-interventions') {
+        this.fetchAIInterventions();
+      }
+    }
   },
   methods: {
     async fetchStudentProfile() {
@@ -634,6 +838,200 @@ export default {
         // Fallback if elements not found
         await authService.logout();
       }
+    },
+
+    async fetchAIInterventions() {
+      try {
+        this.loadingInterventions = true;
+        console.log('Fetching AI interventions...');
+        
+        const response = await fetch('http://localhost:3000/api/student-interventions', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          this.aiInterventions = result.data;
+          console.log('AI interventions loaded:', result.data.length, 'interventions found');
+        } else {
+          console.error('Failed to fetch AI interventions:', result.message);
+          this.aiInterventions = [];
+        }
+      } catch (error) {
+        console.error('Error fetching AI interventions:', error);
+        this.aiInterventions = [];
+      } finally {
+        this.loadingInterventions = false;
+      }
+    },
+
+    async markAsRead(interventionId) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/student-interventions/${interventionId}/read`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Update the local intervention as read
+          const intervention = this.aiInterventions.find(i => i.id === interventionId);
+          if (intervention) {
+            intervention.is_read = true;
+          }
+        } else {
+          console.error('Failed to mark intervention as read:', result.message);
+        }
+      } catch (error) {
+        console.error('Error marking intervention as read:', error);
+      }
+    },
+
+    getRiskLevelText(riskLevel) {
+      switch (riskLevel) {
+        case 'high':
+          return 'High Priority';
+        case 'moderate':
+          return 'Moderate Priority';
+        case 'low':
+          return 'Low Priority';
+        default:
+          return 'General';
+      }
+    },
+
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
+    formatInterventionText(text) {
+      if (!text) return '';
+      
+      // Convert markdown-style formatting to HTML
+      let formatted = text
+        // Convert headers
+        .replace(/^# (.*$)/gm, '<h1 class="intervention-h1">$1</h1>')
+        .replace(/^## (.*$)/gm, '<h2 class="intervention-h2">$1</h2>')
+        .replace(/^### (.*$)/gm, '<h3 class="intervention-h3">$1</h3>')
+        // Convert bold text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Convert italic text
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Convert numbered lists
+        .replace(/^(\d+\.)\s(.*)$/gm, '<div class="list-item"><span class="list-number">$1</span> $2</div>')
+        // Convert line breaks
+        .replace(/\n\n/g, '</p><p class="intervention-paragraph">')
+        .replace(/\n/g, '<br>')
+        // Convert horizontal rules
+        .replace(/^---$/gm, '<hr class="intervention-divider">');
+      
+      // Wrap in paragraph tags if not already wrapped
+      if (!formatted.startsWith('<h1') && !formatted.startsWith('<h2') && !formatted.startsWith('<div')) {
+        formatted = '<p class="intervention-paragraph">' + formatted + '</p>';
+      }
+      
+      return formatted;
+    },
+
+    getRiskLevelClass(riskLevel) {
+      return {
+        'low': 'score-low',
+        'moderate': 'score-moderate',
+        'high': 'score-high'
+      }[riskLevel] || 'score-unknown';
+    },
+
+    getRiskLevelScore(riskLevel) {
+      return {
+        'low': '120/252',
+        'moderate': '150/252',
+        'high': '180/252'
+      }[riskLevel] || 'N/A';
+    },
+
+    parseDimensionInterventions(dimensionInterventions) {
+      try {
+        if (typeof dimensionInterventions === 'string') {
+          return JSON.parse(dimensionInterventions);
+        }
+        return dimensionInterventions || {};
+      } catch (error) {
+        console.error('Error parsing dimension interventions:', error);
+        return {};
+      }
+    },
+
+    formatDimensionName(dimension) {
+      const dimensionNames = {
+        'autonomy': 'Autonomy',
+        'environmental_mastery': 'Environmental Mastery',
+        'personal_growth': 'Personal Growth',
+        'positive_relations': 'Positive Relations',
+        'purpose_in_life': 'Purpose in Life',
+        'self_acceptance': 'Self Acceptance'
+      };
+      return dimensionNames[dimension] || dimension.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    },
+
+    getDimensionRiskClass(score) {
+      if (!score) return 'score-unknown';
+      const numScore = parseInt(score);
+      if (numScore >= 30) return 'score-high';
+      if (numScore >= 20) return 'score-moderate';
+      return 'score-low';
+    },
+
+    parseActionPlan(actionPlan) {
+      try {
+        if (typeof actionPlan === 'string') {
+          // Try to parse as JSON first
+          try {
+            const parsed = JSON.parse(actionPlan);
+            if (Array.isArray(parsed)) return parsed;
+          } catch (e) {
+            // If not JSON, split by common delimiters
+            return actionPlan.split(/\n|\.|;/).filter(item => item.trim().length > 0).map(item => item.trim());
+          }
+        }
+        if (Array.isArray(actionPlan)) return actionPlan;
+        return [];
+      } catch (error) {
+        console.error('Error parsing action plan:', error);
+        return [];
+      }
+    },
+
+    getDimensionScore(dimensionScores, dimension) {
+      if (!dimensionScores || typeof dimensionScores !== 'object') {
+        return 'N/A';
+      }
+      return dimensionScores[dimension] || 'N/A';
+    },
+
+    getDimensionScoreClass(dimensionScores, dimension) {
+      const score = this.getDimensionScore(dimensionScores, dimension);
+      if (score === 'N/A') return 'score-unknown';
+      
+      const numScore = parseInt(score);
+      if (numScore >= 30) return 'score-high';
+      if (numScore >= 20) return 'score-moderate';
+      return 'score-low';
     }
   }
 }
@@ -1856,6 +2254,1063 @@ export default {
   background: #e9ecef;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Guidance Feedback View Styles */
+.guidance-feedback-view {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 30px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.guidance-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Guidance Header */
+.guidance-header {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
+}
+
+.header-info h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--dark);
+  margin: 0 0 8px 0;
+}
+
+.header-info p {
+  font-size: 16px;
+  color: var(--text-light);
+  margin: 0;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 30px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  min-width: 100px;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+  display: block;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-light);
+  font-weight: 500;
+  margin-top: 8px;
+  display: block;
+}
+
+/* Professional Intervention Cards */
+.professional-interventions {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.professional-intervention-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.professional-intervention-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.professional-intervention-card.reviewed {
+  opacity: 0.9;
+  background: #fafbfc;
+}
+
+/* Intervention Header */
+.intervention-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 25px 30px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.student-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.student-avatar {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.student-avatar i {
+  font-size: 24px;
+  color: white;
+}
+
+.student-details h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: white;
+}
+
+.student-details p {
+  font-size: 14px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.intervention-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.overall-score {
+  text-align: center;
+}
+
+.score-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.score-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  display: block;
+}
+
+.score-value.score-high {
+  color: #ff6b6b;
+}
+
+.score-value.score-moderate {
+  color: #feca57;
+}
+
+.score-value.score-low {
+  color: #48dbfb;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.status-badge.new {
+  background: rgba(255, 193, 7, 0.9);
+  color: #333;
+}
+
+.status-badge.reviewed {
+  background: rgba(40, 167, 69, 0.9);
+  color: white;
+}
+
+/* Content Sections */
+.strategy-section,
+.dimensions-section,
+.action-plan-section {
+  padding: 25px 30px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.section-header i {
+  font-size: 20px;
+  color: var(--primary);
+}
+
+.section-header h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--dark);
+  margin: 0;
+}
+
+.strategy-content p {
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border-left: 4px solid var(--primary);
+}
+
+/* Dimensions Grid */
+.dimensions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.dimension-card {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.dimension-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.dimension-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dimension-header h5 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dark);
+  margin: 0;
+}
+
+.dimension-score {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.dimension-score.score-high {
+  background: #ff6b6b;
+}
+
+.dimension-score.score-moderate {
+  background: #feca57;
+}
+
+.dimension-score.score-low {
+  background: #48dbfb;
+}
+
+.dimension-score.score-unknown {
+  background: #6c757d;
+}
+
+.dimension-content p {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Action Plan */
+.action-plan-content {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.action-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.action-item:last-child {
+  border-bottom: none;
+}
+
+.action-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.action-checkbox i {
+  font-size: 10px;
+  color: white;
+}
+
+.action-item span {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* Intervention Footer */
+.intervention-footer {
+  padding: 25px 30px;
+  background: #fafbfc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.counselor-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.counselor-avatar {
+  width: 40px;
+  height: 40px;
+  background: var(--primary);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.counselor-avatar i {
+  font-size: 18px;
+  color: white;
+}
+
+.counselor-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.counselor-label {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 2px;
+}
+
+.counselor-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.mark-reviewed-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.mark-reviewed-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 179, 176, 0.3);
+}
+
+.reviewed-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #10b981;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 20px;
+}
+
+.reviewed-indicator i {
+  font-size: 16px;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  padding: 40px 20px;
+}
+
+.loading-card {
+  background: white;
+  border-radius: 24px;
+  padding: 60px 40px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  max-width: 400px;
+  width: 100%;
+}
+
+.loading-spinner {
+  margin-bottom: 30px;
+}
+
+.loading-card h3 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 12px;
+}
+
+.loading-card p {
+  font-size: 16px;
+  color: var(--text-light);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+}
+
+.empty-card {
+  background: white;
+  border-radius: 24px;
+  padding: 60px 40px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  max-width: 500px;
+  width: 100%;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.empty-illustration {
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.empty-icon {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+  position: relative;
+}
+
+.empty-icon i {
+  font-size: 48px;
+  color: white;
+}
+
+.empty-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.empty-dots span {
+  width: 8px;
+  height: 8px;
+  background: #cbd5e0;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.empty-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.empty-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.empty-content h3 {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 16px;
+}
+
+.empty-content p {
+  font-size: 16px;
+  color: var(--text-light);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.cta-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+}
+
+/* Summary Stats */
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.stat-item {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon i {
+  font-size: 20px;
+  color: white;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--dark);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-light);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* Interventions Grid */
+.interventions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 30px;
+}
+
+.intervention-card {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.intervention-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.12);
+}
+
+.intervention-card.read {
+  opacity: 0.8;
+  background: #f8fafc;
+}
+
+/* Card Priority Indicator */
+.priority-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: 20px 20px 0 0;
+}
+
+.priority-indicator.high {
+  background: linear-gradient(90deg, #ff6b6b, #ee5a52);
+}
+
+.priority-indicator.moderate {
+  background: linear-gradient(90deg, #feca57, #ff9ff3);
+}
+
+.priority-indicator.low {
+  background: linear-gradient(90deg, #48dbfb, #0abde3);
+}
+
+/* Card Content */
+.card-content {
+  padding: 30px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.risk-badge.high {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.25);
+}
+
+.risk-badge.moderate {
+  background: linear-gradient(135deg, #feca57, #ff9ff3);
+  color: white;
+  box-shadow: 0 4px 15px rgba(254, 202, 87, 0.25);
+}
+
+.risk-badge.low {
+  background: linear-gradient(135deg, #48dbfb, #0abde3);
+  color: white;
+  box-shadow: 0 4px 15px rgba(72, 219, 251, 0.25);
+}
+
+.risk-badge i {
+  font-size: 12px;
+}
+
+.intervention-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dark);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.intervention-date {
+  font-size: 14px;
+  color: var(--text-light);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #10b981;
+  position: relative;
+}
+
+.status-indicator.unread {
+  background: #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+.intervention-content {
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.7;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border-left: 4px solid var(--primary);
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.recommendation-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.recommendation-type i {
+  font-size: 16px;
+  color: var(--primary);
+}
+
+.card-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.action-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  border: none;
+  text-decoration: none;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.completed-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #10b981;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 25px;
+}
+
+.completed-indicator i {
+  font-size: 16px;
+}
+
+/* Intervention Text Formatting Styles */
+.intervention-text .intervention-h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dark);
+  margin: 25px 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--primary);
+}
+
+.intervention-text .intervention-h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--dark);
+  margin: 20px 0 12px 0;
+  padding-left: 15px;
+  border-left: 4px solid var(--primary);
+  background: rgba(0, 179, 176, 0.05);
+  padding: 10px 15px;
+  border-radius: 0 8px 8px 0;
+}
+
+.intervention-text .intervention-h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--secondary);
+  margin: 15px 0 10px 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
+}
+
+.intervention-text .intervention-paragraph {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+.intervention-text .list-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 179, 176, 0.03);
+  border-radius: 6px;
+  border-left: 3px solid var(--primary);
+}
+
+.intervention-text .list-number {
+  font-weight: 600;
+  color: var(--primary);
+  margin-right: 10px;
+  min-width: 25px;
+}
+
+.intervention-text .intervention-divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+  margin: 25px 0;
+  border-radius: 1px;
+}
+
+.intervention-text strong {
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.intervention-text em {
+  font-style: italic;
+  color: var(--secondary);
+}
+
+.intervention-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.counselor-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-light);
+}
+
+.counselor-info i {
+  color: var(--primary);
+}
+
+.mark-read-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mark-read-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.read-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.read-status i {
+  color: var(--success);
+}
+
+/* Additional Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design for AI Interventions */
+@media (max-width: 768px) {
+  .interventions-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .summary-stats {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .card-meta {
+    align-items: flex-start;
+    width: 100%;
+  }
+  
+  .card-footer {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
+  .card-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+  
+  .header-text h1 {
+    font-size: 28px;
+  }
+  
+  .header-text p {
+    font-size: 16px;
+  }
+  
+  .interventions-container {
+    padding: 0 20px;
+  }
+  
+  .card-content {
+    padding: 20px;
+  }
 }
 
 /* Animations */

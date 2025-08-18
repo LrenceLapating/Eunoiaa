@@ -558,67 +558,93 @@ router.get('/statistics', verifyCounselorSession, async (req, res) => {
   }
 });
 
-// Get students by risk level
+// Get students by risk level - Updated to include both 42-item and 84-item assessments
 router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const { riskLevel = 'at_risk', page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
     
-    const offset = (page - 1) * limit;
+    const offset = (page - 1) * parseInt(limit);
+    const limitNum = parseInt(limit);
 
-    // Get students with specified risk level
-    const { data: assessments, error } = await supabase
-      .from('assessments')
-      .select(`
-        id,
-        overall_score,
-        risk_level,
-        scores,
-        completed_at,
-        assessment_type,
-        student:students(
-          id,
-          name,
-          email,
-          id_number,
-          college,
-          section,
-          year_level,
-          status
-        ),
-        assignment:assessment_assignments!inner(
-          bulk_assessment:bulk_assessments!inner(
-            counselor_id,
-            assessment_name,
-            status
-          )
-        )
-      `)
-      .eq('risk_level', riskLevel)
-      .eq('assignment.bulk_assessment.counselor_id', counselorId)
-      .eq('student.status', 'active')  // Only include active students
-      .neq('assignment.bulk_assessment.status', 'archived')  // Exclude archived bulk assessments
-      .order('completed_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // Fetch at-risk students from both assessment tables
+    const [result42, result84] = await Promise.all([
+      supabase
+        .from('assessments_42items')
+        .select('*')
+        .eq('risk_level', 'high')
+        .order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('assessments_84items')
+        .select('*')
+        .eq('risk_level', 'high')
+        .order('created_at', { ascending: false })
+    ]);
 
-    if (error) {
-      console.error('Error fetching at-risk students:', error);
+    if (result42.error) {
+      console.error('Error fetching 42-item at-risk students:', result42.error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch student data'
+        message: 'Failed to fetch 42-item at-risk student data'
       });
     }
 
-    // Enrich with at-risk dimensions
-    const enrichedStudents = assessments.map(assessment => {
-      const assessmentTypeParam = assessment.assessment_type || 'ryff_42';
-      const atRiskDimensions = getAtRiskDimensions(assessment.scores, assessmentTypeParam);
+    if (result84.error) {
+      console.error('Error fetching 84-item at-risk students:', result84.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch 84-item at-risk student data'
+      });
+    }
+
+    // Combine assessments from both tables
+    let allAssessments = [];
+    if (result42.data) {
+      allAssessments = allAssessments.concat(result42.data.map(a => ({...a, assessment_type: 'ryff_42'})));
+    }
+    if (result84.data) {
+      allAssessments = allAssessments.concat(result84.data.map(a => ({...a, assessment_type: 'ryff_84'})));
+    }
+
+    // Sort by created_at and apply pagination
+    allAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const paginatedAssessments = allAssessments.slice(offset, offset + limitNum);
+
+    let enrichedStudents = [];
+    
+    if (paginatedAssessments && paginatedAssessments.length > 0) {
+      // Get student data for these assessments
+      const studentIds = [...new Set(paginatedAssessments.map(a => a.student_id))];
       
-      return {
-        ...assessment,
-        at_risk_dimensions: atRiskDimensions.map(dim => formatDimensionName(dim))
-      };
-    });
+      const { data: students, error: studentError } = await supabase
+        .from('students')
+        .select('id, id_number, name, college, section, email, year_level')
+        .in('id', studentIds)
+        .eq('status', 'active');
+      
+      if (studentError) {
+        console.error('Error fetching students:', studentError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch student data'
+        });
+      }
+      
+      // Combine assessment and student data
+      enrichedStudents = paginatedAssessments.map(assessment => {
+        const student = students.find(s => s.id === assessment.student_id);
+        if (!student) return null;
+        
+        const assessmentTypeParam = assessment.assessment_type || 'ryff_42';
+        const atRiskDimensions = getAtRiskDimensions(assessment.scores, assessmentTypeParam);
+        
+        return {
+          ...assessment,
+          student: student,
+          at_risk_dimensions: atRiskDimensions.map(dim => formatDimensionName(dim))
+        };
+      }).filter(a => a !== null);
+    }
 
     res.json({
       success: true,
@@ -626,12 +652,226 @@ router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: enrichedStudents.length
+        total: allAssessments.length
       }
     });
 
   } catch (error) {
     console.error('Error in at-risk students:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Get moderate risk students - Updated to include both 42-item and 84-item assessments
+router.get('/students/moderate', verifyCounselorSession, async (req, res) => {
+  try {
+    const counselorId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+    
+    const offset = (page - 1) * parseInt(limit);
+    const limitNum = parseInt(limit);
+
+    // Fetch moderate students from both assessment tables
+    const [result42, result84] = await Promise.all([
+      supabase
+        .from('assessments_42items')
+        .select('*')
+        .eq('risk_level', 'moderate')
+        .order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('assessments_84items')
+        .select('*')
+        .eq('risk_level', 'moderate')
+        .order('created_at', { ascending: false })
+    ]);
+
+    if (result42.error) {
+      console.error('Error fetching 42-item moderate students:', result42.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch 42-item moderate student data'
+      });
+    }
+
+    if (result84.error) {
+      console.error('Error fetching 84-item moderate students:', result84.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch 84-item moderate student data'
+      });
+    }
+
+    // Combine assessments from both tables
+    let allAssessments = [];
+    if (result42.data) {
+      allAssessments = allAssessments.concat(result42.data.map(a => ({...a, assessment_type: 'ryff_42'})));
+    }
+    if (result84.data) {
+      allAssessments = allAssessments.concat(result84.data.map(a => ({...a, assessment_type: 'ryff_84'})));
+    }
+
+    // Sort by created_at and apply pagination
+    allAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const paginatedAssessments = allAssessments.slice(offset, offset + limitNum);
+
+    let enrichedStudents = [];
+    
+    if (paginatedAssessments && paginatedAssessments.length > 0) {
+      // Get student data for these assessments
+      const studentIds = [...new Set(paginatedAssessments.map(a => a.student_id))];
+      
+      const { data: students, error: studentError } = await supabase
+        .from('students')
+        .select('id, id_number, name, college, section, email, year_level')
+        .in('id', studentIds)
+        .eq('status', 'active');
+      
+      if (studentError) {
+        console.error('Error fetching students:', studentError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch student data'
+        });
+      }
+      
+      // Combine assessment and student data
+      enrichedStudents = paginatedAssessments.map(assessment => {
+        const student = students.find(s => s.id === assessment.student_id);
+        if (!student) return null;
+        
+        const assessmentTypeParam = assessment.assessment_type || 'ryff_42';
+        const atRiskDimensions = getAtRiskDimensions(assessment.scores, assessmentTypeParam);
+        
+        return {
+          ...assessment,
+          student: student,
+          at_risk_dimensions: atRiskDimensions.map(dim => formatDimensionName(dim))
+        };
+      }).filter(a => a !== null);
+    }
+
+    res.json({
+      success: true,
+      data: enrichedStudents,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: allAssessments.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in moderate students:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Get healthy students - Updated to include both 42-item and 84-item assessments
+router.get('/students/healthy', verifyCounselorSession, async (req, res) => {
+  try {
+    const counselorId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+    
+    const offset = (page - 1) * parseInt(limit);
+    const limitNum = parseInt(limit);
+
+    // Fetch healthy students from both assessment tables
+    const [result42, result84] = await Promise.all([
+      supabase
+        .from('assessments_42items')
+        .select('*')
+        .eq('risk_level', 'low')
+        .order('created_at', { ascending: false }),
+      supabaseAdmin
+        .from('assessments_84items')
+        .select('*')
+        .eq('risk_level', 'low')
+        .order('created_at', { ascending: false })
+    ]);
+
+    if (result42.error) {
+      console.error('Error fetching 42-item healthy students:', result42.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch 42-item healthy student data'
+      });
+    }
+
+    if (result84.error) {
+      console.error('Error fetching 84-item healthy students:', result84.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch 84-item healthy student data'
+      });
+    }
+
+    // Combine assessments from both tables
+    let allAssessments = [];
+    if (result42.data) {
+      allAssessments = allAssessments.concat(result42.data.map(a => ({...a, assessment_type: 'ryff_42'})));
+    }
+    if (result84.data) {
+      allAssessments = allAssessments.concat(result84.data.map(a => ({...a, assessment_type: 'ryff_84'})));
+    }
+
+    // Sort by created_at and apply pagination
+    allAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const paginatedAssessments = allAssessments.slice(offset, offset + limitNum);
+
+    let enrichedStudents = [];
+    
+    if (paginatedAssessments && paginatedAssessments.length > 0) {
+      // Get student data for these assessments
+      const studentIds = [...new Set(paginatedAssessments.map(a => a.student_id))];
+      
+      const { data: students, error: studentError } = await supabase
+        .from('students')
+        .select('id, id_number, name, college, section, email, year_level')
+        .in('id', studentIds)
+        .eq('status', 'active');
+      
+      if (studentError) {
+        console.error('Error fetching students:', studentError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch student data'
+        });
+      }
+      
+      // Combine assessment and student data
+      enrichedStudents = paginatedAssessments.map(assessment => {
+        const student = students.find(s => s.id === assessment.student_id);
+        if (!student) return null;
+        
+        const assessmentTypeParam = assessment.assessment_type || 'ryff_42';
+        const atRiskDimensions = getAtRiskDimensions(assessment.scores, assessmentTypeParam);
+        
+        return {
+          ...assessment,
+          student: student,
+          at_risk_dimensions: atRiskDimensions.map(dim => formatDimensionName(dim))
+        };
+      }).filter(a => a !== null);
+    }
+
+    res.json({
+      success: true,
+      data: enrichedStudents,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: allAssessments.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in healthy students:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -826,6 +1066,155 @@ router.get('/export', verifyCounselorSession, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+});
+
+// Get historical assessment results from ryff_history table
+router.get('/history', verifyCounselorSession, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, riskLevel, assessmentType, college } = req.query;
+    
+    const offset = (page - 1) * parseInt(limit);
+    const limitNum = parseInt(limit);
+
+    console.log('🔍 Fetching historical assessment data from ryff_history table...');
+    
+    // Build query for ryff_history table
+    let query = supabaseAdmin
+      .from('ryff_history')
+      .select(`
+        id,
+        original_id,
+        student_id,
+        assessment_type,
+        responses,
+        scores,
+        overall_score,
+        risk_level,
+        at_risk_dimensions,
+        assignment_id,
+        completed_at,
+        created_at,
+        updated_at,
+        archived_at
+      `)
+      .order('archived_at', { ascending: false })
+      .order('completed_at', { ascending: false });
+
+    // Apply filters
+    if (assessmentType && assessmentType !== 'all') {
+      query = query.eq('assessment_type', assessmentType);
+    }
+    
+    if (riskLevel && riskLevel !== 'all') {
+      query = query.eq('risk_level', riskLevel);
+    }
+
+    // Execute query with pagination
+    const { data: historyData, error: historyError, count } = await query
+      .range(offset, offset + limitNum - 1)
+      .limit(limitNum);
+
+    if (historyError) {
+      console.error('Error fetching historical data:', historyError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch historical assessment data'
+      });
+    }
+
+    console.log(`✅ Found ${historyData?.length || 0} historical assessments`);
+
+    if (!historyData || historyData.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          page: parseInt(page),
+          limit: limitNum,
+          total: 0,
+          totalPages: 0
+        }
+      });
+    }
+
+    // Get unique student IDs from historical data
+    const studentIds = [...new Set(historyData.map(h => h.student_id))];
+    
+    // Fetch student data (including both active and inactive students)
+    // We need to get student data from both active students table and potentially students_history
+    const { data: activeStudents, error: activeStudentError } = await supabase
+      .from('students')
+      .select('id, id_number, name, college, section, email, status')
+      .in('id', studentIds);
+
+    if (activeStudentError) {
+      console.error('Error fetching active students:', activeStudentError);
+    }
+
+    // For students not found in active table, try to get basic info from the history data itself
+    // or create placeholder student objects
+    const studentMap = new Map();
+    
+    if (activeStudents) {
+      activeStudents.forEach(student => {
+        studentMap.set(student.id, student);
+      });
+    }
+
+    // Create combined assessment data with student information
+    const combinedData = historyData.map(assessment => {
+      const student = studentMap.get(assessment.student_id) || {
+        id: assessment.student_id,
+        id_number: `HIST-${assessment.student_id.slice(-8)}`,
+        name: 'Historical Student',
+        college: 'Unknown',
+        section: 'Unknown',
+        email: '',
+        status: 'inactive'
+      };
+
+      return {
+        ...assessment,
+        student: student,
+        assignment: {
+          id: assessment.assignment_id || 'N/A',
+          assigned_at: assessment.created_at,
+          completed_at: assessment.completed_at,
+          bulk_assessment_id: 'historical-data',
+          bulk_assessment: {
+            assessment_name: assessment.assessment_type === 'ryff_42' ? '42-Item Ryff Assessment' : '84-Item Ryff Assessment',
+            assessment_type: assessment.assessment_type
+          }
+        }
+      };
+    });
+
+    // Apply college filter if specified
+    let filteredData = combinedData;
+    if (college && college !== 'all') {
+      filteredData = combinedData.filter(item => item.student.college === college);
+    }
+
+    const totalPages = Math.ceil((count || filteredData.length) / limitNum);
+
+    res.json({
+      success: true,
+      data: filteredData,
+      pagination: {
+        page: parseInt(page),
+        limit: limitNum,
+        total: count || filteredData.length,
+        totalPages: totalPages
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in historical data fetch:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while fetching historical data'
     });
   }
 });

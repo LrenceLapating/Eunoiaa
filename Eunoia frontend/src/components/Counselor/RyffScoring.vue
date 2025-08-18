@@ -1,12 +1,6 @@
 <template>
   <div class="ryff-scoring-container">
-    <div class="scoring-header">
-      <div class="header-title">
-        <i class="fas fa-calculator"></i>
-        <h2>Ryff Scale Automated Scoring</h2>
-        <p>View automatically scored assessments and monitor student well-being</p>
-      </div>
-    </div>
+
 
     <!-- Risk Filter Indicator -->
     <div class="risk-filter-indicator" v-if="selectedDimension">
@@ -174,14 +168,22 @@
             <th>Student ID</th>
             <th>Student Name</th>
             <th>College</th>
+            <th>Section</th>
+            <th>Total Assessments</th>
+            <th>Latest Assessment</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(student, index) in filteredStudents" :key="student?.id || index" class="student-row">
+          <tr v-for="(student, index) in consolidatedStudents" :key="student?.id || index" class="student-row">
             <td>{{ student?.id_number || 'N/A' }}</td>
             <td>{{ student?.name || 'N/A' }}</td>
             <td>{{ student?.college || 'N/A' }}</td>
+            <td>{{ student?.section || 'N/A' }}</td>
+            <td>
+              <span class="assessment-count">{{ student?.assessmentCount || 0 }}</span>
+            </td>
+            <td>{{ student?.latestAssessmentDate || 'N/A' }}</td>
             <td>
               <button class="history-button" @click="viewStudentHistory(student)">
                 <i class="fas fa-history"></i> History
@@ -300,6 +302,7 @@
               <thead>
                 <tr>
                   <th>Date</th>
+                  <th>Assessment Name</th>
                   <th>Assessment Type</th>
                   <th>Overall Score</th>
                   <th>Risk Level</th>
@@ -309,6 +312,9 @@
               <tbody>
                 <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
                   <td>{{ assessment.submissionDate }}</td>
+                  <td>
+                    <span class="assessment-name">{{ assessment.assessment_name || 'Assessment' }}</span>
+                  </td>
                   <td>{{ assessment.assessmentType || 'Ryff PWB (42-item)' }}</td>
                   <td>{{ calculateAssessmentOverallScore(assessment) }}</td>
                   <td>
@@ -323,7 +329,7 @@
                   </td>
                 </tr>
                 <tr class="no-data" v-if="getStudentAssessmentHistory(selectedStudentForHistory).length === 0">
-                  <td colspan="5">No assessment history available</td>
+                  <td colspan="6">No assessment history available</td>
                 </tr>
               </tbody>
             </table>
@@ -556,6 +562,8 @@ export default {
       showCompleteHistoryModal: false,
       selectedStudent: null,
       selectedStudentForHistory: null,
+      allStudents: [], // Store original unfiltered data from backend
+      allHistoricalStudents: [], // Store historical data from ryff_history table
       filteredStudents: [],
       ryffDimensionsList: [
         { key: 'autonomy', name: 'Autonomy' },
@@ -597,11 +605,69 @@ export default {
     // Get risk thresholds based on assessment type
     riskThresholds() {
       return this.baseRiskThresholds[this.assessmentTypeFilter] || this.baseRiskThresholds['42-item'];
+    },
+    // Consolidate students for history view - one record per person
+    consolidatedStudents() {
+      if (this.currentTab !== 'history') {
+        return [];
+      }
+      
+      // Use historical data for history view, fallback to current data if no historical data
+      const baseStudents = this.allHistoricalStudents.length > 0 ? this.allHistoricalStudents : 
+                          (this.allStudents.length > 0 ? this.allStudents : this.students);
+      
+      // Group students by unique identifier (id_number + name)
+      const studentMap = new Map();
+      
+      baseStudents.forEach(student => {
+        const key = `${student.id_number}_${student.name}`;
+        
+        if (!studentMap.has(key)) {
+          // First assessment for this student
+          studentMap.set(key, {
+            ...student,
+            assessmentCount: 1,
+            latestAssessmentDate: student.submissionDate,
+            allAssessments: [student]
+          });
+        } else {
+          // Additional assessment for existing student
+          const existing = studentMap.get(key);
+          existing.assessmentCount++;
+          existing.allAssessments.push(student);
+          
+          // Update latest assessment date if this one is more recent
+          if (new Date(student.submissionDate) > new Date(existing.latestAssessmentDate)) {
+            existing.latestAssessmentDate = student.submissionDate;
+          }
+        }
+      });
+      
+      // Convert map to array and apply filters
+      let consolidated = Array.from(studentMap.values());
+      
+      // Apply college filter
+      if (this.collegeFilter !== 'all') {
+        consolidated = consolidated.filter(student => student.college === this.collegeFilter);
+      }
+      
+      // Apply search filter
+      if (this.searchQuery.trim()) {
+        const query = this.searchQuery.toLowerCase();
+        consolidated = consolidated.filter(student => 
+          student.name.toLowerCase().includes(query) ||
+          student.id_number.toLowerCase().includes(query) ||
+          (student.section && student.section.toLowerCase().includes(query))
+        );
+      }
+      
+      return consolidated;
     }
   },
   async created() {
-    // Fetch real assessment data from backend
+    // Fetch both current and historical assessment data from backend
     await this.fetchAssessmentResults();
+    await this.fetchHistoricalResults();
     
     // Apply filters from props if they exist
     if (this.selectedDimension || this.selectedCollege !== 'all') {
@@ -620,6 +686,95 @@ export default {
     }
   },
   methods: {
+    // Fetch historical assessment results from backend
+    async fetchHistoricalResults() {
+      try {
+        // Build query parameters for historical data
+        const params = new URLSearchParams({
+          limit: '1000'
+        });
+        
+        // Add assessment type filter if not showing all
+        if (this.assessmentTypeFilter && this.assessmentTypeFilter !== 'all') {
+          // Convert frontend filter format to backend format
+          const assessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
+          params.append('assessmentType', assessmentType);
+        }
+        
+        // Request historical data from the new history endpoint
+        const response = await fetch(`http://localhost:3000/api/counselor-assessments/history?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const apiResponse = await response.json();
+          console.log('Fetched historical results:', apiResponse);
+          
+          if (apiResponse.success && apiResponse.data) {
+            // Transform the historical data to match the component's expected format
+            const transformedHistoricalStudents = apiResponse.data.map(assessment => {
+              console.log('Processing historical assessment:', assessment);
+              
+              // Ensure scores exist and are properly formatted
+              const scores = assessment.scores || {};
+              
+              // Map backend assessment type to frontend format
+              const assessmentTypeMapping = {
+                'ryff_42': '42-item',
+                'ryff_84': '84-item'
+              };
+              
+              return {
+                id: assessment.student?.id || assessment.student_id,
+                name: assessment.student?.name || 'Historical Student',
+                college: assessment.student?.college || 'Unknown College',
+                section: assessment.student?.section || 'Unknown Section',
+                email: assessment.student?.email || '',
+                submissionDate: assessment.completed_at || assessment.archived_at,
+                subscales: {
+                  autonomy: parseFloat(scores.autonomy) || 0,
+                  environmentalMastery: parseFloat(scores.environmental_mastery) || 0,
+                  personalGrowth: parseFloat(scores.personal_growth) || 0,
+                  positiveRelations: parseFloat(scores.positive_relations) || 0,
+                  purposeInLife: parseFloat(scores.purpose_in_life) || 0,
+                  selfAcceptance: parseFloat(scores.self_acceptance) || 0
+                },
+                overallScore: assessment.overall_score,
+                atRiskDimensions: assessment.at_risk_dimensions || [],
+                assessmentType: assessmentTypeMapping[assessment.assessment_type] || '42-item',
+                assignmentId: assessment.assignment?.id,
+                riskLevel: assessment.risk_level,
+                id_number: assessment.student?.id_number || `HIST-${assessment.student_id?.slice(-8)}`,
+                isHistorical: true,
+                archivedAt: assessment.archived_at
+              };
+            });
+            
+            console.log('Transformed historical students data:', transformedHistoricalStudents);
+            
+            // Store historical data
+            this.allHistoricalStudents = transformedHistoricalStudents;
+            
+            // Emit the updated historical data to parent component if needed
+            this.$emit('historical-students-updated', transformedHistoricalStudents);
+          } else {
+            console.error('Invalid historical API response structure:', apiResponse);
+            this.allHistoricalStudents = [];
+          }
+        } else {
+          console.error('Failed to fetch historical results:', response.statusText);
+          this.allHistoricalStudents = [];
+        }
+      } catch (error) {
+        console.error('Error fetching historical results:', error);
+        this.allHistoricalStudents = [];
+      }
+    },
+
     // Fetch real assessment results from backend
     async fetchAssessmentResults() {
       try {
@@ -691,24 +846,28 @@ export default {
             
             console.log('Transformed students data:', transformedStudents);
             
-            // Update the students data with real assessment results
-            this.filteredStudents = transformedStudents;
+            // Store original data and update filtered data
+            this.allStudents = transformedStudents;
+            this.filteredStudents = [...transformedStudents];
             
             // Emit the updated data to parent component if needed
             this.$emit('students-updated', transformedStudents);
           } else {
             console.error('Invalid API response structure:', apiResponse);
             // Fallback to prop data if API response is invalid
+            this.allStudents = [...this.students];
             this.filteredStudents = [...this.students];
           }
         } else {
           console.error('Failed to fetch assessment results:', response.statusText);
           // Fallback to prop data if API fails
+          this.allStudents = [...this.students];
           this.filteredStudents = [...this.students];
         }
       } catch (error) {
         console.error('Error fetching assessment results:', error);
         // Fallback to prop data if API fails
+        this.allStudents = [...this.students];
         this.filteredStudents = [...this.students];
       }
     },
@@ -835,8 +994,8 @@ export default {
     },
     
     filterStudents() {
-      // Use filteredStudents as base if available, otherwise fall back to students prop
-      const baseStudents = this.filteredStudents.length > 0 ? this.filteredStudents : this.students;
+      // Always use allStudents as base data source to avoid circular reference issues
+      const baseStudents = this.allStudents.length > 0 ? this.allStudents : this.students;
       let result = [...baseStudents];
       
       // Apply college filter
@@ -929,8 +1088,8 @@ export default {
         return;
       }
       
-      // Start with all students - use fetched data if available, otherwise fall back to prop data
-      const baseStudents = this.filteredStudents.length > 0 ? this.filteredStudents : this.students;
+      // Start with all students - use allStudents as base data source
+      const baseStudents = this.allStudents.length > 0 ? this.allStudents : this.students;
       let result = [...baseStudents];
       // Filter students based on criteria
       
@@ -1085,15 +1244,34 @@ export default {
     
     // Get assessment history for a student
     getStudentAssessmentHistory(student) {
-      if (!student || !student.assessmentHistory) {
-        // Fallback: create single assessment from current data
-        return [{
-          submissionDate: student?.submissionDate || 'N/A',
-          assessmentType: 'Ryff PWB (42-item)',
-          subscales: student?.subscales || {}
-        }];
+      if (!student) {
+        return [];
       }
-      return student.assessmentHistory;
+      
+      // If this is a consolidated student (from history view), return all assessments
+      if (student.allAssessments && Array.isArray(student.allAssessments)) {
+        return student.allAssessments.map(assessment => ({
+          submissionDate: assessment.submissionDate || 'N/A',
+          assessmentType: assessment.assessment_type === 'ryff_84' ? 'Ryff PWB (84-item)' : 'Ryff PWB (42-item)',
+          subscales: assessment.subscales || {},
+          overallScore: assessment.overallScore || 0,
+          assessment_name: assessment.assessment_name || 'Assessment'
+        }));
+      }
+      
+      // Fallback for individual student view or legacy data
+      if (student.assessmentHistory && Array.isArray(student.assessmentHistory)) {
+        return student.assessmentHistory;
+      }
+      
+      // Single assessment fallback
+      return [{
+        submissionDate: student.submissionDate || 'N/A',
+        assessmentType: student.assessment_type === 'ryff_84' ? 'Ryff PWB (84-item)' : 'Ryff PWB (42-item)',
+        subscales: student.subscales || {},
+        overallScore: student.overallScore || 0,
+        assessment_name: student.assessment_name || 'Assessment'
+      }];
     },
     
     // Get overall score from database (already calculated and stored)
@@ -1403,6 +1581,23 @@ export default {
       this.$emit('clear-risk-filters');
       this.collegeFilter = 'all';
       this.filterStudents();
+    },
+    
+    // Method to refresh all data - can be called externally
+    async refreshData() {
+      console.log('Refreshing RyffScoring data...');
+      try {
+        // Fetch fresh data from backend
+        await this.fetchAssessmentResults();
+        await this.fetchHistoricalResults();
+        
+        // Apply current filters
+        this.filterStudents();
+        
+        console.log('RyffScoring data refreshed successfully');
+      } catch (error) {
+        console.error('Error refreshing RyffScoring data:', error);
+      }
     }
   },
   watch: {
@@ -1419,6 +1614,7 @@ export default {
     async assessmentTypeFilter() {
       // Refetch data from backend when assessment type filter changes
       await this.fetchAssessmentResults();
+      await this.fetchHistoricalResults();
       this.filterStudents();
     },
     riskLevelFilter() {
@@ -1430,6 +1626,18 @@ export default {
     selectedCollege() {
       this.collegeFilter = this.selectedCollege;
       this.filterByDimensionAndCollege();
+    },
+    async currentTab() {
+      // When switching tabs, ensure we have the right data loaded
+      if (this.currentTab === 'history') {
+        // Fetch fresh historical data when switching to history view
+        await this.fetchHistoricalResults();
+      } else {
+        // Fetch fresh current data when switching to student view
+        await this.fetchAssessmentResults();
+      }
+      // Apply filters after data is loaded
+      this.filterStudents();
     }
   }
 };
@@ -2711,6 +2919,26 @@ export default {
   .assessment-summary-table td {
     padding: 8px 10px;
   }
+}
+
+/* Assessment count styling for history view */
+.assessment-count {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-block;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Assessment name styling in history modal */
+.assessment-name {
+  font-weight: 500;
+  color: #2d3748;
+  font-size: 0.9rem;
 }
 
 </style>

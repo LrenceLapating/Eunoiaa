@@ -278,7 +278,9 @@ router.post('/deactivate-students', async (req, res) => {
 
     res.json({
       message: 'All active students have been deactivated successfully',
-      deactivatedCount: data
+      deactivatedCount: data?.deactivated_students || 0,
+      totalMovedAssessments: data?.total_moved_assessments || 0,
+      details: data
     });
   } catch (error) {
     console.error('Error in deactivate students:', error);
@@ -300,6 +302,21 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
     let deactivatedCount = 0;
     if (deactivatePrevious) {
       try {
+        // First, let's check what student statuses exist in the database
+        const { data: statusCheck, error: statusError } = await supabase
+          .from('students')
+          .select('status');
+        
+        if (statusError) {
+          console.error('Error checking student statuses:', statusError);
+        } else {
+          const statusCounts = statusCheck.reduce((acc, student) => {
+            acc[student.status] = (acc[student.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('Current student statuses in database:', statusCounts);
+        }
+        
         const { data: deactivateData, error: deactivateError } = await supabase
           .rpc('deactivate_all_students');
         
@@ -308,8 +325,12 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
           return res.status(500).json({ error: 'Failed to deactivate previous students' });
         }
         
-        deactivatedCount = deactivateData || 0;
+        // Extract the actual count from the JSON response
+        deactivatedCount = deactivateData?.deactivated_students || 0;
+        const totalMovedAssessments = deactivateData?.total_moved_assessments || 0;
+        console.log('Deactivation result:', deactivateData);
         console.log(`Deactivated ${deactivatedCount} previous students`);
+        console.log(`Moved ${totalMovedAssessments} assessments to history`);
         
         // Archive orphaned bulk assessments after deactivating students
         try {
@@ -318,7 +339,7 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
           
           if (!archiveError && archiveData && archiveData[0]) {
             const { archived_assessments, archived_assignments } = archiveData[0];
-            console.log(`Archived ${archived_assessments} orphaned bulk assessments and ${archived_assignments} assignments`);
+            console.log(`Archived ${archived_assessments || 0} orphaned bulk assessments and ${archived_assignments || 0} assignments`);
           }
         } catch (archiveError) {
           console.error('Warning: Failed to archive orphaned assessments:', archiveError);
@@ -594,6 +615,121 @@ router.get('/csv-template', (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="student_template.csv"');
   res.send(csvTemplate);
+});
+
+// Debug route to check student statuses
+router.get('/debug/student-statuses', async (req, res) => {
+  try {
+    const { data: students, error } = await supabase
+      .from('students')
+      .select('id, name, status, created_at')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      return res.status(500).json({ error: 'Failed to fetch students', details: error });
+    }
+    
+    // Group by status
+    const statusCounts = students.reduce((acc, student) => {
+      acc[student.status] = (acc[student.status] || 0) + 1;
+      return acc;
+    }, {});
+    
+    res.json({
+      total_students: students.length,
+      status_counts: statusCounts,
+      students: students
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch student statuses' });
+  }
+});
+
+// Debug route to test deactivate_all_students function directly
+router.post('/debug/test-deactivation', async (req, res) => {
+  try {
+    console.log('🔍 Testing deactivate_all_students function...');
+    
+    // Check current counts before deactivation
+    const { data: beforeStudents, error: beforeError } = await supabase
+      .from('students')
+      .select('status', { count: 'exact', head: true })
+      .eq('status', 'active');
+    
+    if (beforeError) {
+      console.error('Error checking students before:', beforeError);
+    } else {
+      console.log('Active students before deactivation:', beforeStudents);
+    }
+    
+    // Check assessment counts before
+    const { data: ryffCount } = await supabase
+      .from('ryffscoring')
+      .select('*', { count: 'exact', head: true });
+    
+    const { data: assess42Count } = await supabase
+      .from('assessments_42items')
+      .select('*', { count: 'exact', head: true });
+    
+    const { data: assess84Count } = await supabase
+      .from('assessments_84items')
+      .select('*', { count: 'exact', head: true });
+    
+    console.log('Assessment counts before:', {
+      ryffscoring: ryffCount,
+      assessments_42items: assess42Count,
+      assessments_84items: assess84Count
+    });
+    
+    // Call the deactivation function
+    const { data: deactivateData, error: deactivateError } = await supabase
+      .rpc('deactivate_all_students');
+    
+    if (deactivateError) {
+      console.error('Deactivation error:', deactivateError);
+      return res.status(500).json({ 
+        error: 'Deactivation failed', 
+        details: deactivateError,
+        message: 'The deactivate_all_students function returned an error'
+      });
+    }
+    
+    console.log('Deactivation result:', deactivateData);
+    
+    // Check counts after deactivation
+    const { data: afterStudents, error: afterError } = await supabase
+      .from('students')
+      .select('status', { count: 'exact', head: true })
+      .eq('status', 'active');
+    
+    if (afterError) {
+      console.error('Error checking students after:', afterError);
+    } else {
+      console.log('Active students after deactivation:', afterStudents);
+    }
+    
+    res.json({
+      success: true,
+      deactivation_result: deactivateData,
+      before_counts: {
+        active_students: beforeStudents,
+        ryffscoring: ryffCount,
+        assessments_42items: assess42Count,
+        assessments_84items: assess84Count
+      },
+      after_counts: {
+        active_students: afterStudents
+      }
+    });
+    
+  } catch (error) {
+    console.error('Test deactivation error:', error);
+    res.status(500).json({ 
+      error: 'Test failed', 
+      details: error.message,
+      stack: error.stack
+    });
+  }
 });
 
 // GET /api/accounts/colleges/scores - Get computed college scores

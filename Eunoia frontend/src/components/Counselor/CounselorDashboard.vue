@@ -277,6 +277,7 @@
 
         <!-- Ryff Scoring View -->
         <ryff-scoring v-if="currentView === 'ryffScoring'" 
+                     ref="ryffScoringComponent"
                      :selected-dimension="selectedRiskDimension" 
                      :selected-college="selectedRiskCollege"
                      :students="students"
@@ -294,10 +295,12 @@
                        @go-back="hideCollegeDetail" />
 
         <!-- AI Intervention View -->
-        <AIintervention v-if="currentView === 'intervention'" :students="students" />
+        <AIintervention v-if="currentView === 'intervention'" />
         
         <!-- Assessment Status View -->
-        <AccountManagement v-if="currentView === 'status'" @students-updated="updateStudentData" />
+        <AccountManagement v-if="currentView === 'status'" 
+                          @students-updated="updateStudentData"
+                          @students-deactivated="handleStudentsDeactivated" />
         
         <!-- Reports View -->
         <Reports v-if="currentView === 'reports'" 
@@ -622,6 +625,19 @@ export default {
       this.students = studentsData;
       // Recalculate risk dimensions when student data changes
       this.calculateRiskDimensions();
+    },
+    
+    // Handle students deactivation event from AccountManagement
+    async handleStudentsDeactivated() {
+      console.log('Students deactivated, refreshing RyffScoring data...');
+      
+      // Refresh RyffScoring component data if it exists
+      if (this.$refs.ryffScoringComponent && this.$refs.ryffScoringComponent.refreshData) {
+        await this.$refs.ryffScoringComponent.refreshData();
+      }
+      
+      // Also refresh dashboard data
+      this.refreshData();
     },
     // Calculate risk dimensions based on actual student data
     calculateRiskDimensions() {

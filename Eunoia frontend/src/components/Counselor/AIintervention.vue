@@ -1,18 +1,42 @@
 <template>
   <div class="ai-intervention-container">
-    <!-- Header Section -->
-    <div class="intervention-header">
-      <div class="header-title">
-        <i class="fas fa-brain"></i>
-        <h2>AI-Powered Intervention</h2>
-        <p>Intelligent categorization and intervention recommendations for student well-being</p>
-      </div>
-    </div>
+
 
     <!-- Main Dashboard View -->
     <div class="dashboard-view" v-if="currentView === 'dashboard'">
+      <!-- Dashboard Header -->
+      <div class="dashboard-header">
+        <div class="header-content">
+          <h2>AI Intervention Dashboard</h2>
+          <p>Generate personalized interventions using AI for student mental wellness</p>
+        </div>
+        <div class="header-actions">
+          <button 
+            class="test-connection-btn" 
+            @click="testAIConnection" 
+            :disabled="isTestingConnection"
+          >
+            <i class="fas" :class="isTestingConnection ? 'fa-spinner fa-spin' : 'fa-plug'"></i>
+            {{ isTestingConnection ? 'Testing...' : 'Test AI Connection' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-container">
+        <div class="loading-spinner">
+          <div class="spinner-ring">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+        </div>
+        <p>Loading student data...</p>
+      </div>
+      
       <!-- Statistics Cards -->
-      <div class="stats-cards">
+      <div v-else class="stats-cards">
         <div class="stat-card at-risk" @click="navigateToStudents('at-risk')">
           <div class="card-icon">
             <i class="fas fa-exclamation-triangle"></i>
@@ -98,9 +122,9 @@
 
       <!-- Bulk Actions for Healthy Students -->
       <div class="bulk-actions" v-if="currentView === 'healthy' && filteredCurrentStudents.length > 0">
-        <button class="bulk-send-btn" @click="bulkSendHealthyInterventions">
-          <i class="fas fa-paper-plane"></i>
-          Send All Interventions ({{ filteredCurrentStudents.length }} students)
+        <button class="bulk-send-btn" @click="bulkSendHealthyInterventions" :disabled="isBulkGenerating">
+          <i class="fas" :class="isBulkGenerating ? 'fa-spinner fa-spin' : 'fa-robot'"></i>
+          {{ isBulkGenerating ? 'Generating AI Interventions...' : `Generate AI Interventions (${filteredCurrentStudents.length} students)` }}
         </button>
       </div>
 
@@ -222,7 +246,7 @@
             <div class="assessment-summary">
               <div class="overall-score">
                 <span class="score-label">Overall Score:</span>
-                <span class="score-value" :class="getOverallRiskClass(selectedStudent)">{{ calculateOverallScore(selectedStudent) }}/252</span>
+                <span class="score-value" :class="getOverallRiskClass(selectedStudent)">{{ calculateOverallScore(selectedStudent) }}/{{ getMaxPossibleScore(selectedStudent) }}</span>
               </div>
             </div>
           </div>
@@ -243,12 +267,12 @@
                 class="dimension-card" 
                 v-for="(score, subscale) in (selectedStudent?.subscales || {})" 
                 :key="subscale"
-                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score), 'moderate': score !== undefined && score !== null && isModerate(score), 'healthy': score !== undefined && score !== null && isHealthy(score) }"
+                :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score, selectedStudent), 'moderate': score !== undefined && score !== null && isModerate(score, selectedStudent), 'healthy': score !== undefined && score !== null && isHealthy(score, selectedStudent) }"
               >
                 <div class="dimension-header">
                   <span class="dimension-name">{{ formatSubscaleName(subscale) }}</span>
-                  <span class="dimension-score" :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score) : 'no-data'">
-                {{ (score !== undefined && score !== null) ? Math.round(score) : 'N/A' }}/42
+                  <span class="dimension-score" :class="(score !== undefined && score !== null) ? getDimensionRiskClass(score, selectedStudent) : 'no-data'">
+                {{ (score !== undefined && score !== null) ? Math.round(score) : 'N/A' }}/{{ getDimensionMaxScore(selectedStudent) }}
                   </span>
                 </div>
                 <div class="intervention-text" v-if="score !== undefined && score !== null">
@@ -304,9 +328,9 @@
             
             <!-- Send to Student Button -->
             <div class="action-plan-footer">
-              <button class="send-to-student-btn" @click="sendToStudent" :disabled="isEditingActionPlan">
-                <i class="fas fa-paper-plane"></i>
-                Send to Student
+              <button class="send-to-student-btn" @click="sendToStudent" :disabled="isEditingActionPlan || isSendingIntervention">
+                <i class="fas" :class="isSendingIntervention ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
+                {{ isSendingIntervention ? 'Sending...' : 'Send to Student' }}
               </button>
             </div>
           </div>
@@ -319,12 +343,6 @@
 <script>
 export default {
   name: 'AIintervention',
-  props: {
-    students: {
-      type: Array,
-      required: true
-    }
-  },
   data() {
     return {
       currentView: 'dashboard', // 'dashboard', 'at-risk', 'moderate', 'healthy'
@@ -336,6 +354,16 @@ export default {
       editableActionPlan: [],
       isEditingActionPlan: false,
       sentInterventions: new Set(), // Track students who have received interventions
+      isLoading: false,
+      isSendingIntervention: false, // Loading state for sending intervention
+      isBulkGenerating: false, // Loading state for bulk intervention generation
+      isTestingConnection: false, // Loading state for AI connection test
+
+      aiGeneratedInterventions: new Map(), // Store AI-generated interventions by student ID
+      // Real student data from backend
+      atRiskStudents: [],
+      moderateStudents: [],
+      healthyStudents: [],
       ryffDimensionsList: [
         { key: 'autonomy', name: 'Autonomy' },
         { key: 'environmentalMastery', name: 'Environmental Mastery' },
@@ -345,41 +373,166 @@ export default {
         { key: 'selfAcceptance', name: 'Self-Acceptance' }
       ],
       riskThresholds: {
-        q1: 17, // Below or equal to this is "At Risk" (Q1)
-        q4: 39  // Above or equal to this is "Healthy" (Q4)
+        '42-item': {
+          q1: 18, // Below or equal to this is "At Risk" (Q1)
+          q4: 30  // Above this is "Healthy" (Q4)
+        },
+        '84-item': {
+          q1: 36, // Below or equal to this is "At Risk" (Q1)
+          q4: 59  // Above or equal to this is "Healthy" (Q4)
+        }
       }
     };
   },
+  async mounted() {
+    await this.fetchStudentsByRiskLevel();
+    await this.fetchSentInterventions();
+  },
   computed: {
-    atRiskStudents() {
-      return this.students.filter(student => {
-        const atRiskCount = this.getAtRiskDimensionsCount(student);
-        return atRiskCount > 0;
-      }).sort((a, b) => {
-        // Sort by most at-risk dimensions first
-        const aRisk = this.getAtRiskDimensionsCount(a);
-        const bRisk = this.getAtRiskDimensionsCount(b);
-        return bRisk - aRisk;
-      });
-    },
-    moderateStudents() {
-      return this.students.filter(student => {
-        const atRiskCount = this.getAtRiskDimensionsCount(student);
-        const hasModerate = this.hasModerateScores(student);
-        // Moderate: no at-risk dimensions but has moderate scores
-        return atRiskCount === 0 && hasModerate;
-      });
-    },
-    healthyStudents() {
-      return this.students.filter(student => {
-        const atRiskCount = this.getAtRiskDimensionsCount(student);
-        const isAllHealthy = this.isAllDimensionsHealthy(student);
-        // Healthy: no at-risk dimensions and all dimensions are healthy
-        return atRiskCount === 0 && isAllHealthy;
-      });
-    }
+    // These are now data properties fetched from backend
   },
   methods: {
+    // Test AI connection to Ollama
+    async testAIConnection() {
+      this.isTestingConnection = true;
+      try {
+        const response = await fetch('http://localhost:3000/api/ai-interventions/test-connection', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          alert(`✅ AI Connection Successful!\n\nConnected to ${result.data.model} - Ready to generate interventions`);
+        } else {
+          throw new Error(result.message || 'Connection failed');
+        }
+      } catch (error) {
+        console.error('AI connection test failed:', error);
+        alert(`❌ AI Connection Failed\n\nPlease ensure Ollama is running and Qwen model is available.\n\nError: ${error.message}`);
+      } finally {
+        this.isTestingConnection = false;
+      }
+    },
+
+    // Fetch students by risk level from backend API
+    async fetchStudentsByRiskLevel() {
+      this.isLoading = true;
+      try {
+        // Fetch at-risk students
+        const atRiskResponse = await fetch('http://localhost:3000/api/counselor-assessments/students/at-risk', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (atRiskResponse.ok) {
+          const atRiskData = await atRiskResponse.json();
+          this.atRiskStudents = this.mapAssessmentData(atRiskData.data || []);
+        }
+        
+        // Fetch moderate students
+        const moderateResponse = await fetch('http://localhost:3000/api/counselor-assessments/students/moderate', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (moderateResponse.ok) {
+          const moderateData = await moderateResponse.json();
+          this.moderateStudents = this.mapAssessmentData(moderateData.data || []);
+        }
+        
+        // Fetch healthy students
+        const healthyResponse = await fetch('http://localhost:3000/api/counselor-assessments/students/healthy', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (healthyResponse.ok) {
+          const healthyData = await healthyResponse.json();
+          this.healthyStudents = this.mapAssessmentData(healthyData.data || []);
+        }
+        
+        console.log('Student data loaded:', {
+          atRisk: this.atRiskStudents.length,
+          moderate: this.moderateStudents.length,
+          healthy: this.healthyStudents.length
+        });
+        
+      } catch (error) {
+        console.error('Error fetching student data:', error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+    // Map assessment data from backend to frontend format
+    mapAssessmentData(assessments) {
+      return assessments.map(assessment => {
+        const student = assessment.student || {};
+        return {
+          id: student.id,
+          name: student.name,
+          email: student.email,
+          id_number: student.id_number,
+          college: student.college,
+          section: student.section,
+          year_level: student.year_level,
+          yearLevel: student.year_level, // Alternative property name
+          overallScore: assessment.overall_score,
+          riskLevel: assessment.risk_level,
+          subscales: assessment.scores || {},
+          completedAt: assessment.completed_at,
+          assessmentType: assessment.assessment_type,
+          atRiskDimensions: assessment.at_risk_dimensions || []
+        };
+      });
+    },
+    
+    // Fetch previously sent interventions to maintain status across page refreshes
+    async fetchSentInterventions() {
+      try {
+        const response = await fetch('http://localhost:3000/api/counselor-interventions/sent', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            // Clear existing sent interventions and populate with backend data
+            // Only include interventions with status 'sent'
+            this.sentInterventions.clear();
+            result.data.forEach(intervention => {
+              if (intervention.status === 'sent') {
+                this.sentInterventions.add(intervention.student_id);
+              }
+            });
+            console.log('Sent interventions loaded:', this.sentInterventions.size, 'students');
+          }
+        } else {
+          console.error('Failed to fetch sent interventions');
+        }
+      } catch (error) {
+        console.error('Error fetching sent interventions:', error);
+      }
+    },
+    
     navigateToStudents(category) {
       this.currentView = category;
       this.searchQuery = '';
@@ -441,19 +594,27 @@ export default {
     },
     
     // Risk assessment methods
-    isAtRisk(score) {
-      return score <= this.riskThresholds.q1;
+    getThresholdsForStudent(student) {
+      // Determine assessment type from student data
+      const assessmentType = student?.assessment_type === 'ryff_84' ? '84-item' : '42-item';
+      return this.riskThresholds[assessmentType];
     },
-    isHealthy(score) {
-      return score >= this.riskThresholds.q4;
+    isAtRisk(score, student = null) {
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      return score <= thresholds.q1;
     },
-    isModerate(score) {
-      return score > this.riskThresholds.q1 && score < this.riskThresholds.q4;
+    isHealthy(score, student = null) {
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      return score >= thresholds.q4;
+    },
+    isModerate(score, student = null) {
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      return score > thresholds.q1 && score < thresholds.q4;
     },
     hasAnyRiskDimension(student) {
       if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale])) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale], student)) {
           return true;
         }
       }
@@ -463,7 +624,7 @@ export default {
       if (!student || !student.subscales) return 0;
       let count = 0;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale])) {
+        if (student.subscales[subscale] !== undefined && this.isAtRisk(student.subscales[subscale], student)) {
           count++;
         }
       }
@@ -472,7 +633,7 @@ export default {
     hasModerateScores(student) {
       if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale])) {
+        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale], student)) {
           return true;
         }
       }
@@ -482,7 +643,7 @@ export default {
       if (!student || !student.subscales) return 0;
       let count = 0;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale])) {
+        if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale], student)) {
           count++;
         }
       }
@@ -491,7 +652,7 @@ export default {
     isAllDimensionsHealthy(student) {
       if (!student || !student.subscales) return false;
       for (const subscale in student.subscales) {
-        if (student.subscales[subscale] !== undefined && !this.isHealthy(student.subscales[subscale])) {
+        if (student.subscales[subscale] !== undefined && !this.isHealthy(student.subscales[subscale], student)) {
           return false;
         }
       }
@@ -503,6 +664,20 @@ export default {
       if (!student) return 0;
       // Return the overall_score directly from the database
       return student.overallScore || 0;
+    },
+    getMaxPossibleScore(student) {
+      if (!student) return 252; // Default to 42-item
+      // Calculate max score based on assessment type
+      // For 42-item: 42 questions × 6 points = 252
+      // For 84-item: 84 questions × 6 points = 504
+      return student.assessmentType === 'ryff_84' ? 504 : 252;
+    },
+    getDimensionMaxScore(student) {
+      if (!student) return 42; // Default to 42-item
+      // Calculate max score per dimension based on assessment type
+      // For 42-item: 7 items per dimension × 6 points = 42
+      // For 84-item: 14 items per dimension × 6 points = 84
+      return student.assessmentType === 'ryff_84' ? 84 : 42;
     },
     formatSubscaleName(subscale) {
       const dimension = this.ryffDimensionsList.find(d => d.key === subscale);
@@ -516,19 +691,22 @@ export default {
         default: return 'Dimension Status';
       }
     },
-    getDimensionScoreColor(score) {
-      if (score <= this.riskThresholds.q1) return '#f44336';  // Red for at risk
-      if (score < this.riskThresholds.q4) return '#ff9800';  // Orange for moderate
+    getDimensionScoreColor(score, student = null) {
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      if (score <= thresholds.q1) return '#f44336';  // Red for at risk
+      if (score < thresholds.q4) return '#ff9800';  // Orange for moderate
       return '#4caf50';  // Green for healthy
     },
-    getDimensionRiskClass(score) {
-      if (score <= this.riskThresholds.q1) return 'high-risk';
-      if (score < this.riskThresholds.q4) return 'medium-risk';
+    getDimensionRiskClass(score, student = null) {
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      if (score <= thresholds.q1) return 'high-risk';
+      if (score < thresholds.q4) return 'medium-risk';
       return 'low-risk';
     },
-    getDimensionRiskLabel(score) {
-      if (score <= this.riskThresholds.q1) return 'At Risk';
-      if (score < this.riskThresholds.q4) return 'Moderate';
+    getDimensionRiskLabel(score, student = null) {
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      if (score <= thresholds.q1) return 'At Risk';
+      if (score < thresholds.q4) return 'Moderate';
       return 'Healthy';
     },
     viewStudentDetails(student) {
@@ -536,6 +714,9 @@ export default {
       this.editableActionPlan = [...this.getActionPlan(student)];
       this.isEditingActionPlan = false;
       this.showDetailsModal = true;
+      
+      // Fetch AI intervention for this student if not already loaded
+      this.fetchAIInterventionForStudent(student.id);
     },
     
     // Action Plan Editing Methods
@@ -561,25 +742,50 @@ export default {
       this.editableActionPlan.splice(index, 1);
     },
     
-    sendToStudent() {
+    async sendToStudent() {
       if (!this.selectedStudent || this.isEditingActionPlan) return;
       
-      // Mark intervention as sent
-      this.sentInterventions.add(this.selectedStudent.id);
-      
-      // Emit event to parent component to handle sending
-      this.$emit('send-intervention', {
-        student: this.selectedStudent,
-        actionPlan: this.editableActionPlan,
-        overallIntervention: this.getOverallIntervention(this.selectedStudent),
-        dimensionInterventions: this.getDimensionInterventions(this.selectedStudent)
-      });
-      
-      // Show success message (you can customize this)
-      alert(`Intervention plan sent to ${this.selectedStudent.name}`);
-      
-      // Close modal
-      this.showDetailsModal = false;
+      try {
+        // Show loading state
+        this.isSendingIntervention = true;
+        
+        // Send existing AI intervention to student
+        const response = await fetch('http://localhost:3000/api/counselor-interventions/send-existing', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            studentId: this.selectedStudent.id
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Mark intervention as sent
+          this.sentInterventions.add(this.selectedStudent.id);
+          
+          // Show success message
+          alert(`AI intervention sent successfully to ${this.selectedStudent.name}`);
+          
+          // Close modal
+          this.showDetailsModal = false;
+        } else {
+          console.error('Failed to send intervention:', result.error);
+          if (result.error.includes('No intervention found')) {
+            alert('No AI intervention available for this student. The system will generate one automatically.');
+          } else {
+            alert('Failed to send intervention. Please try again.');
+          }
+        }
+      } catch (error) {
+        console.error('Error sending intervention:', error);
+        alert('Error sending intervention. Please check your connection and try again.');
+      } finally {
+        this.isSendingIntervention = false;
+      }
     },
     
     hasInterventionSent(student) {
@@ -598,30 +804,60 @@ export default {
       return interventions;
     },
     
-    bulkSendHealthyInterventions() {
+    async bulkSendHealthyInterventions() {
       if (this.filteredCurrentStudents.length === 0) return;
       
-      // Mark all students as having received interventions
-      this.filteredCurrentStudents.forEach(student => {
-        this.sentInterventions.add(student.id);
-      });
-      
-      const bulkInterventions = this.filteredCurrentStudents.map(student => ({
-        student: student,
-        actionPlan: this.getActionPlan(student),
-        overallIntervention: this.getOverallIntervention(student),
-        dimensionInterventions: this.getDimensionInterventions(student)
-      }));
-      
-      // Emit event to parent component to handle bulk sending
-      this.$emit('bulk-send-interventions', {
-        interventions: bulkInterventions,
-        category: 'healthy',
-        count: this.filteredCurrentStudents.length
-      });
-      
-      // Show success message
-      alert(`Intervention plans sent to ${this.filteredCurrentStudents.length} healthy students`);
+      try {
+        // Show loading state
+        this.isBulkGenerating = true;
+        
+        // Get student IDs for bulk generation
+        const studentIds = this.filteredCurrentStudents.map(student => student.id);
+        
+        // Generate AI interventions for all students
+        const response = await fetch('http://localhost:3000/api/ai-interventions/bulk-generate', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            studentIds: studentIds
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Mark all successful interventions as sent
+          result.data.successful.forEach(intervention => {
+            this.sentInterventions.add(intervention.student_id);
+          });
+          
+          // Show success message with details
+          const successCount = result.data.summary.successful;
+          const failedCount = result.data.summary.failed;
+          
+          if (failedCount > 0) {
+            alert(`AI interventions generated: ${successCount} successful, ${failedCount} failed. Check console for details.`);
+            console.log('Failed interventions:', result.data.errors);
+          } else {
+            alert(`AI interventions sent successfully to ${successCount} students`);
+          }
+        } else {
+          console.error('Failed to generate bulk interventions:', result.error);
+          if (result.error.includes('AI service is not available')) {
+            alert('AI service is not available. Please ensure Ollama is running with Qwen 4B model.');
+          } else {
+            alert('Failed to generate interventions. Please try again.');
+          }
+        }
+      } catch (error) {
+        console.error('Error generating bulk interventions:', error);
+        alert('Error generating interventions. Please check your connection and try again.');
+      } finally {
+        this.isBulkGenerating = false;
+      }
     },
     
     // Intervention Methods
@@ -632,120 +868,163 @@ export default {
       return 'low-risk';
     },
     
-    getOverallIntervention(student) {
+    getRiskLevelForAPI(student) {
       const overallScore = this.calculateOverallScore(student);
       const atRiskCount = this.getAtRiskDimensionsCount(student);
       
-      if (atRiskCount >= 4) {
-        return "Your assessment indicates significant challenges across multiple well-being dimensions. Consider scheduling regular counseling sessions, practicing daily mindfulness meditation, establishing a consistent sleep routine, and building a strong support network. Focus on small, achievable daily goals to gradually improve your overall mental health.";
-      } else if (atRiskCount >= 2) {
-        return "You're experiencing some challenges in key well-being areas. Try incorporating stress-reduction techniques like deep breathing exercises, maintain regular physical activity, and consider joining support groups or engaging in meaningful social activities. Setting weekly self-care goals can help improve your overall well-being.";
-      } else if (atRiskCount === 1) {
-        return "You're doing well overall with one area needing attention. Focus on targeted strategies for your specific challenge while maintaining your current positive habits. Regular self-reflection and maintaining work-life balance will help sustain your well-being.";
-      } else if (overallScore < this.riskThresholds.q4) {
-        return "You're in a good place mentally with room for growth. Continue building on your strengths through regular exercise, maintaining social connections, pursuing personal interests, and practicing gratitude. Consider setting new personal development goals to enhance your well-being further.";
+      // Determine risk level based on overall score and at-risk dimensions
+      if (atRiskCount >= 4 || overallScore <= this.riskThresholds.q1) {
+        return 'high';
+      } else if (atRiskCount >= 2 || overallScore <= this.riskThresholds.q2) {
+        return 'moderate';
+      } else if (atRiskCount >= 1 || overallScore < this.riskThresholds.q4) {
+        return 'moderate';
       } else {
-        return "Congratulations! You demonstrate exceptional psychological well-being and mental health resilience. Your scores reflect outstanding emotional maturity, strong coping skills, and excellent life satisfaction. You are thriving across all dimensions of well-being. Continue your positive practices and consider sharing your strategies with others who might benefit from your wisdom and experience.";
+        return 'low';
       }
+    },
+    
+    getOverallIntervention(student) {
+      // Check if we have AI-generated intervention for this student
+      const aiIntervention = this.aiGeneratedInterventions.get(student?.id);
+      if (aiIntervention && aiIntervention.overallStrategy) {
+        return aiIntervention.overallStrategy;
+      }
+      
+      // Return loading message if no AI intervention available
+      return "Loading AI-generated intervention strategy...";
     },
     
     getDimensionIntervention(subscale, score) {
-      const interventions = {
-        autonomy: {
-          atRisk: "Practice assertiveness training, set personal boundaries, make independent decisions daily, and engage in activities that reflect your personal values and interests.",
-          moderate: "Work on building confidence in decision-making, practice saying 'no' when needed, and explore activities that help you express your individuality.",
-          healthy: "Excellent work! Your strong sense of autonomy is evident. You make confident, independent decisions and stay true to your values. Keep embracing your self-direction and consider mentoring others in developing their independence."
-        },
-        environmentalMastery: {
-          atRisk: "Break down overwhelming tasks into smaller steps, create daily routines, practice problem-solving skills, and seek support when managing life challenges becomes difficult.",
-          moderate: "Develop better organizational skills, practice time management techniques, and work on building confidence in handling daily responsibilities.",
-          healthy: "Outstanding! You demonstrate excellent control over your environment and daily activities. Your organizational skills and ability to manage life's challenges are impressive strengths - keep it up!"
-        },
-        personalGrowth: {
-          atRisk: "Set small, achievable learning goals, try new activities or hobbies, read self-development books, and consider working with a mentor or counselor to explore growth opportunities.",
-          moderate: "Challenge yourself with new experiences, set personal development goals, and regularly reflect on your progress and areas for improvement.",
-          healthy: "Fantastic! Your commitment to continuous learning and self-improvement is inspiring. You embrace new challenges and growth opportunities with enthusiasm - this is a wonderful strength to maintain."
-        },
-        positiveRelations: {
-          atRisk: "Practice active listening, join social groups or clubs, work on communication skills, and consider therapy to address relationship patterns that may be causing difficulties.",
-          moderate: "Focus on deepening existing relationships, practice empathy and understanding, and work on conflict resolution skills.",
-          healthy: "Wonderful! You have strong, healthy relationships and excellent social skills. Your ability to connect meaningfully with others and maintain positive relationships is a valuable asset."
-        },
-        purposeInLife: {
-          atRisk: "Explore your values and interests, volunteer for causes you care about, set meaningful short-term goals, and consider career or life counseling to help clarify your direction.",
-          moderate: "Reflect on what gives your life meaning, set goals aligned with your values, and engage in activities that contribute to something larger than yourself.",
-          healthy: "Excellent! You have a clear sense of direction and purpose in life. Your goals and values are well-aligned, and you find meaning in your activities - continue pursuing what matters most to you."
-        },
-        selfAcceptance: {
-          atRisk: "Practice self-compassion exercises, challenge negative self-talk, keep a gratitude journal, and consider therapy to work on self-esteem and self-worth issues.",
-          moderate: "Work on accepting your imperfections, practice positive self-talk, and focus on your strengths while acknowledging areas for growth.",
-          healthy: "Great job! Your healthy self-regard and self-acceptance are admirable. You demonstrate excellent emotional maturity and self-awareness - these are wonderful qualities to celebrate and maintain."
-        }
-      };
+      // Check if we have AI-generated intervention for this student
+      const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent?.id);
+      if (aiIntervention && aiIntervention.dimensionInterventions && aiIntervention.dimensionInterventions[subscale]) {
+        return aiIntervention.dimensionInterventions[subscale];
+      }
       
-      const dimension = interventions[subscale];
-      if (!dimension) return "Continue working on this dimension with guidance from a mental health professional.";
-      
-      if (score <= this.riskThresholds.q1) return dimension.atRisk;
-      if (score < this.riskThresholds.q4) return dimension.moderate;
-      return dimension.healthy;
+      // Return loading message if no AI intervention available
+      return "Loading AI-generated intervention for this dimension...";
     },
     
     getActionPlan(student) {
-      const actions = [];
-      const atRiskCount = this.getAtRiskDimensionsCount(student);
-      const overallScore = this.calculateOverallScore(student);
-      
-      // Immediate actions based on risk level
-      if (atRiskCount >= 3) {
-        actions.push("Schedule an appointment with a counselor within the next week");
-        actions.push("Implement daily stress-reduction techniques (meditation, deep breathing)");
-        actions.push("Establish a consistent sleep schedule (7-9 hours nightly)");
-      } else if (atRiskCount >= 1) {
-        actions.push("Consider scheduling a counseling session to address specific concerns");
-        actions.push("Practice weekly self-reflection and journaling");
+      // Check if we have AI-generated intervention for this student
+      const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent?.id);
+      if (aiIntervention && aiIntervention.actionPlan) {
+        return aiIntervention.actionPlan;
       }
       
-      // General wellness actions
-      if (overallScore < this.riskThresholds.q4) {
-        actions.push("Engage in regular physical activity (30 minutes, 3-4 times per week)");
-        actions.push("Connect with friends or family members regularly");
-        actions.push("Set aside time for hobbies and activities you enjoy");
-      }
+      // Return loading message if no AI intervention available
+      return ["Loading AI-generated action plan..."];
+    },
+    
+    createComprehensiveIntervention(student, overallIntervention, dimensionInterventions, actionPlan) {
+      let comprehensive = "# Comprehensive Well-being Intervention Plan\n\n";
       
-      // Dimension-specific actions
+      // Overall Mental Health Strategy
+      comprehensive += "## Overall Mental Health Strategy\n";
+      comprehensive += overallIntervention + "\n\n";
+      
+      // Dimension Scores & Targeted Interventions
+      comprehensive += "## Dimension Scores & Targeted Interventions\n\n";
+      
       if (student?.subscales) {
         Object.entries(student.subscales).forEach(([subscale, score]) => {
-          if (score !== undefined && this.isAtRisk(score)) {
-            switch(subscale) {
-              case 'autonomy':
-                actions.push("Practice making one independent decision daily");
-                break;
-              case 'environmentalMastery':
-                actions.push("Create a daily organization system for tasks and responsibilities");
-                break;
-              case 'personalGrowth':
-                actions.push("Set one small learning goal each week");
-                break;
-              case 'positiveRelations':
-                actions.push("Reach out to one person in your support network weekly");
-                break;
-              case 'purposeInLife':
-                actions.push("Spend time weekly reflecting on your values and goals");
-                break;
-              case 'selfAcceptance':
-                actions.push("Practice daily self-compassion and positive self-talk");
-                break;
-            }
+          if (score !== undefined) {
+            const dimensionName = this.formatDimensionName(subscale);
+            const intervention = this.getDimensionIntervention(subscale, score);
+            const riskLevel = this.isAtRisk(score) ? 'At Risk' : 
+                            score < this.riskThresholds.q4 ? 'Moderate' : 'Healthy';
+            
+            comprehensive += `### ${dimensionName}\n`;
+            comprehensive += `**Score:** ${score.toFixed(1)} (${riskLevel})\n`;
+            comprehensive += `**Recommendation:** ${intervention}\n\n`;
           }
         });
       }
       
-      // Follow-up actions
-      actions.push("Schedule a follow-up assessment in 4-6 weeks to track progress");
+      // Recommended Action Plan
+      comprehensive += "## Recommended Action Plan\n\n";
       
-      return actions.slice(0, 6); // Limit to 6 most important actions
-    }
+      if (actionPlan && actionPlan.length > 0) {
+        actionPlan.forEach((action, index) => {
+          comprehensive += `${index + 1}. ${action}\n`;
+        });
+      } else {
+        // Use generated action plan if no custom one provided
+        const generatedActions = this.getActionPlan(student);
+        generatedActions.forEach((action, index) => {
+          comprehensive += `${index + 1}. ${action}\n`;
+        });
+      }
+      
+      comprehensive += "\n---\n";
+      comprehensive += "*This intervention plan is personalized based on your assessment results. Please review all sections and implement the recommendations gradually. Feel free to reach out for support or clarification.*";
+      
+      return comprehensive;
+    },
+    
+    formatDimensionName(subscale) {
+      const names = {
+        autonomy: 'Autonomy',
+        environmentalMastery: 'Environmental Mastery',
+        personalGrowth: 'Personal Growth',
+        positiveRelations: 'Positive Relations',
+        purposeInLife: 'Purpose in Life',
+        selfAcceptance: 'Self Acceptance'
+      };
+      return names[subscale] || subscale;
+    },
+    
+    // Fetch AI-generated intervention for a specific student
+    async fetchAIInterventionForStudent(studentId) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/counselor-interventions/student/${studentId}/latest`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success && result.data) {
+          // Parse the AI intervention content
+          const intervention = result.data;
+          this.aiGeneratedInterventions.set(studentId, {
+            overallStrategy: intervention.overall_strategy,
+            dimensionInterventions: intervention.dimension_interventions,
+            actionPlan: intervention.action_plan
+          });
+        } else if (response.status === 404) {
+          // No intervention found for this student - set empty data to stop loading
+          console.log('No AI intervention found for student:', studentId);
+          this.aiGeneratedInterventions.set(studentId, {
+            overallStrategy: null,
+            dimensionInterventions: {},
+            actionPlan: []
+          });
+        } else {
+          console.error('Failed to fetch AI intervention:', result.error || 'Unknown error');
+          // Set empty data to stop loading even on error
+          this.aiGeneratedInterventions.set(studentId, {
+            overallStrategy: null,
+            dimensionInterventions: {},
+            actionPlan: []
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching AI intervention for student:', error);
+        // Set empty data to stop loading on network error
+        this.aiGeneratedInterventions.set(studentId, {
+          overallStrategy: null,
+          dimensionInterventions: {},
+          actionPlan: []
+        });
+      }
+    },
+    
+
   },
   watch: {
     currentView() {
@@ -767,12 +1046,13 @@ export default {
 
 /* Header Styles */
 .intervention-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
+  color: #333;
   padding: 30px;
   border-radius: 12px;
   margin-bottom: 30px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .header-title {
@@ -783,18 +1063,102 @@ export default {
 
 .header-title i {
   font-size: 2.5rem;
+  color: #667eea;
 }
 
 .header-title h2 {
   margin: 0;
   font-size: 2rem;
   font-weight: 600;
+  color: #2d3748;
 }
 
 .header-title p {
   margin: 5px 0 0 0;
-  opacity: 0.9;
+  color: #718096;
   font-size: 1.1rem;
+}
+
+/* Dashboard Header Styles */
+.dashboard-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content h2 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+  color: white;
+}
+
+.header-content p {
+  margin: 8px 0 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.test-connection-btn,
+.generate-all-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.test-connection-btn:hover:not(:disabled),
+.generate-all-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.test-connection-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.test-connection-btn i {
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+  
+  .header-content h2 {
+    font-size: 1.5rem;
+  }
+  
+  .header-content p {
+    font-size: 1rem;
+  }
 }
 
 /* Dashboard Cards */
@@ -1723,5 +2087,67 @@ export default {
   .subscale-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Loading State Styles */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  margin-bottom: 20px;
+}
+
+.spinner-ring {
+  display: inline-block;
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.spinner-ring div {
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  width: 51px;
+  height: 51px;
+  margin: 6px;
+  border: 6px solid #667eea;
+  border-radius: 50%;
+  animation: spinner-ring-animation 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  border-color: #667eea transparent transparent transparent;
+}
+
+.spinner-ring div:nth-child(1) {
+  animation-delay: -0.45s;
+}
+
+.spinner-ring div:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.spinner-ring div:nth-child(3) {
+  animation-delay: -0.15s;
+}
+
+@keyframes spinner-ring-animation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-container p {
+  font-size: 1.1rem;
+  color: #718096;
+  margin: 0;
+  font-weight: 500;
 }
 </style>

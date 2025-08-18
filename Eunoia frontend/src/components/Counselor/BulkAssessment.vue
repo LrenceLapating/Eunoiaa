@@ -34,6 +34,35 @@
         {{ error }}
       </div>
 
+      <!-- School Year and Semester Selection -->
+      <div class="form-group">
+        <label for="school-year">School Year</label>
+        <select 
+          id="school-year" 
+          v-model="selectedSchoolYear"
+          class="form-control"
+        >
+          <option value="">Select School Year</option>
+          <option v-for="year in schoolYears" :key="year" :value="year">{{ year }}</option>
+        </select>
+        <small v-if="validationErrors.schoolYear" class="error-text">{{ validationErrors.schoolYear }}</small>
+      </div>
+
+      <div class="form-group">
+        <label for="semester">Semester</label>
+        <select 
+          id="semester" 
+          v-model="selectedSemester"
+          class="form-control"
+        >
+          <option value="">Select Semester</option>
+          <option value="1st Semester">1st Semester</option>
+          <option value="2nd Semester">2nd Semester</option>
+          <option value="Summer">Summer</option>
+        </select>
+        <small v-if="validationErrors.semester" class="error-text">{{ validationErrors.semester }}</small>
+      </div>
+
       <div class="form-group">
         <label for="assessment-name">Assessment Name</label>
         <input 
@@ -42,8 +71,10 @@
           placeholder="Enter a name for this assessment" 
           v-model="assessmentName"
           class="form-control"
+          :disabled="!canTypeAssessmentName"
         >
         <small v-if="validationErrors.assessmentName" class="error-text">{{ validationErrors.assessmentName }}</small>
+        <small v-if="!canTypeAssessmentName" class="info-text">Please select school year and semester first</small>
       </div>
 
       <div class="form-group">
@@ -203,8 +234,16 @@
         </div>
         <div class="modal-body">
           <div class="preview-item">
+            <span class="preview-label">School Year:</span>
+            <span class="preview-value">{{ selectedSchoolYear || 'Not specified' }}</span>
+          </div>
+          <div class="preview-item">
+            <span class="preview-label">Semester:</span>
+            <span class="preview-value">{{ selectedSemester || 'Not specified' }}</span>
+          </div>
+          <div class="preview-item">
             <span class="preview-label">Assessment Name:</span>
-            <span class="preview-value">{{ assessmentName || 'Not specified' }}</span>
+            <span class="preview-value">{{ fullAssessmentName || 'Not specified' }}</span>
           </div>
           <div class="preview-item">
             <span class="preview-label">Selected Colleges:</span>
@@ -484,6 +523,8 @@ export default {
       currentCollege: null,
       collegeFilters: {}, // Stores customization info for each college
       filteredSections: {},
+      selectedSchoolYear: '',
+      selectedSemester: '',
       assessmentName: '',
       selectAllColleges: false,
       error: null,
@@ -503,12 +544,34 @@ export default {
       toastMessage: '',
       isSending: false,
       validationErrors: {
+        schoolYear: '',
+        semester: '',
         assessmentName: '',
         colleges: ''
       }
     }
   },
   computed: {
+    schoolYears() {
+      const currentYear = new Date().getFullYear();
+      const years = [];
+      // Generate school years (e.g., "2024-2025", "2025-2026")
+      for (let i = 0; i < 3; i++) {
+        const startYear = currentYear + i;
+        const endYear = startYear + 1;
+        years.push(`${startYear}-${endYear}`);
+      }
+      return years;
+    },
+    canTypeAssessmentName() {
+      return this.selectedSchoolYear && this.selectedSemester;
+    },
+    fullAssessmentName() {
+      if (this.selectedSchoolYear && this.selectedSemester && this.assessmentName.trim()) {
+        return `${this.selectedSchoolYear} ${this.selectedSemester} - ${this.assessmentName.trim()}`;
+      }
+      return this.assessmentName;
+    },
     questionnaire() {
       return this.selectedVersion === '84' ? ryff84ItemQuestionnaire : ryff42ItemQuestionnaire;
     },
@@ -683,9 +746,21 @@ export default {
     validate() {
       let isValid = true;
       this.validationErrors = {
+        schoolYear: '',
+        semester: '',
         assessmentName: '',
         colleges: ''
       };
+
+      if (!this.selectedSchoolYear) {
+        this.validationErrors.schoolYear = 'School year is required';
+        isValid = false;
+      }
+
+      if (!this.selectedSemester) {
+        this.validationErrors.semester = 'Semester is required';
+        isValid = false;
+      }
 
       if (!this.assessmentName.trim()) {
         this.validationErrors.assessmentName = 'Assessment name is required';
@@ -711,7 +786,7 @@ export default {
       try {
         // Prepare the request payload
         const payload = {
-          assessmentName: this.assessmentName,
+          assessmentName: this.fullAssessmentName,
           assessmentType: this.selectedVersion === '84' ? 'ryff_84' : 'ryff_42',
           targetType: 'college', // Currently only supporting college targeting
           targetColleges: this.colleges.filter(college => college.selected).map(college => college.name),
@@ -736,7 +811,7 @@ export default {
           this.isSending = false;
           this.showPreview = false;
           this.showToast = true;
-          this.toastMessage = `Assessment "${this.assessmentName}" has been successfully created and sent to ${this.selectedCollegesText}`;
+          this.toastMessage = `Assessment "${this.fullAssessmentName}" has been successfully created and sent to ${this.selectedCollegesText}`;
           
           // Reset form after successful submission
           this.resetForm();
@@ -873,6 +948,8 @@ export default {
     },
     resetForm() {
       // Reset form to default values
+      this.selectedSchoolYear = '';
+      this.selectedSemester = '';
       this.assessmentName = '';
       this.selectAllColleges = false;
       this.colleges.forEach(college => college.selected = false);
@@ -882,6 +959,8 @@ export default {
       this.customMessage = 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.';
       this.error = null;
       this.validationErrors = {
+        schoolYear: '',
+        semester: '',
         assessmentName: '',
         colleges: ''
       };
@@ -1239,6 +1318,14 @@ textarea.form-control {
   font-size: 12px;
   margin-top: 5px;
   display: block;
+}
+
+.info-text {
+  color: #6c757d;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+  font-style: italic;
 }
 
 /* Modal Styles */

@@ -1,7 +1,5 @@
 <template>
   <div class="college-view-container">
-    <h2>College Summary</h2>
-    <p>View and analyze assessment results by college.</p>
     
     <!-- Assessment Type Navigation -->
     <div class="assessment-type-nav">
@@ -32,7 +30,8 @@
           <h3>{{ college.name }}</h3>
           <span class="student-count">{{ college.students }} students</span>
         </div>
-        <div class="college-metrics">
+        <!-- Hidden metrics - keeping for functionality -->
+        <div class="college-metrics" style="display: none;">
           <div class="metric">
             <span class="metric-label">Overall Score</span>
             <span class="metric-value">{{ college.avgScore.toFixed(2) }}</span>
@@ -42,7 +41,8 @@
             <span class="metric-value">{{ college.atRisk }}</span>
           </div>
         </div>
-        <div class="progress-bar-container">
+        <!-- Hidden progress bars - keeping for functionality -->
+        <div class="progress-bar-container" style="display: none;">
           <div class="dimension-bar" v-for="(dim, dimName) in college.dimensions" :key="dimName">
             <span class="dimension-name">{{ formatDimName(dimName) }}</span>
             <div class="progress-track">
@@ -115,7 +115,7 @@ export default {
           users: college.users
         }));
 
-        // Filter and map only colleges that have score data for the selected assessment type
+        // Map all colleges, providing default values when no score data exists
         return collegeData
           .map(college => {
             // Find matching college scores from backend
@@ -146,11 +146,16 @@ export default {
                 dimensions: this.formatDimensionsForDisplay(dimensions)
               };
             } else {
-              // Return null for colleges without score data - will be filtered out
-              return null;
+              // Return college with default values when no score data exists
+              return {
+                ...college,
+                students: 0,
+                avgScore: 0,
+                atRisk: 0,
+                dimensions: this.getDefaultDimensions()
+              };
             }
-          })
-          .filter(college => college !== null); // Remove colleges without score data
+          }); // Show all colleges regardless of data availability
       } catch (err) {
         console.error('Error processing college data:', err);
         this.error = 'Error loading college statistics';
