@@ -572,7 +572,8 @@ export default {
         if (response.ok) {
           const data = await response.json();
           this.students = data.students.map(student => ({
-            id: student.id_number,
+            id: student.id, // Use the UUID id for backend API calls
+            id_number: student.id_number, // Keep id_number for display purposes
             name: student.name,
             college: student.college,
             section: student.section,

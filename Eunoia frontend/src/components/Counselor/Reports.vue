@@ -76,7 +76,7 @@
                @click="selectStudent(student)">
             <div class="student-info">
               <div class="student-name">{{ student.name }}</div>
-              <div class="student-details">ID: {{ student.id }} | {{ student.college }} - {{ student.section }}</div>
+              <div class="student-details">ID: {{ student.id_number || student.id }} | {{ student.college }} - {{ student.section }}</div>
             </div>
             <div class="student-status">
               <span class="status-badge completed">Completed</span>
@@ -100,7 +100,7 @@
           </div>
           <div class="student-details">
             <h5>{{ selectedStudent.name }}</h5>
-            <p>ID: {{ selectedStudent.id }} | {{ selectedStudent.college }} - {{ selectedStudent.section }}</p>
+            <p>ID: {{ selectedStudent.id_number || selectedStudent.id }} | {{ selectedStudent.college }} - {{ selectedStudent.section }}</p>
             <p>Last Assessment: {{ selectedStudent.submissionDate }}</p>
           </div>
           <button class="remove-student-btn" @click="clearSelectedStudent">
@@ -175,9 +175,20 @@
             >
             <span class="checkmark"></span>
             <div class="assessment-info">
-              <div class="assessment-title">Assessment #{{ assessment.number }}</div>
-              <div class="assessment-date">{{ formatDate(assessment.date) }}</div>
-              <div class="assessment-score">Score: {{ assessment.score }}/120</div>
+              <div class="assessment-title">
+                Assessment #{{ assessment.number }}
+                <span v-if="assessment.isArchived" class="archived-badge">Archived</span>
+              </div>
+              <div class="assessment-details">
+                <div class="assessment-date">{{ formatDate(assessment.date) }}</div>
+                <div class="assessment-type">{{ assessment.assessmentType }} Assessment</div>
+              </div>
+              <div class="assessment-metrics">
+                <div class="assessment-score">Score: {{ assessment.score }}/{{ getMaxScore(assessment.assessmentType) }}</div>
+                <div class="risk-level" :class="getRiskLevelClass(assessment.riskLevel)">
+                  {{ assessment.riskLevel || 'Unknown' }}
+                </div>
+              </div>
             </div>
           </label>
         </div>
@@ -240,6 +251,8 @@
 </template>
 
 <script>
+import authService from '@/services/authService';
+
 export default {
   name: 'Reports',
   props: {
@@ -288,7 +301,8 @@ export default {
       ],
       availableColleges: [],
       availableYearLevels: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-      collegesFromBackend: [] // Store colleges fetched from backend
+      collegesFromBackend: [], // Store colleges fetched from backend
+      studentAssessmentHistory: [] // Store fetched assessment history for selected student
     };
   },
   computed: {
@@ -345,31 +359,87 @@ export default {
       const query = this.studentSearchQuery.toLowerCase();
       this.filteredStudents = this.students.filter(student => 
         student.name.toLowerCase().includes(query) || 
-        student.id.toLowerCase().includes(query)
+        student.id.toLowerCase().includes(query) ||
+        (student.id_number && student.id_number.toLowerCase().includes(query))
       ).slice(0, 5); // Limit to 5 results
     },
     
-    selectStudent(student) {
+    async selectStudent(student) {
       this.selectedStudent = student;
       this.studentSearchQuery = '';
       this.filteredStudents = [];
       this.selectedAssessments = []; // Reset assessments when changing student
+      
+      // Fetch assessment history for the selected student
+      await this.fetchStudentAssessmentHistory(student.id);
     },
     
     clearSelectedStudent() {
       this.selectedStudent = null;
       this.selectedAssessments = [];
+      this.studentAssessmentHistory = [];
+    },
+    
+    async fetchStudentAssessmentHistory(studentId) {
+      try {
+        console.log(`Fetching assessment history for student ID: ${studentId}`);
+        
+        const response = await fetch(`http://localhost:3000/api/counselor-assessments/student/${studentId}/history`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const apiResponse = await response.json();
+          console.log('Fetched student assessment history:', apiResponse);
+          
+          if (apiResponse.success && apiResponse.data) {
+            this.studentAssessmentHistory = apiResponse.data.assessments || [];
+            console.log(`Found ${this.studentAssessmentHistory.length} assessments for student`);
+          } else {
+            console.error('Invalid API response structure:', apiResponse);
+            this.studentAssessmentHistory = [];
+          }
+        } else {
+          console.error('Failed to fetch student assessment history:', response.statusText);
+          this.studentAssessmentHistory = [];
+        }
+      } catch (error) {
+        console.error('Error fetching student assessment history:', error);
+        this.studentAssessmentHistory = [];
+      }
     },
     
     getStudentAssessments(studentId) {
-      // Find the student and return their assessment history
+      // Return the fetched assessment history for the selected student
+      if (this.selectedStudent && this.selectedStudent.id === studentId) {
+        return this.studentAssessmentHistory.map((assessment, index) => ({
+          id: assessment.id,
+          number: assessment.assessmentNumber,
+          date: assessment.displayDate || assessment.completedAt,
+          score: assessment.overallScore,
+          assessmentType: assessment.assessmentType,
+          riskLevel: assessment.riskLevel,
+          isArchived: assessment.isArchived,
+          originalData: assessment // Store original data for report generation
+        }));
+      }
+      
+      // Fallback for legacy data or when no history is loaded
       const student = this.students.find(s => s.id === studentId);
       if (student && student.assessmentHistory) {
         return student.assessmentHistory.map((assessment, index) => ({
           id: index + 1,
           number: index + 1,
           date: assessment.submissionDate,
-          score: Math.round(this.calculateAssessmentScore(assessment)) // Raw score from database
+          score: Math.round(this.calculateAssessmentScore(assessment)),
+          assessmentType: '42-item',
+          riskLevel: 'Unknown',
+          isArchived: false,
+          originalData: assessment
         }));
       }
       return [];
@@ -390,6 +460,29 @@ export default {
       });
     },
     
+    getMaxScore(assessmentType) {
+      // Return max score based on assessment type
+      if (assessmentType === '84-item') {
+        return 504; // 84 items × 6 points max
+      } else {
+        return 252; // 42 items × 6 points max
+      }
+    },
+    
+    getRiskLevelClass(riskLevel) {
+      if (!riskLevel) return 'unknown';
+      
+      const level = riskLevel.toLowerCase();
+      if (level.includes('at risk') || level.includes('high')) {
+        return 'high-risk';
+      } else if (level.includes('moderate')) {
+        return 'moderate-risk';
+      } else if (level.includes('healthy') || level.includes('low')) {
+        return 'low-risk';
+      }
+      return 'unknown';
+    },
+    
     generateReport() {
       if (!this.canGenerateReport) return;
       
@@ -400,21 +493,51 @@ export default {
       }
     },
     
-    generateIndividualReport() {
-      // Simulate PDF generation
-      // Generate individual student report
-      
-      // Show success message
-      const assessmentCount = this.selectedAssessments.length;
-      this.$emit('show-notification', {
-        type: 'success',
-        message: `Individual report for ${this.selectedStudent.name} with ${assessmentCount} assessments is being generated...`
-      });
-      
-      // Simulate download after delay
-      setTimeout(() => {
-        this.downloadPDF(`${this.selectedStudent.name}_WellbeingReport_${assessmentCount}_assessments.pdf`);
-      }, 2000);
+    async generateIndividualReport() {
+      try {
+        // Show loading message
+        const assessmentCount = this.selectedAssessments.length;
+        this.$emit('show-notification', {
+          type: 'info',
+          message: `Generating individual report for ${this.selectedStudent.name} with ${assessmentCount} assessments...`
+        });
+        
+        // Call the backend PDF generation endpoint using authService
+        const assessmentIds = this.selectedAssessments.join(',');
+        const response = await this.$authService.makeAuthenticatedRequest(`http://localhost:3000/api/counselor-assessments/student/${this.selectedStudent.id}/report/pdf?assessmentIds=${assessmentIds}`, {
+          method: 'GET'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to generate PDF: ${response.statusText}`);
+        }
+        
+        // Get the PDF blob
+        const blob = await response.blob();
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${this.selectedStudent.name}_WellbeingReport_${assessmentCount}_assessments.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        // Show success message
+        this.$emit('show-notification', {
+          type: 'success',
+          message: `Report downloaded: ${this.selectedStudent.name}_WellbeingReport_${assessmentCount}_assessments.pdf`
+        });
+        
+      } catch (error) {
+        console.error('Error generating PDF report:', error);
+        this.$emit('show-notification', {
+          type: 'error',
+          message: `Failed to generate PDF report: ${error.message}`
+        });
+      }
     },
     
     generateCollegeReport() {
@@ -520,19 +643,11 @@ export default {
         return words[0].substring(0, 3).toUpperCase();
       }
       return words.map(word => word.charAt(0)).join('').toUpperCase();
-    },
-    
-    downloadPDF(filename) {
-      // Simulate PDF download
-      const link = document.createElement('a');
-      link.href = '#'; // In real implementation, this would be the PDF blob URL
-      link.download = filename;
-      link.click();
-      
-      this.$emit('show-notification', {
-        type: 'success',
-        message: `Report downloaded: ${filename}`
-      });
+    }
+  },
+  computed: {
+    $authService() {
+      return authService;
     }
   },
   watch: {
@@ -1083,15 +1198,72 @@ export default {
   font-weight: 600;
   color: #2d3748;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.archived-badge {
+  background: #ed8936;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.assessment-details {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 4px;
+}
+
+.assessment-metrics {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .assessment-date,
-.assessment-score,
+.assessment-type,
 .period-date,
 .period-participants {
   font-size: 14px;
   color: #718096;
-  margin-bottom: 2px;
+}
+
+.assessment-score {
+  font-size: 14px;
+  font-weight: 500;
+  color: #00b3b0;
+}
+
+.risk-level {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.risk-level.high-risk {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.risk-level.moderate-risk {
+  background: #feebc8;
+  color: #dd6b20;
+}
+
+.risk-level.low-risk {
+  background: #c6f6d5;
+  color: #38a169;
+}
+
+.risk-level.unknown {
+  background: #e2e8f0;
+  color: #718096;
 }
 
 .no-assessments {

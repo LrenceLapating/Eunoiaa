@@ -1219,4 +1219,563 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
   }
 });
 
+// Get specific student's assessment history for reports
+router.get('/student/:studentId/history', verifyCounselorSession, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { includeArchived = 'true' } = req.query;
+
+    console.log(`🔍 Fetching assessment history for student ID: ${studentId}`);
+
+    // First, get student information
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id, id_number, name, college, section, email, status')
+      .eq('id', studentId)
+      .single();
+
+    if (studentError && studentError.code !== 'PGRST116') {
+      console.error('Error fetching student:', studentError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch student information'
+      });
+    }
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    // Get current assessments from ryffscoring table
+    const { data: currentAssessments, error: currentError } = await supabaseAdmin
+      .from('ryffscoring')
+      .select(`
+        id,
+        student_id,
+        assessment_type,
+        responses,
+        scores,
+        overall_score,
+        risk_level,
+        at_risk_dimensions,
+        assignment_id,
+        completed_at,
+        created_at,
+        updated_at
+      `)
+      .eq('student_id', studentId)
+      .order('completed_at', { ascending: false });
+
+    if (currentError) {
+      console.error('Error fetching current assessments:', currentError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch current assessments'
+      });
+    }
+
+    let allAssessments = currentAssessments || [];
+
+    // If includeArchived is true, also get historical assessments
+    if (includeArchived === 'true') {
+      const { data: historicalAssessments, error: historyError } = await supabaseAdmin
+        .from('ryff_history')
+        .select(`
+          id,
+          original_id,
+          student_id,
+          assessment_type,
+          responses,
+          scores,
+          overall_score,
+          risk_level,
+          at_risk_dimensions,
+          assignment_id,
+          completed_at,
+          created_at,
+          updated_at,
+          archived_at
+        `)
+        .eq('student_id', studentId)
+        .order('archived_at', { ascending: false });
+
+      if (historyError) {
+        console.error('Error fetching historical assessments:', historyError);
+        // Don't fail the request, just log the error
+      } else if (historicalAssessments && historicalAssessments.length > 0) {
+        // Mark historical assessments and add them to the list
+        const markedHistoricalAssessments = historicalAssessments.map(assessment => ({
+          ...assessment,
+          isArchived: true,
+          displayDate: assessment.archived_at || assessment.completed_at
+        }));
+        allAssessments = [...allAssessments, ...markedHistoricalAssessments];
+      }
+    }
+
+    // Sort all assessments by completion date (most recent first)
+    allAssessments.sort((a, b) => {
+      const dateA = new Date(a.displayDate || a.completed_at);
+      const dateB = new Date(b.displayDate || b.completed_at);
+      return dateB - dateA;
+    });
+
+    // Transform assessments to include additional metadata
+    const transformedAssessments = allAssessments.map((assessment, index) => {
+      const assessmentTypeMapping = {
+        'ryff_42': '42-item',
+        'ryff_84': '84-item'
+      };
+
+      return {
+        id: assessment.id,
+        originalId: assessment.original_id || assessment.id,
+        studentId: assessment.student_id,
+        assessmentType: assessmentTypeMapping[assessment.assessment_type] || '42-item',
+        assessmentTypeRaw: assessment.assessment_type,
+        responses: assessment.responses,
+        scores: assessment.scores,
+        overallScore: assessment.overall_score,
+        riskLevel: assessment.risk_level,
+        atRiskDimensions: assessment.at_risk_dimensions || [],
+        assignmentId: assessment.assignment_id,
+        completedAt: assessment.completed_at,
+        createdAt: assessment.created_at,
+        updatedAt: assessment.updated_at,
+        archivedAt: assessment.archived_at || null,
+        isArchived: assessment.isArchived || false,
+        assessmentNumber: allAssessments.length - index, // Number from oldest to newest
+        displayDate: assessment.displayDate || assessment.completed_at
+      };
+    });
+
+    console.log(`✅ Found ${transformedAssessments.length} assessments for student ${student.name}`);
+
+    res.json({
+      success: true,
+      data: {
+        student: {
+          id: student.id,
+          idNumber: student.id_number,
+          name: student.name,
+          college: student.college,
+          section: student.section,
+          email: student.email,
+          status: student.status
+        },
+        assessments: transformedAssessments,
+        totalAssessments: transformedAssessments.length,
+        currentAssessments: currentAssessments?.length || 0,
+        archivedAssessments: transformedAssessments.filter(a => a.isArchived).length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching student assessment history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Generate PDF report for individual student
+router.get('/student/:studentId/report/pdf', verifyCounselorSession, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { assessmentIds } = req.query; // Comma-separated assessment IDs
+    
+    if (!assessmentIds) {
+      return res.status(400).json({
+        success: false,
+        message: 'Assessment IDs are required'
+      });
+    }
+
+    const assessmentIdArray = assessmentIds.split(',');
+    
+    // Get student information
+    const { data: student, error: studentError } = await supabaseAdmin
+      .from('students')
+      .select('id, id_number, name, college, year_level, email')
+      .eq('id', studentId)
+      .single();
+
+    if (studentError || !student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    // Get assessment data for the specified assessments
+    const assessmentData = [];
+    
+    for (const assessmentId of assessmentIdArray) {
+      // Try different assessment tables
+      const tables = ['assessments_42items', 'assessments_84items'];
+      let assessment = null;
+      
+      for (const table of tables) {
+        const { data, error } = await supabaseAdmin
+          .from(table)
+          .select('*')
+          .eq('id', assessmentId)
+          .eq('student_id', studentId)
+          .single();
+          
+        if (data && !error) {
+          assessment = { ...data, table_source: table };
+          break;
+        }
+      }
+      
+      if (assessment) {
+        assessmentData.push(assessment);
+      }
+    }
+
+    if (assessmentData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No assessment data found for the specified assessments'
+      });
+    }
+
+    // Generate PDF using puppeteer
+    const puppeteer = require('puppeteer');
+    
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    const page = await browser.newPage();
+    
+    // Create HTML content for the PDF
+    const htmlContent = generateReportHTML(student, assessmentData);
+    
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20mm',
+        right: '20mm',
+        bottom: '20mm',
+        left: '20mm'
+      }
+    });
+    
+    await browser.close();
+    
+    // Set response headers for PDF download
+    const filename = `${student.name.replace(/\s+/g, '_')}_Wellbeing_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    
+    res.send(pdfBuffer);
+    
+  } catch (error) {
+    console.error('Error generating PDF report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error while generating PDF'
+    });
+  }
+});
+
+// Helper function to generate HTML content for PDF
+function generateReportHTML(student, assessmentData) {
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  // Calculate average scores across assessments
+  const dimensionNames = ['autonomy', 'environmental_mastery', 'personal_growth', 'positive_relations', 'purpose_in_life', 'self_acceptance'];
+  const averageScores = {};
+  
+  dimensionNames.forEach(dimension => {
+    const scores = assessmentData.map(assessment => assessment.scores[dimension]).filter(score => score !== undefined);
+    averageScores[dimension] = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+  });
+
+  const overallAverage = Math.round(Object.values(averageScores).reduce((a, b) => a + b, 0));
+
+  // Determine risk level based on overall average
+  let riskLevel = 'healthy';
+  if (overallAverage < 126) riskLevel = 'at-risk';
+  else if (overallAverage < 168) riskLevel = 'moderate';
+
+  const riskColor = riskLevel === 'at-risk' ? '#dc3545' : riskLevel === 'moderate' ? '#ffc107' : '#28a745';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Psychological Well-Being Report</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          margin: 0;
+          padding: 0;
+        }
+        .header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 30px;
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .header h1 {
+          margin: 0;
+          font-size: 28px;
+          font-weight: 300;
+        }
+        .header p {
+          margin: 10px 0 0 0;
+          font-size: 16px;
+          opacity: 0.9;
+        }
+        .student-info {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          margin-bottom: 30px;
+        }
+        .student-info h2 {
+          margin-top: 0;
+          color: #495057;
+          font-size: 20px;
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+        }
+        .info-item {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border-bottom: 1px solid #dee2e6;
+        }
+        .info-label {
+          font-weight: 600;
+          color: #6c757d;
+        }
+        .info-value {
+          color: #495057;
+        }
+        .summary-section {
+          margin-bottom: 30px;
+        }
+        .summary-card {
+          background: white;
+          border: 1px solid #dee2e6;
+          border-radius: 8px;
+          padding: 20px;
+          text-align: center;
+        }
+        .overall-score {
+          font-size: 48px;
+          font-weight: bold;
+          color: ${riskColor};
+          margin: 10px 0;
+        }
+        .risk-badge {
+          display: inline-block;
+          padding: 8px 16px;
+          border-radius: 20px;
+          color: white;
+          background-color: ${riskColor};
+          font-weight: 600;
+          text-transform: uppercase;
+          font-size: 12px;
+          letter-spacing: 1px;
+        }
+        .dimensions-section {
+          margin-bottom: 30px;
+        }
+        .dimensions-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
+        }
+        .dimension-card {
+          background: white;
+          border: 1px solid #dee2e6;
+          border-radius: 8px;
+          padding: 20px;
+          text-align: center;
+        }
+        .dimension-name {
+          font-weight: 600;
+          color: #495057;
+          margin-bottom: 10px;
+          font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .dimension-score {
+          font-size: 32px;
+          font-weight: bold;
+          color: #667eea;
+          margin-bottom: 5px;
+        }
+        .dimension-max {
+          font-size: 12px;
+          color: #6c757d;
+        }
+        .assessments-section {
+          margin-bottom: 30px;
+        }
+        .assessment-table {
+          width: 100%;
+          border-collapse: collapse;
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .assessment-table th {
+          background: #f8f9fa;
+          padding: 15px;
+          text-align: left;
+          font-weight: 600;
+          color: #495057;
+          border-bottom: 2px solid #dee2e6;
+        }
+        .assessment-table td {
+          padding: 12px 15px;
+          border-bottom: 1px solid #dee2e6;
+        }
+        .assessment-table tr:last-child td {
+          border-bottom: none;
+        }
+        .footer {
+          margin-top: 40px;
+          padding: 20px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          text-align: center;
+          font-size: 12px;
+          color: #6c757d;
+        }
+        h2 {
+          color: #495057;
+          font-size: 20px;
+          margin-bottom: 20px;
+          padding-bottom: 10px;
+          border-bottom: 2px solid #667eea;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>EUNOIA Psychological Well-Being Report</h1>
+        <p>Comprehensive Assessment Based on Ryff's Six-Factor Model</p>
+      </div>
+
+      <div class="student-info">
+        <h2>Student Information</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Name:</span>
+            <span class="info-value">${student.name}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Student ID:</span>
+            <span class="info-value">${student.id_number}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">College:</span>
+            <span class="info-value">${student.college}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Year Level:</span>
+            <span class="info-value">${student.year_level}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Report Date:</span>
+            <span class="info-value">${currentDate}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Assessments Included:</span>
+            <span class="info-value">${assessmentData.length}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-section">
+        <h2>Overall Well-Being Summary</h2>
+        <div class="summary-card">
+          <div class="overall-score">${overallAverage}</div>
+          <div class="risk-badge">${riskLevel.replace('-', ' ')}</div>
+          <p style="margin-top: 15px; color: #6c757d;">
+            Average score across ${assessmentData.length} assessment${assessmentData.length > 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+
+      <div class="dimensions-section">
+        <h2>Well-Being Dimensions</h2>
+        <div class="dimensions-grid">
+          ${dimensionNames.map(dimension => `
+            <div class="dimension-card">
+              <div class="dimension-name">${dimension.replace('_', ' ')}</div>
+              <div class="dimension-score">${averageScores[dimension]}</div>
+              <div class="dimension-max">out of 42</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="assessments-section">
+        <h2>Assessment History</h2>
+        <table class="assessment-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Overall Score</th>
+              <th>Risk Level</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${assessmentData.map(assessment => `
+              <tr>
+                <td>${new Date(assessment.completed_at).toLocaleDateString()}</td>
+                <td>${assessment.assessment_type.toUpperCase()}</td>
+                <td>${assessment.overall_score}</td>
+                <td style="color: ${assessment.risk_level === 'at-risk' ? '#dc3545' : assessment.risk_level === 'moderate' ? '#ffc107' : '#28a745'}">
+                  ${assessment.risk_level.replace('-', ' ').toUpperCase()}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        <p>This report was generated by EUNOIA - AI-Powered Psychological Well-Being Assessment System</p>
+        <p>University of the Immaculate Conception | Generated on ${currentDate}</p>
+        <p><strong>Confidential:</strong> This report contains sensitive psychological assessment data and should be handled according to institutional privacy policies.</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 module.exports = router;

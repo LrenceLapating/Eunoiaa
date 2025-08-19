@@ -1,7 +1,15 @@
 <template>
   <div class="dashboard-container">
+    <!-- Mobile Navigation Toggle -->
+    <button class="mobile-nav-toggle" @click="toggleMobileNav" v-if="isMobile">
+      <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" :class="{ active: mobileNavOpen }" @click="closeMobileNav" v-if="isMobile"></div>
+    
     <!-- Left Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ 'mobile-open': mobileNavOpen }">
       <div class="logo-container">
         <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="logo-svg">
         <div class="logo-text">
@@ -14,7 +22,7 @@
         <h3>Student Menu</h3>
         <ul>
           <li :class="{ active: currentView === 'assessment' }">
-            <a @click="currentView = 'assessment'" class="menu-item">
+            <a @click="currentView = 'assessment'; closeMobileNav()" class="menu-item">
               <div class="menu-icon">
                 <i class="fas fa-clipboard-list"></i>
               </div>
@@ -22,7 +30,7 @@
             </a>
           </li>
           <li :class="{ active: currentView === 'ai-interventions' }">
-            <a @click="currentView = 'ai-interventions'" class="menu-item">
+            <a @click="currentView = 'ai-interventions'; closeMobileNav()" class="menu-item">
               <div class="menu-icon">
                 <i class="fas fa-comments"></i>
               </div>
@@ -30,7 +38,7 @@
             </a>
           </li>
           <li :class="{ active: currentView === 'settings' }">
-            <a @click="currentView = 'settings'" class="menu-item">
+            <a @click="currentView = 'settings'; closeMobileNav()" class="menu-item">
               <div class="menu-icon">
                 <i class="fas fa-cog"></i>
               </div>
@@ -38,7 +46,7 @@
             </a>
           </li>
           <li class="logout-item">
-            <a @click="logout" class="menu-item">
+            <a @click="logout; closeMobileNav()" class="menu-item">
               <div class="menu-icon logout-icon">
                 <i class="fas fa-sign-out-alt"></i>
               </div>
@@ -117,9 +125,7 @@
                     <span class="duration"><i class="fas fa-clock"></i> {{ getEstimatedDuration }}</span>
                   </div>
                 </div>
-                <div class="status-indicator">
-                  <span class="status-badge not-started">Not Started</span>
-                </div>
+
               </div>
               
               <div class="card-body">
@@ -596,6 +602,9 @@ export default {
       currentAssessment: null,
       loadingInterventions: false,
       aiInterventions: [],
+      // Mobile navigation
+      mobileNavOpen: false,
+      isMobile: false,
       studentProfile: {
         name: '',
         email: '',
@@ -675,6 +684,12 @@ export default {
   async mounted() {
     await this.fetchStudentProfile();
     await this.fetchAssignedAssessments();
+    this.checkMobile();
+    window.addEventListener('resize', this.checkMobile);
+  },
+  
+  beforeUnmount() {
+    window.removeEventListener('resize', this.checkMobile);
   },
   watch: {
     currentView(newView) {
@@ -684,6 +699,22 @@ export default {
     }
   },
   methods: {
+    // Mobile Navigation Methods
+    checkMobile() {
+      this.isMobile = window.innerWidth <= 768;
+      if (!this.isMobile) {
+        this.mobileNavOpen = false;
+      }
+    },
+    
+    toggleMobileNav() {
+      this.mobileNavOpen = !this.mobileNavOpen;
+    },
+    
+    closeMobileNav() {
+      this.mobileNavOpen = false;
+    },
+    
     async fetchStudentProfile() {
       try {
         const result = await authService.getCurrentUserProfile();
@@ -1326,27 +1357,15 @@ export default {
 
 /* Welcome Section */
 .welcome-section {
-  background: linear-gradient(135deg, #00b3b0 0%, #4ecdc4 100%);
-  border-radius: 24px;
-  padding: 40px;
-  margin-bottom: 30px;
+  background: #00b3b0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   color: white;
-  position: relative;
-  overflow: hidden;
-}
-
-.welcome-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>') repeat;
-  opacity: 0.3;
+  border: 1px solid #00a09d;
 }
 
 .welcome-content {
@@ -1356,14 +1375,14 @@ export default {
 }
 
 .welcome-title {
-  font-size: 32px;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  line-height: 1.2;
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
 }
 
 .welcome-subtitle {
-  font-size: 18px;
+  font-size: 16px;
   margin: 0;
   opacity: 0.9;
   line-height: 1.4;
@@ -1371,8 +1390,8 @@ export default {
 
 .welcome-illustration {
   position: relative;
-  width: 200px;
-  height: 150px;
+  width: 120px;
+  height: 80px;
 }
 
 .floating-elements {
@@ -1383,85 +1402,69 @@ export default {
 
 .element {
   position: absolute;
-  width: 50px;
-  height: 50px;
+  width: 32px;
+  height: 32px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 14px;
   color: white;
-  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .element-1 {
-  top: 20px;
-  left: 30px;
-  animation: float 3s ease-in-out infinite;
+  top: 10px;
+  left: 20px;
 }
 
 .element-2 {
-  top: 60px;
-  right: 20px;
-  animation: float 3s ease-in-out infinite 1s;
+  top: 30px;
+  right: 15px;
 }
 
 .element-3 {
-  bottom: 20px;
-  left: 60px;
-  animation: float 3s ease-in-out infinite 2s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  bottom: 10px;
+  left: 40px;
 }
 
 /* Assessment Grid */
 .assessment-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 30px;
+  gap: 20px;
   align-items: start;
 }
 
 /* Main Assessment Card */
 .main-assessment-card {
   background: white;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.main-assessment-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 .card-header {
-  padding: 30px;
-  background: linear-gradient(135deg, #f8fffe 0%, #f0fffe 100%);
-  border-bottom: 1px solid rgba(0, 179, 176, 0.1);
+  padding: 20px;
+  background: #f8fffe;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
 }
 
 .assessment-icon {
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #00b3b0, #4ecdc4);
-  border-radius: 16px;
+  width: 48px;
+  height: 48px;
+  background: #00b3b0;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 24px;
-  box-shadow: 0 4px 16px rgba(0, 179, 176, 0.3);
-  padding: 8px;
+  font-size: 20px;
+  padding: 6px;
 }
 
 .assessment-logo {
@@ -1476,9 +1479,9 @@ export default {
 }
 
 .assessment-info h3 {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
   color: #1a2e35;
 }
 
@@ -1502,27 +1505,10 @@ export default {
   gap: 6px;
 }
 
-.status-indicator {
-  align-self: flex-start;
-}
 
-.status-badge {
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.status-badge.not-started {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #92400e;
-  border: 1px solid #fbbf24;
-}
 
 .card-body {
-  padding: 30px;
+  padding: 20px;
 }
 
 .assessment-description {
@@ -1537,10 +1523,10 @@ export default {
 }
 
 .progress-section {
-  margin-bottom: 30px;
-  padding: 20px;
+  margin-bottom: 20px;
+  padding: 16px;
   background: #f8fafc;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
 }
 
@@ -1548,7 +1534,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .progress-label {
@@ -1573,35 +1559,20 @@ export default {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00b3b0, #4ecdc4);
+  background: #00b3b0;
   border-radius: 4px;
-  transition: width 0.8s ease;
-}
-
-.progress-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  transition: width 0.3s ease;
 }
 
 .dimensions-preview {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .dimensions-preview h4 {
   font-size: 16px;
   font-weight: 600;
   color: #1e293b;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
 }
 
 .dimensions-grid {
@@ -1614,19 +1585,12 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 10px;
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
   color: #475569;
-  transition: all 0.2s ease;
-}
-
-.dimension-item:hover {
-  border-color: #00b3b0;
-  background: #f0fffe;
-  color: #00b3b0;
 }
 
 .dimension-item i {
@@ -1636,21 +1600,19 @@ export default {
 
 .action-section {
   display: flex;
-  gap: 16px;
+  gap: 12px;
 }
 
 .primary-action-btn {
   flex: 1;
-  background: linear-gradient(135deg, #00b3b0, #4ecdc4);
+  background: #00b3b0;
   color: white;
   border: none;
-  padding: 16px 24px;
-  border-radius: 12px;
+  padding: 12px 20px;
+  border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(0, 179, 176, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1658,20 +1620,18 @@ export default {
 }
 
 .primary-action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 179, 176, 0.4);
+  background: #00a09d;
 }
 
 .secondary-action-btn {
-  padding: 16px 24px;
+  padding: 12px 20px;
   background: white;
   color: #64748b;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1680,21 +1640,20 @@ export default {
 .secondary-action-btn:hover {
   border-color: #00b3b0;
   color: #00b3b0;
-  background: #f0fffe;
 }
 
 /* Stats Card */
 .stats-card {
   background: white;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .stats-header {
-  padding: 20px 24px;
-  background: linear-gradient(135deg, #1e293b, #334155);
+  padding: 16px 20px;
+  background: #1e293b;
   color: white;
   display: flex;
   justify-content: space-between;
@@ -1713,12 +1672,12 @@ export default {
 }
 
 .stats-content {
-  padding: 24px;
+  padding: 16px;
 }
 
 .stat-item {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .stat-item:last-child {
@@ -1743,14 +1702,14 @@ export default {
 /* Tips Card */
 .tips-card {
   background: white;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
   overflow: hidden;
 }
 
 .tips-header {
-  padding: 20px 24px;
-  background: linear-gradient(135deg, #f59e0b, #f97316);
+  padding: 16px 20px;
+  background: #f59e0b;
   color: white;
   display: flex;
   justify-content: space-between;
@@ -1769,7 +1728,7 @@ export default {
 }
 
 .tips-content {
-  padding: 24px;
+  padding: 16px;
 }
 
 .tip-item {
@@ -1796,58 +1755,42 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 400px;
-  padding: 40px 20px;
+  min-height: 300px;
+  padding: 32px 20px;
 }
 
 .no-assessment-card {
   background: white;
-  border-radius: 20px;
-  padding: 40px;
+  border-radius: 12px;
+  padding: 32px;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   max-width: 500px;
   width: 100%;
-  border: 2px dashed #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.no-assessment-card:hover {
-  border-color: #00b3b0;
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  border: 1px dashed #e2e8f0;
 }
 
 .no-assessment-icon {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .no-assessment-logo {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   opacity: 0.6;
-  filter: grayscale(1);
-  transition: all 0.3s ease;
-}
-
-.no-assessment-card:hover .no-assessment-logo {
-  opacity: 1;
-  filter: grayscale(0);
-  transform: scale(1.1);
 }
 
 .no-assessment-card h3 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   color: #1e293b;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
 }
 
 .no-assessment-card p {
   font-size: 16px;
   color: #64748b;
   line-height: 1.6;
-  margin: 0 0 32px 0;
+  margin: 0 0 24px 0;
 }
 
 .no-assessment-actions {
@@ -1856,55 +1799,48 @@ export default {
 }
 
 .contact-counselor-btn {
-  background: linear-gradient(135deg, #00b3b0, #4ecdc4);
+  background: #00b3b0;
   color: white;
   border: none;
-  padding: 14px 28px;
-  border-radius: 12px;
+  padding: 12px 24px;
+  border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(0, 179, 176, 0.3);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .contact-counselor-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 179, 176, 0.4);
-}
-
-.contact-counselor-btn:active {
-  transform: translateY(0);
+  background: #00a09d;
 }
 
 /* Responsive Design */
 @media (max-width: 1024px) {
   .assessment-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 16px;
   }
   
   .welcome-section {
     flex-direction: column;
     text-align: center;
-    gap: 20px;
+    gap: 16px;
   }
   
   .welcome-illustration {
-    width: 150px;
-    height: 100px;
+    width: 100px;
+    height: 60px;
   }
   
   .no-assessment-card {
-    padding: 30px 20px;
+    padding: 24px 16px;
   }
   
   .no-assessment-logo {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
   }
 }
 
@@ -1918,11 +1854,19 @@ export default {
   }
   
   .welcome-title {
-    font-size: 24px;
+    font-size: 20px;
   }
   
   .welcome-subtitle {
-    font-size: 16px;
+    font-size: 14px;
+  }
+  
+  .card-header {
+    padding: 16px;
+  }
+  
+  .card-body {
+    padding: 16px;
   }
 }
 
@@ -3334,32 +3278,210 @@ export default {
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* Mobile Navigation Toggle */
+.mobile-nav-toggle {
+  display: none;
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1001;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.3);
+  transition: all 0.3s ease;
+}
+
+.mobile-nav-toggle:hover {
+  background: var(--primary-dark);
+  transform: scale(1.05);
+}
+
+.mobile-nav-toggle i {
+  font-size: 18px;
+}
+
+/* Mobile Overlay */
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-overlay.active {
+  opacity: 1;
+}
+
 /* Responsive Styles */
+@media (max-width: 1200px) {
+  .content-container {
+    padding: 25px;
+  }
+  
+  .assessment-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .welcome-section {
+    padding: 20px;
+  }
+  
+  .welcome-title {
+    font-size: 22px;
+  }
+  
+  .welcome-subtitle {
+    font-size: 15px;
+  }
+}
+
 @media (max-width: 900px) {
   .sidebar {
     width: 240px;
   }
+  
   .main-content {
     margin-left: 240px;
+  }
+  
+  .top-nav {
+    left: 240px;
+  }
+  
+  .page-title h1 {
+    font-size: 24px;
+  }
+  
+  .page-title p {
+    font-size: 13px;
   }
 }
 
 @media (max-width: 768px) {
+  .mobile-nav-toggle {
+    display: block;
+  }
+  
+  .mobile-overlay {
+    display: block;
+  }
+  
   .sidebar {
-    width: 70px;
+    transform: translateX(-100%);
+    width: 280px;
+    z-index: 100;
   }
-  .logo-text, .sidebar-menu h3, .menu-item span {
-    display: none;
+  
+  .sidebar.mobile-open {
+    transform: translateX(0);
   }
-  .menu-icon {
-    margin-right: 0;
+  
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .top-nav {
+    left: 0;
+    padding: 15px 20px 15px 70px;
+  }
+  
+  .content-container {
+    padding: 20px 15px;
+    margin-top: 60px;
+  }
+  
+  .welcome-section {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+    padding: 20px;
+  }
+  
+  .welcome-illustration {
+    width: 100px;
+    height: 60px;
+  }
+  
+  .assessment-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .assessment-icon {
+    width: 40px;
+    height: 40px;
     font-size: 18px;
   }
-  .main-content {
-    margin-left: 70px;
+  
+  .assessment-info h3 {
+    font-size: 18px;
   }
-  .assessment-card, .settings-card {
+  
+  .assessment-meta {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .card-body {
+    padding: 16px;
+  }
+  
+  .progress-section {
+    padding: 12px;
+  }
+  
+  .dimensions-preview {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .action-section {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .primary-action, .secondary-action {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .stats-card, .tips-card {
+    padding: 16px;
+  }
+  
+  .no-assessment-card {
     padding: 20px;
+    text-align: center;
+  }
+  
+  .no-assessment-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+  }
+  
+  .no-assessment-logo {
+    width: 80px;
+    height: 80px;
   }
 }
 
@@ -3408,29 +3530,267 @@ export default {
 }
 
 @media (max-width: 600px) {
+  .mobile-nav-toggle {
+    top: 15px;
+    left: 15px;
+    padding: 10px;
+  }
+  
   .top-nav {
-    padding: 15px;
+    padding: 12px 15px 12px 60px;
   }
+  
   .page-title h1 {
-    font-size: 22px;
-  }
-  .content-container {
-    padding: 15px;
-  }
-  .assessment-card, .settings-card {
-    padding: 15px;
-  }
-  
-  .profile-details h2 {
-    font-size: 24px;
-  }
-  
-  .settings-header h3 {
     font-size: 20px;
   }
   
-  .settings-section h4 {
+  .page-title p {
+    font-size: 12px;
+  }
+  
+  .content-container {
+    padding: 15px 10px;
+    margin-top: 55px;
+  }
+  
+  .welcome-section {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .welcome-title {
+    font-size: 20px;
+  }
+  
+  .welcome-subtitle {
+    font-size: 14px;
+  }
+  
+  .welcome-illustration {
+    width: 80px;
+    height: 50px;
+  }
+  
+  .element {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  
+  .assessment-grid {
+    gap: 12px;
+  }
+  
+  .card-header {
+    padding: 12px;
+  }
+  
+  .assessment-icon {
+    width: 36px;
+    height: 36px;
     font-size: 16px;
+  }
+  
+  .assessment-info h3 {
+    font-size: 16px;
+  }
+  
+  .assessment-type {
+    font-size: 12px;
+  }
+  
+  .assessment-meta {
+    font-size: 11px;
+  }
+  
+  .card-body {
+    padding: 12px;
+  }
+  
+  .assessment-description p {
+    font-size: 14px;
+  }
+  
+  .progress-section {
+    padding: 10px;
+    margin-bottom: 16px;
+  }
+  
+  .dimensions-preview h4 {
+    font-size: 14px;
+  }
+  
+  .dimensions-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .dimension-item {
+    padding: 8px;
+    font-size: 12px;
+  }
+  
+  .primary-action-btn, .secondary-action-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  
+  .stats-card, .tips-card {
+    padding: 12px;
+  }
+  
+  .stats-header, .tips-header {
+    padding: 12px 16px;
+  }
+  
+  .stats-header h4, .tips-header h4 {
+    font-size: 14px;
+  }
+  
+  .stat-number {
+    font-size: 24px;
+  }
+  
+  .stat-label {
+    font-size: 11px;
+  }
+  
+  .no-assessment-card {
+    padding: 16px;
+  }
+  
+  .no-assessment-card h3 {
+    font-size: 18px;
+  }
+  
+  .no-assessment-card p {
+    font-size: 14px;
+  }
+  
+  .no-assessment-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+  
+  .no-assessment-logo {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .contact-counselor-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  
+  /* Settings responsive */
+  .settings-view {
+    padding: 0 5px;
+  }
+  
+  .profile-info-card, .settings-card {
+    padding: 16px;
+  }
+  
+  .profile-details h2 {
+    font-size: 20px;
+  }
+  
+  .settings-header h3 {
+    font-size: 18px;
+  }
+  
+  .settings-section h4 {
+    font-size: 14px;
+  }
+  
+  .form-group input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+  
+  .save-btn, .cancel-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  
+  /* AI Interventions responsive */
+  .interventions-grid {
+    gap: 16px;
+  }
+  
+  .card-content {
+    padding: 16px;
+  }
+  
+  .intervention-title {
+    font-size: 18px;
+  }
+  
+  .intervention-content {
+    font-size: 14px;
+    padding: 16px;
+  }
+  
+  .action-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100vw;
+  }
+  
+  .welcome-section {
+    padding: 12px;
+  }
+  
+  .welcome-title {
+    font-size: 18px;
+  }
+  
+  .welcome-subtitle {
+    font-size: 13px;
+  }
+  
+  .assessment-grid {
+    gap: 10px;
+  }
+  
+  .card-header, .card-body {
+    padding: 10px;
+  }
+  
+  .assessment-info h3 {
+    font-size: 15px;
+  }
+  
+  .dimensions-grid {
+    gap: 4px;
+  }
+  
+  .dimension-item {
+    padding: 6px;
+    font-size: 11px;
+  }
+  
+  .primary-action-btn, .secondary-action-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .no-assessment-card {
+    padding: 12px;
+  }
+  
+  .no-assessment-card h3 {
+    font-size: 16px;
+  }
+  
+  .no-assessment-card p {
+    font-size: 13px;
   }
 }
 </style>
