@@ -16,7 +16,7 @@
         <h3 v-show="sidebarExpanded">Counselor Menu</h3>
         <ul>
           <li :class="{ active: currentView === 'dashboard' }">
-            <a @click="currentView = 'dashboard'" class="menu-item" data-tooltip="Dashboard">
+            <a @click="setView('dashboard')" class="menu-item" data-tooltip="Dashboard">
               <div class="menu-icon">
               <i class="fas fa-th-large"></i>
               </div>
@@ -33,13 +33,13 @@
             </a>
             <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'ryffAssessment' && sidebarExpanded }">
               <li :class="{ active: currentView === 'bulkAssessment' }">
-                <a @click="currentView = 'bulkAssessment'" class="submenu-item">
+                <a @click="setView('bulkAssessment')" class="submenu-item">
                   <i class="fas fa-users"></i>
                   <span v-show="sidebarExpanded">Bulk Assessment</span>
                 </a>
               </li>
               <li :class="{ active: currentView === 'autoReminders' }">
-                <a @click="currentView = 'autoReminders'" class="submenu-item">
+                <a @click="setView('autoReminders')" class="submenu-item">
                   <i class="fas fa-bell"></i>
                   <span v-show="sidebarExpanded">Auto-Reminders</span>
                 </a>
@@ -57,14 +57,14 @@
             </a>
             <ul class="submenu" :class="{ 'submenu-open': showSubmenu === 'results' && sidebarExpanded }">
               <li :class="{ active: currentView === 'ryffScoring' }">
-                <a @click="currentView = 'ryffScoring'" class="submenu-item">
+                <a @click="setView('ryffScoring')" class="submenu-item">
                   <i class="fas fa-calculator"></i>
                   <span v-show="sidebarExpanded">Ryff Scoring</span>
                 </a>
               </li>
 
               <li :class="{ active: currentView === 'guidance' }">
-                <a @click="currentView = 'guidance'" class="submenu-item">
+                <a @click="setView('guidance')" class="submenu-item">
                   <i class="fas fa-comment-alt"></i>
                   <span v-show="sidebarExpanded">College</span>
                 </a>
@@ -72,7 +72,7 @@
             </ul>
           </li>
           <li :class="{ active: currentView === 'intervention' }">
-            <a @click="currentView = 'intervention'" class="menu-item" data-tooltip="Intervention">
+            <a @click="setView('intervention')" class="menu-item" data-tooltip="Intervention">
               <div class="menu-icon">
               <i class="fas fa-brain"></i>
               </div>
@@ -80,7 +80,7 @@
             </a>
           </li>
           <li :class="{ active: currentView === 'status' }">
-            <a @click="currentView = 'status'" class="menu-item" data-tooltip="Account Management">
+            <a @click="setView('status')" class="menu-item" data-tooltip="Account Management">
               <div class="menu-icon">
               <i class="fas fa-signal"></i>
               </div>
@@ -88,7 +88,7 @@
             </a>
           </li>
           <li :class="{ active: currentView === 'reports' }">
-            <a @click="currentView = 'reports'" class="menu-item" data-tooltip="Reports">
+            <a @click="setView('reports')" class="menu-item" data-tooltip="Reports">
               <div class="menu-icon">
               <i class="fas fa-file-alt"></i>
               </div>
@@ -96,7 +96,7 @@
             </a>
           </li>
           <li :class="{ active: currentView === 'settings' }">
-            <a @click="currentView = 'settings'" class="menu-item" data-tooltip="Settings">
+            <a @click="setView('settings')" class="menu-item" data-tooltip="Settings">
               <div class="menu-icon">
               <i class="fas fa-cog"></i>
               </div>
@@ -187,22 +187,27 @@
               </div>
 
               <div class="alerts-container">
-                <div v-for="(dimension, index) in dimensions" 
+                <div v-for="(dimension, index) in riskAlertsData" 
                      :key="index" 
                      class="alert-item"
                      @click="showDimensionDetails(dimension)"
-                     :class="{ 'clickable': true }"
-                     v-if="dimension && dimension.name && dimension.highRiskColleges && dimension.highRiskColleges.length > 0">
+                     :class="{ 'clickable': true, 'has-risk': dimension.totalAtRisk > 0 }">
                   <div class="alert-details">
-                    <h4>{{ dimension.name || 'Unknown Dimension' }}</h4>
+                    <h4>{{ dimension.dimension }}</h4>
+                    <div class="risk-badge" v-if="dimension.totalAtRisk > 0">
+                      {{ dimension.totalAtRisk }}
+                    </div>
                   </div>
-                  <div class="alert-colleges">
-                    <p>{{ (dimension.highRiskColleges && dimension.highRiskColleges.length) || 0 }} colleges</p>
+                  <div class="alert-colleges" v-if="dimension.totalAtRisk > 0">
+                    <p>{{ dimension.colleges.length }} colleges</p>
                     <span>at high risk</span>
                   </div>
+                  <div class="alert-colleges no-risk" v-else>
+                    <p>No students at risk</p>
+                  </div>
                 </div>
-                <div v-if="!dimensions || dimensions.length === 0" class="no-alerts">
-                  <p>No risk alerts at this time</p>
+                <div v-if="riskAlertsLoading" class="loading-alerts">
+                  <p>Loading risk alerts...</p>
                 </div>
               </div>
             </div>
@@ -249,24 +254,8 @@
             </div>
           </div>
 
-          <!-- Average Ryff Subscale Scores -->
-          <div class="section subscale-section">
-            <div class="section-header">
-              <div class="section-title">
-                <div class="section-icon chart-icon">
-                  <i class="fas fa-chart-bar"></i>
-                </div>
-                <div>
-                  <h3>Average Ryff Subscale Scores by College</h3>
-                  <p>Visual representation of well-being scores across colleges</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="chart-container">
-              <SimpleRyffChart :student-data="students" />
-            </div>
-          </div>
+          <!-- Yearly Trend Analysis -->
+          <YearlyTrendAnalysis />
         </div>
 
         <!-- Bulk Assessment View -->
@@ -318,17 +307,17 @@
       <div class="modal" v-if="showModal && selectedDimension" @click.self="closeModal">
         <div class="modal-content dimension-details">
           <div class="modal-header">
-            <h3>{{ selectedDimension.name }} - Colleges at High Risk</h3>
+            <h3>{{ selectedDimension.dimension }} - Colleges at High Risk</h3>
             <button class="close-button" @click="closeModal">
               <i class="fas fa-times"></i>
             </button>
           </div>
           <div class="modal-body">
             <div class="college-risk-list">
-              <div v-for="(college, index) in selectedDimension.highRiskColleges" 
+              <div v-for="(college, index) in selectedDimension.colleges" 
                    :key="index" 
                    class="college-risk-item"
-                   @click="viewStudentsAtRisk(selectedDimension.name, college.name)">
+                   @click="viewStudentsAtRisk(selectedDimension.dimension, college.name)">
                 <div class="college-name">{{ college.name }}</div>
                 <div class="student-count">
                   <span class="count">{{ college.studentCount }}</span>
@@ -348,7 +337,7 @@
 
 <script>
 import authService from '@/services/authService'
-import SimpleRyffChart from '../Shared/SimpleRyffChart.vue'
+import YearlyTrendAnalysis from './YearlyTrendAnalysis.vue'
 import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
@@ -364,7 +353,7 @@ import { calculateCollegeStats } from '../Shared/RyffScoringUtils'
 export default {
   name: 'CounselorDashboard',
   components: {
-    SimpleRyffChart,
+    YearlyTrendAnalysis,
     RyffScoring,
     BulkAssessment,
     AutoReminders,
@@ -389,12 +378,16 @@ export default {
       preSelectedStudent: null,
       preSelectedReportType: null,
       sidebarExpanded: false,
+      viewChangeTimeout: null,
       // Student data - will be populated by initializeStudentData()
       students: [],
       // Risk threshold - scores at or below this value are considered "at risk"
       riskThreshold: 17,
-      // Dimensions will be calculated dynamically
+      // Dimensions will be calculated dynamically (legacy)
       dimensions: [],
+      // New risk alerts data from API
+      riskAlertsData: [],
+      riskAlertsLoading: false,
       // College overview data - will be populated from backend
       collegeOverviewData: [],
       currentDate: new Date().toLocaleDateString('en-US', { 
@@ -412,7 +405,9 @@ export default {
     await this.initializeStudentData();
     // Load college overview data
     await this.loadCollegeOverviewData();
-    // Calculate risk dimensions only after student data is loaded
+    // Load new risk alerts data
+    await this.loadRiskAlertsData();
+    // Calculate risk dimensions only after student data is loaded (legacy)
     this.calculateRiskDimensions();
   },
   async mounted() {
@@ -465,6 +460,12 @@ export default {
     }
   },
   methods: {
+    setView(view) {
+      if (this.viewChangeTimeout) clearTimeout(this.viewChangeTimeout);
+      this.viewChangeTimeout = setTimeout(() => {
+        this.currentView = view;
+      }, 300);
+    },
     async logout() {
       await authService.logout();
     },
@@ -483,7 +484,7 @@ export default {
     viewStudentsAtRisk(dimensionName, collegeName) {
       this.selectedRiskDimension = dimensionName;
       this.selectedRiskCollege = collegeName;
-      this.currentView = 'ryffScoring';
+      this.setView('ryffScoring');
       this.closeModal();
       
       // Log the navigation for debugging
@@ -498,7 +499,7 @@ export default {
       this.preSelectedReportType = data.reportType;
       
       // Navigate to reports view
-      this.currentView = 'reports';
+      this.setView('reports');
     },
     refreshData() {
       // Refresh dashboard data
@@ -509,6 +510,53 @@ export default {
     clearRiskFilters() {
       this.selectedRiskDimension = null;
       this.selectedRiskCollege = 'all';
+    },
+    
+    // Load risk alerts data from API
+    async loadRiskAlertsData() {
+      this.riskAlertsLoading = true;
+      try {
+        const response = await fetch('http://localhost:3000/api/risk-alerts', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          this.riskAlertsData = result.data;
+          console.log('Risk alerts data loaded:', this.riskAlertsData);
+        } else {
+          console.error('Failed to load risk alerts:', result.error);
+          // Initialize with empty data structure for all 6 dimensions
+          this.initializeEmptyRiskAlerts();
+        }
+      } catch (error) {
+        console.error('Error loading risk alerts:', error);
+        // Initialize with empty data structure for all 6 dimensions
+        this.initializeEmptyRiskAlerts();
+      } finally {
+        this.riskAlertsLoading = false;
+      }
+    },
+    
+    // Initialize empty risk alerts structure
+    initializeEmptyRiskAlerts() {
+      this.riskAlertsData = [
+        { dimension: 'Autonomy', dimensionKey: 'autonomy', totalAtRisk: 0, colleges: [] },
+        { dimension: 'Environmental Mastery', dimensionKey: 'environmental_mastery', totalAtRisk: 0, colleges: [] },
+        { dimension: 'Personal Growth', dimensionKey: 'personal_growth', totalAtRisk: 0, colleges: [] },
+        { dimension: 'Positive Relations with Others', dimensionKey: 'positive_relations', totalAtRisk: 0, colleges: [] },
+        { dimension: 'Purpose in Life', dimensionKey: 'purpose_in_life', totalAtRisk: 0, colleges: [] },
+        { dimension: 'Self-Acceptance', dimensionKey: 'self_acceptance', totalAtRisk: 0, colleges: [] }
+      ];
     },
     
     // Handle navigation to college detail
@@ -1490,13 +1538,43 @@ export default {
 
 .alert-details {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .alert-details h4 {
   font-size: 15px;
   font-weight: 500;
-  margin: 0 0 5px 0;
+  margin: 0;
   color: var(--dark);
+}
+
+.risk-badge {
+  background-color: var(--accent);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 10px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+  }
 }
 
 .alert-details p {
@@ -1507,6 +1585,45 @@ export default {
 
 .negative {
   color: #f44336;
+}
+
+.alert-colleges {
+  text-align: right;
+}
+
+.alert-colleges p {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--dark);
+}
+
+.alert-colleges.no-risk p {
+  color: var(--text-light);
+  font-size: 13px;
+}
+
+.alert-colleges span {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.alert-item.has-risk {
+  border-left: 3px solid var(--accent);
+}
+
+.alert-item:not(.has-risk) {
+  opacity: 0.7;
+}
+
+.alert-item:not(.has-risk):hover {
+  opacity: 1;
+}
+
+.loading-alerts {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-light);
 }
 
 .alert-students {

@@ -15,6 +15,8 @@ const studentInterventionRoutes = require('./routes/studentInterventions');
 const counselorInterventionRoutes = require('./routes/counselorInterventions');
 const counselorManagementRoutes = require('./routes/counselorManagement');
 const aiInterventionRoutes = require('./routes/aiInterventions');
+const riskAlertsRoutes = require('./routes/riskAlerts');
+const yearlyTrendsRoutes = require('./routes/yearlyTrends');
 const { supabase } = require('./config/database');
 const { SessionManager } = require('./middleware/sessionManager');
 const autoInterventionService = require('./services/autoInterventionService');
@@ -56,6 +58,8 @@ app.use('/api/student-interventions', studentInterventionRoutes);
 app.use('/api/counselor-interventions', counselorInterventionRoutes);
 app.use('/api/counselor-management', counselorManagementRoutes);
 app.use('/api/ai-interventions', aiInterventionRoutes);
+app.use('/api/risk-alerts', riskAlertsRoutes);
+app.use('/api/yearly-trends', yearlyTrendsRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

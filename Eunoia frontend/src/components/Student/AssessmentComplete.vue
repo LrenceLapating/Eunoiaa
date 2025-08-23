@@ -1,19 +1,26 @@
 <template>
   <div class="completion-container">
-    <div class="completion-card">
-      <!-- Success Icon -->
-      <div class="success-icon">
-        <div class="checkmark-circle">
-          <div class="checkmark"></div>
+    <!-- Header Section -->
+    <div class="completion-header">
+      <div class="container">
+        <!-- Success Icon -->
+        <div class="success-icon">
+          <div class="checkmark-circle">
+            <div class="checkmark"></div>
+          </div>
         </div>
-      </div>
-
-      <!-- Completion Message -->
-      <div class="completion-content">
+        
         <h1 class="completion-title">Assessment Complete!</h1>
         <p class="completion-message">
           Thank you for completing the {{ assessmentTitle }}. Your responses have been successfully submitted and will be reviewed by our counseling team.
         </p>
+      </div>
+    </div>
+    
+    <!-- Content Section -->
+    <div class="completion-content">
+      <div class="container">
+        <div class="completion-card">
 
         <!-- Assessment Details -->
         <div class="assessment-details">
@@ -115,6 +122,7 @@
             </a>
           </div>
         </div>
+        </div>
       </div>
     </div>
 
@@ -133,6 +141,18 @@ export default {
       type: String,
       default: '42',
       validator: value => ['42', '84'].includes(value)
+    },
+    timeTakenMinutes: {
+      type: Number,
+      default: null
+    },
+    timeTakenSeconds: {
+      type: Number,
+      default: null
+    },
+    assignedAssessmentId: {
+      type: String,
+      default: null
     }
   },
   computed: {
@@ -140,9 +160,33 @@ export default {
       return `Ryff Psychological Well-being Scale (${this.assessmentType}-Item Version)`
     },
     estimatedTime() {
-      // Estimate based on assessment type
-      const minutes = this.assessmentType === '84' ? '25-30' : '15-20'
-      return `${minutes} minutes`
+      if (this.timeTakenSeconds !== null && this.timeTakenSeconds !== undefined) {
+        // Display exact time taken in minutes and seconds
+        const totalSeconds = this.timeTakenSeconds
+        const minutes = Math.floor(totalSeconds / 60)
+        const seconds = totalSeconds % 60
+        
+        if (minutes === 0) {
+          return `${seconds} second${seconds !== 1 ? 's' : ''}`
+        } else if (seconds === 0) {
+          return `${minutes} minute${minutes !== 1 ? 's' : ''}`
+        } else {
+          return `${minutes} min ${seconds} sec`
+        }
+      } else if (this.timeTakenMinutes !== null && this.timeTakenMinutes !== undefined) {
+        // Fallback to minutes only if seconds not available
+        if (this.timeTakenMinutes < 1) {
+          return 'Less than 1 minute'
+        } else if (this.timeTakenMinutes === 1) {
+          return '1 minute'
+        } else {
+          return `${this.timeTakenMinutes} minutes`
+        }
+      } else {
+        // Fallback to estimate based on assessment type
+        const minutes = this.assessmentType === '84' ? '25-30' : '15-20'
+        return `${minutes} minutes`
+      }
     }
   },
   mounted() {
@@ -180,11 +224,11 @@ export default {
     },
     
     getParticleStyle(index) {
-      const colors = ['#667eea', '#764ba2', '#48bb78', '#ed8936', '#9f7aea']
-      const size = Math.random() * 6 + 2
+      const colors = ['#00b3b0', '#008b89', '#48bb78', '#f8c630', '#00d4aa']
+      const size = Math.random() * 8 + 3
       const left = Math.random() * 100
-      const animationDelay = Math.random() * 3
-      const animationDuration = Math.random() * 3 + 2
+      const animationDelay = Math.random() * 4
+      const animationDuration = Math.random() * 4 + 3
       
       return {
         width: `${size}px`,
@@ -200,28 +244,57 @@ export default {
 </script>
 
 <style scoped>
+:root {
+  --primary: #00b3b0;
+  --primary-dark: #008b89;
+  --primary-light: #b2ebf2;
+  --secondary: #f8c630;
+  --success: #48bb78;
+  --success-dark: #38a169;
+}
+
 .completion-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  padding: 0;
   position: relative;
   overflow: hidden;
 }
 
-.completion-card {
-  background: white;
-  border-radius: 20px;
-  padding: 50px;
-  max-width: 800px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+.completion-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 80px 0 60px 0;
   text-align: center;
   position: relative;
   z-index: 2;
+}
+
+.completion-content {
+  background: white;
+  padding: 60px 0;
+  position: relative;
+  z-index: 2;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.completion-card {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  max-width: none;
+  width: 100%;
+  box-shadow: none;
+  text-align: left;
+  position: relative;
+  z-index: 2;
   animation: slideUp 0.8s ease-out;
+  border: none;
 }
 
 @keyframes slideUp {
@@ -240,16 +313,17 @@ export default {
 }
 
 .checkmark-circle {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #48bb78, #38a169);
+  background: linear-gradient(135deg, var(--success), var(--success-dark));
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto;
   position: relative;
   animation: scaleIn 0.5s ease-out;
+  box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
 }
 
 @keyframes scaleIn {
@@ -291,44 +365,64 @@ export default {
 }
 
 .completion-title {
-  font-size: 2.5rem;
+  font-size: 3.5rem;
   font-weight: 700;
-  color: #2d3748;
-  margin: 0 0 20px 0;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 32px 0 24px 0;
   text-align: center;
+  letter-spacing: -0.02em;
 }
 
 .completion-message {
-  font-size: 1.2rem;
-  color: #4a5568;
+  font-size: 1.3rem;
+  color: #2d3748;
   line-height: 1.6;
-  margin-bottom: 40px;
+  margin-bottom: 0;
   text-align: center;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .assessment-details {
-  background: #f7fafc;
-  border-radius: 12px;
-  padding: 25px;
-  margin-bottom: 40px;
-  border: 1px solid #e2e8f0;
+  background: #f8fffe;
+  border-radius: 16px;
+  padding: 40px;
+  margin: 60px 0;
+  border: 1px solid rgba(0, 179, 176, 0.1);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
 }
 
 .detail-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 24px;
+  margin-bottom: 0;
+  padding: 24px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
 }
 
-.detail-item:last-child {
-  margin-bottom: 0;
+.detail-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 .detail-item i {
-  width: 20px;
-  color: #667eea;
-  font-size: 1.2rem;
+  width: 28px;
+  height: 28px;
+  color: var(--primary);
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .detail-content {
@@ -351,44 +445,53 @@ export default {
 }
 
 .next-steps {
-  margin-bottom: 40px;
+  margin: 60px 0;
 }
 
 .next-steps h3 {
-  font-size: 1.5rem;
-  color: #2d3748;
-  margin-bottom: 25px;
+  font-size: 2rem;
   font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 32px;
+  text-align: left;
 }
 
 .steps-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 32px;
 }
 
 .step-item {
   display: flex;
   align-items: flex-start;
-  gap: 20px;
-  padding: 20px;
-  background: #f7fafc;
-  border-radius: 12px;
-  border-left: 4px solid #667eea;
+  gap: 32px;
+  padding: 32px;
+  background: linear-gradient(135deg, #f8fdfd, #f0fffe);
+  border-radius: 20px;
+  border-left: 4px solid var(--primary);
+  box-shadow: 0 4px 16px rgba(0, 179, 176, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.step-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 179, 176, 0.15);
 }
 
 .step-number {
-  width: 30px;
-  height: 30px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: #667eea;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1.3rem;
   flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(0, 179, 176, 0.3);
 }
 
 .step-content h4 {
@@ -407,76 +510,88 @@ export default {
 .important-notice {
   display: flex;
   align-items: flex-start;
-  gap: 15px;
-  padding: 20px;
-  background: #fffbeb;
-  border: 1px solid #f6e05e;
-  border-radius: 12px;
-  margin-bottom: 40px;
+  gap: 20px;
+  padding: 24px;
+  background: linear-gradient(135deg, #fff8e1, #fff3c4);
+  border: 1px solid var(--secondary);
+  border-radius: 16px;
+  margin-bottom: 48px;
+  box-shadow: 0 4px 16px rgba(248, 198, 48, 0.1);
 }
 
 .notice-icon {
-  color: #d69e2e;
-  font-size: 1.3rem;
+  color: #e6a700;
+  font-size: 1.4rem;
   flex-shrink: 0;
   margin-top: 2px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .notice-content h4 {
-  margin: 0 0 8px 0;
-  color: #744210;
-  font-size: 1.1rem;
+  margin: 0 0 12px 0;
+  color: #b7791f;
+  font-size: 1.2rem;
   font-weight: 600;
 }
 
 .notice-content p {
   margin: 0;
-  color: #744210;
-  line-height: 1.5;
-  font-size: 0.95rem;
+  color: #8b5a00;
+  line-height: 1.6;
+  font-size: 1rem;
 }
 
 .action-buttons {
   display: flex;
-  gap: 15px;
-  justify-content: center;
-  margin-bottom: 40px;
+  gap: 24px;
+  justify-content: flex-start;
+  margin: 50px 0;
+  flex-wrap: wrap;
 }
 
 .btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
+  gap: 12px;
+  padding: 18px 40px;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 14px;
+  font-size: 1.2rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   text-decoration: none;
+  min-width: 220px;
+  justify-content: center;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: white;
+  box-shadow: 0 8px 25px rgba(0, 179, 176, 0.3);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 179, 176, 0.4);
 }
 
 .btn-secondary {
-  background: #f7fafc;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
+  background: white;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+  box-shadow: 0 6px 16px rgba(0, 179, 176, 0.1);
 }
 
 .btn-secondary:hover {
-  background: #edf2f7;
-  border-color: #cbd5e0;
-  transform: translateY(-1px);
+  background: var(--primary);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 179, 176, 0.3);
 }
 
 .support-contact {
@@ -500,15 +615,20 @@ export default {
 .contact-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #667eea;
+  gap: 10px;
+  color: var(--primary);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(0, 179, 176, 0.05);
 }
 
 .contact-link:hover {
-  color: #5a67d8;
+  color: var(--primary-dark);
+  background: rgba(0, 179, 176, 0.1);
+  transform: translateY(-1px);
 }
 
 .particles {
@@ -546,66 +666,171 @@ export default {
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 1400px) {
   .completion-card {
-    padding: 30px 25px;
-    margin: 10px;
+    max-width: 1000px;
+    padding: 50px 60px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .completion-card {
+    max-width: 900px;
+    padding: 45px 50px;
   }
   
   .completion-title {
-    font-size: 2rem;
+    font-size: 3.2rem;
+  }
+  
+  .assessment-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .completion-container {
+    padding: 30px 40px;
+  }
+  
+  .completion-card {
+    max-width: 800px;
+    padding: 40px;
+  }
+  
+  .completion-title {
+    font-size: 2.8rem;
+  }
+  
+  .completion-message {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 20px;
+  }
+  
+  .completion-header {
+    padding: 60px 0 40px 0;
+  }
+  
+  .completion-content {
+    padding: 40px 0;
+  }
+  
+  .completion-title {
+    font-size: 2.5rem;
   }
   
   .completion-message {
     font-size: 1.1rem;
   }
   
+  .assessment-details {
+    padding: 24px;
+    margin: 40px 0;
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-item {
+    padding: 16px;
+    gap: 16px;
+  }
+  
   .action-buttons {
     flex-direction: column;
+    gap: 16px;
+    justify-content: stretch;
   }
   
   .btn {
     width: 100%;
+    padding: 14px 24px;
+    min-width: auto;
     justify-content: center;
   }
   
   .contact-methods {
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
   }
   
   .step-item {
-    flex-direction: column;
-    text-align: center;
-    gap: 15px;
+    padding: 20px;
+    gap: 20px;
   }
   
-  .step-number {
-    align-self: center;
+  .next-steps h3 {
+    font-size: 1.6rem;
+    margin-bottom: 24px;
+    text-align: center;
   }
 }
 
 @media (max-width: 480px) {
   .completion-card {
-    padding: 25px 20px;
+    padding: 24px 20px;
+    border-radius: 16px;
   }
   
   .checkmark-circle {
-    width: 80px;
-    height: 80px;
+    width: 100px;
+    height: 100px;
   }
   
   .completion-title {
-    font-size: 1.8rem;
+    font-size: 1.9rem;
+    margin-bottom: 20px;
+  }
+  
+  .completion-message {
+    font-size: 1.1rem;
+    margin-bottom: 36px;
+  }
+  
+  .assessment-details {
+    padding: 20px;
+    margin-bottom: 36px;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .detail-item i {
+    align-self: center;
+  }
+  
+  .step-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+    padding: 20px;
+  }
+  
+  .step-number {
+    align-self: center;
   }
   
   .important-notice {
     flex-direction: column;
     text-align: center;
+    gap: 16px;
+    padding: 20px;
   }
   
   .notice-icon {
     align-self: center;
+  }
+  
+  .btn {
+    font-size: 1rem;
+    padding: 12px 20px;
   }
 }
 </style>

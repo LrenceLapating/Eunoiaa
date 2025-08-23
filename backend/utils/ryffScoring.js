@@ -76,14 +76,17 @@ function reverseScore(score) {
 }
 
 /**
- * Calculate Ryff dimension scores from responses
+ * Calculate Ryff dimension scores from responses using actual questionnaire structure
  * @param {Object} responses - Object with item numbers as keys and scores as values
  * @param {string} assessmentType - 'ryff_42' or 'ryff_84'
  * @returns {Object} - Dimension scores
  */
 function calculateRyffScores(responses, assessmentType = 'ryff_42') {
-  const dimensionMap = assessmentType === 'ryff_84' ? ITEM_DIMENSION_MAP_84 : ITEM_DIMENSION_MAP_42;
-  const reverseItems = REVERSE_SCORED_ITEMS[assessmentType] || [];
+  // Import the actual questionnaire structures
+  const ryff42Questions = require('./ryff42ItemQuestionnaire');
+  const ryff84Questions = require('./ryff84ItemQuestionnaire');
+  
+  const questions = assessmentType === 'ryff_84' ? ryff84Questions : ryff42Questions;
   
   // Initialize dimension totals
   const dimensionTotals = {
@@ -95,43 +98,20 @@ function calculateRyffScores(responses, assessmentType = 'ryff_42') {
     self_acceptance: 0
   };
   
-  const dimensionCounts = {
-    autonomy: 0,
-    environmental_mastery: 0,
-    personal_growth: 0,
-    positive_relations: 0,
-    purpose_in_life: 0,
-    self_acceptance: 0
-  };
-  
-  // Process each response
-  Object.entries(responses).forEach(([itemNum, score]) => {
-    const itemNumber = parseInt(itemNum);
-    const dimension = dimensionMap[itemNumber];
-    
-    if (!dimension) {
-      console.warn(`Unknown item number: ${itemNumber}`);
-      return;
+  // Process each question using actual questionnaire structure
+  questions.forEach(question => {
+    const response = responses[question.id.toString()];
+    if (response !== null && response !== undefined) {
+      let score = response;
+      // Apply reverse scoring if needed (using questionnaire's reverse flag)
+      if (question.reverse) {
+        score = reverseScore(response);
+      }
+      dimensionTotals[question.dimension] += score;
     }
-    
-    // Apply reverse scoring if needed
-    let finalScore = score;
-    if (reverseItems.includes(itemNumber)) {
-      finalScore = reverseScore(score);
-    }
-    
-    // Add to dimension total
-    dimensionTotals[dimension] += finalScore;
-    dimensionCounts[dimension] += 1;
   });
   
-  // Return raw total scores for each dimension (no averaging)
-  const dimensionScores = {};
-  Object.keys(dimensionTotals).forEach(dimension => {
-    dimensionScores[dimension] = dimensionTotals[dimension];
-  });
-  
-  return dimensionScores;
+  return dimensionTotals;
 }
 
 /**

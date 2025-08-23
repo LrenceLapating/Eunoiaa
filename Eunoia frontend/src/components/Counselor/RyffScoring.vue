@@ -2,8 +2,8 @@
   <div class="ryff-scoring-container">
 
 
-    <!-- Risk Filter Indicator -->
-    <div class="risk-filter-indicator" v-if="selectedDimension">
+    <!-- Risk Filter Indicator - Hidden as requested -->
+    <!-- <div class="risk-filter-indicator" v-if="selectedDimension">
       <div class="indicator-content">
         <i class="fas fa-exclamation-triangle"></i>
         <span>Showing <strong>only</strong> students at risk for <strong>{{ selectedDimension }}</strong> 
@@ -13,7 +13,7 @@
           <i class="fas fa-times"></i> Clear Filter
         </button>
       </div>
-    </div>
+    </div> -->
 
     <!-- View Selection Tabs -->
     <div class="view-tabs">
@@ -42,11 +42,9 @@
         <div class="filter-dropdown">
           <select v-model="collegeFilter">
             <option value="all">All Colleges</option>
-            <option value="CCS">CCS</option>
-            <option value="CN">CN</option>
-            <option value="CBA">CBA</option>
-            <option value="COE">COE</option>
-            <option value="CAS">CAS</option>
+            <option v-for="college in availableColleges" :key="college" :value="college">
+              {{ college }}
+            </option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
@@ -54,13 +52,9 @@
         <div class="filter-dropdown" v-if="currentTab === 'student'">
           <select v-model="sectionFilter">
             <option value="all">All Sections</option>
-            <option value="BSIT1A">BSIT1A</option>
-            <option value="BSCS3A">BSCS3A</option>
-            <option value="BSIT3A">BSIT3A</option>
-            <option value="BSCE3B">BSCE3B</option>
-            <option value="BSPS2B">BSPS2B</option>
-            <option value="BSBA3A">BSBA3A</option>
-            <option value="BSCS2B">BSCS2B</option>
+            <option v-for="section in availableSections" :key="section" :value="section">
+              {{ section }}
+            </option>
           </select>
           <i class="fas fa-chevron-down"></i>
         </div>
@@ -102,6 +96,10 @@
               Overall Score
               <i class="fas fa-sort"></i>
             </th>
+            <th class="sortable" @click="sortBy('completionTime')">
+              Completion Time
+              <i class="fas fa-sort"></i>
+            </th>
             <th>Dimension Risk</th>
             <th>Actions</th>
           </tr>
@@ -121,23 +119,55 @@
               <span class="score">{{ calculateOverallScore(student) }}</span>
             </td>
             <td>
+              <span class="completion-time">{{ formatCompletionTime(student?.completion_time) }}</span>
+            </td>
+            <td>
               <div class="dimension-risk">
-                <!-- At Risk: Show count in red -->
-                <span class="risk-count at-risk" v-if="getAtRiskDimensionsCount(student) > 0" title="Number of at-risk dimensions">
-                  {{ getAtRiskDimensionsCount(student) }}/6
-                </span>
-                <!-- Moderate: Show count in yellow -->
-                <span class="risk-count moderate" v-else-if="getModerateDimensionsCount(student) > 0" title="Number of moderate dimensions">
-                  {{ getModerateDimensionsCount(student) }}/6
-                </span>
-                <!-- No Risk: When all dimensions are healthy (6/6) -->
-                <span class="no-risk" v-else-if="getHealthyDimensionsCount(student) === 6" title="All dimensions are healthy">No Risk</span>
+                <!-- Split Risk Bar Visualization -->
+                <div class="risk-split-bar" v-if="getTotalDimensionsCount(student) > 0">
+                  <!-- At Risk Section -->
+                  <div 
+                    v-if="getAtRiskDimensionsCount(student) > 0"
+                    class="risk-section at-risk"
+                    :style="{ width: (getAtRiskDimensionsCount(student) / 6 * 100) + '%' }"
+                    :title="`${getAtRiskDimensionsCount(student)} at-risk dimensions`"
+                  >
+                    <span v-if="getAtRiskDimensionsCount(student) < 6" class="risk-text">
+                      {{ getAtRiskDimensionsCount(student) }}/6
+                    </span>
+                  </div>
+                  
+                  <!-- Moderate Section -->
+                  <div 
+                    v-if="getModerateDimensionsCount(student) > 0"
+                    class="risk-section moderate"
+                    :style="{ width: (getModerateDimensionsCount(student) / 6 * 100) + '%' }"
+                    :title="`${getModerateDimensionsCount(student)} moderate dimensions`"
+                  >
+                    <span v-if="getModerateDimensionsCount(student) < 6" class="risk-text">
+                      {{ getModerateDimensionsCount(student) }}/6
+                    </span>
+                  </div>
+                  
+                  <!-- Healthy Section -->
+                  <div 
+                    v-if="getHealthyDimensionsCount(student) > 0"
+                    class="risk-section healthy"
+                    :style="{ width: (getHealthyDimensionsCount(student) / 6 * 100) + '%' }"
+                    :title="`${getHealthyDimensionsCount(student)} healthy dimensions`"
+                  >
+                    <span v-if="getHealthyDimensionsCount(student) < 6" class="risk-text">
+                      {{ getHealthyDimensionsCount(student) }}/6
+                    </span>
+                  </div>
+                </div>
+                
                 <!-- Fallback for edge cases -->
                 <span v-else class="no-data">No Data</span>
                 
                 <div class="risk-scores">
                   <div 
-                    v-for="(score, subscale) in (student?.subscales || {})" 
+                    v-for="(score, subscale) in (student?.subscales || {})"
                     :key="subscale"
                     v-if="score !== undefined && score !== null && (isAtRisk(score) || isModerate(score))"
                     class="risk-dimension-container"
@@ -212,7 +242,7 @@
           <div class="assessment-info">
             <div class="info-item">
               <span class="info-label">Submission Date:</span>
-              <span class="info-value">{{ selectedStudent?.submissionDate || 'N/A' }}</span>
+              <span class="info-value">{{ formatDateShort(selectedStudent?.submissionDate) || 'N/A' }}</span>
             </div>
               <div class="info-item">
                 <span class="info-label">Overall Score:</span>
@@ -238,13 +268,20 @@
             <h4>Subscale Scores</h4>
             <div class="subscale-grid">
               <div 
-                class="subscale-item" 
-                v-for="(score, subscale) in (selectedStudent?.subscales || {})" 
+                class="subscale-item clickable-dimension" 
+                v-for="(score, subscale) in (selectedStudent?.subscales || {})"
                 :key="subscale"
                 :class="{ 'at-risk': score !== undefined && score !== null && isAtRisk(score) }"
+                @click="openDimensionModal(subscale, selectedStudent)"
               >
                 <div class="subscale-header">
-                  <span class="subscale-name">{{ formatSubscaleName(subscale) }}</span>
+                  <div class="subscale-name-container">
+                    <i class="fas fa-brain dimension-icon"></i>
+                    <span class="subscale-name">{{ formatSubscaleName(subscale) }}</span>
+                    <i class="fas fa-info-circle info-icon" 
+                       :title="getDimensionDescription(subscale)"
+                       @click.stop="showDimensionInfo(subscale)"></i>
+                  </div>
                   <span class="subscale-score">{{ (score !== undefined && score !== null) ? Math.round(score) : 'N/A' }}/{{ maxScore }}</span>
                 </div>
                 <div class="progress-bar">
@@ -305,18 +342,20 @@
                   <th>Assessment Name</th>
                   <th>Assessment Type</th>
                   <th>Overall Score</th>
+                  <th>Completion Time</th>
                   <th>Risk Level</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
-                  <td>{{ assessment.submissionDate }}</td>
+                  <td>{{ formatDateShort(assessment.submissionDate) }}</td>
                   <td>
                     <span class="assessment-name">{{ assessment.assessment_name || 'Assessment' }}</span>
                   </td>
                   <td>{{ assessment.assessmentType || 'Ryff PWB (42-item)' }}</td>
                   <td>{{ calculateAssessmentOverallScore(assessment) }}</td>
+                  <td>{{ formatCompletionTime(assessment.completion_time) }}</td>
                   <td>
                     <span class="risk-badge" :class="hasAssessmentRisk(assessment) ? 'high-risk' : 'low-risk'">
                       {{ hasAssessmentRisk(assessment) ? 'At Risk' : 'Healthy' }}
@@ -392,15 +431,17 @@
                   <th>Assessment Date</th>
                   <th>Type</th>
                   <th>Overall Score</th>
+                  <th>Completion Time</th>
                   <th>Risk Status</th>
                   <th>At-Risk Dimensions</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
-                  <td>{{ assessment.submissionDate }}</td>
+                  <td>{{ formatDateShort(assessment.submissionDate) }}</td>
                   <td>{{ assessment.assessmentType || 'Ryff PWB (42-item)' }}</td>
                   <td class="score-cell">{{ calculateAssessmentOverallScore(assessment) }}</td>
+                  <td>{{ formatCompletionTime(assessment.completion_time) }}</td>
                   <td>
                     <span class="risk-badge" :class="hasAssessmentRisk(assessment) ? 'high-risk' : 'low-risk'">
                       {{ hasAssessmentRisk(assessment) ? 'AT RISK' : 'HEALTHY' }}
@@ -517,6 +558,80 @@
         </div>
       </div>
     </div>
+
+    <!-- Dimension Details Modal -->
+    <div class="modal" v-if="showDimensionModal" @click.self="showDimensionModal = false">
+      <div class="modal-content dimension-modal">
+        <div class="modal-header">
+          <h3>{{ dimensionData?.dimensionName || 'Dimension Details' }}</h3>
+          <button class="close-button" @click="showDimensionModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div v-if="loadingDimensionData" class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading dimension data...</p>
+          </div>
+          <div v-else-if="dimensionData && selectedStudentForDimension" class="dimension-content">
+            <div class="student-info-header">
+              <h4>{{ selectedStudentForDimension.name }}</h4>
+              <p>ID: {{ selectedStudentForDimension.id_number }} | College: {{ selectedStudentForDimension.college }}</p>
+            </div>
+            
+            <div class="dimension-summary">
+              <div class="score-summary">
+                <div class="score-item">
+                  <span class="label">Total Score:</span>
+                  <span class="value">{{ dimensionData.totalScore }}/{{ dimensionData.maxPossibleScore }}</span>
+                </div>
+                <div class="score-item">
+                  <span class="label">Average Score:</span>
+                  <span class="value">{{ dimensionData.averageScore }}/6.0</span>
+                </div>
+                <div class="score-item">
+                  <span class="label">Questions:</span>
+                  <span class="value">{{ dimensionData.questionCount }} items</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="questions-section">
+              <h5>Student Responses</h5>
+              <div class="questions-list">
+                <div 
+                  v-for="(question, index) in dimensionData.questions" 
+                  :key="question.questionId"
+                  class="question-item"
+                >
+                  <div class="question-header">
+                    <span class="question-number">Q{{ question.questionId }}</span>
+                    <span class="question-score" :class="getResponseClass(question.actualScore)">
+                      {{ question.actualScore }}/6
+                    </span>
+                  </div>
+                  <div class="question-text">{{ question.questionText }}</div>
+                  <div class="response-info">
+                    <span class="response-label">Student Response:</span>
+                    <span class="response-value">{{ getResponseLabel(question.response) }}</span>
+                    <span v-if="question.reverse" class="reverse-note">(Reverse scored)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="explanation-section">
+              <h5>Score Explanation</h5>
+              <p>This shows the {{ dimensionData.questionCount }} questions related to <strong>{{ dimensionData.dimensionName }}</strong> and how the student responded. The total score of <strong>{{ dimensionData.totalScore }}/{{ dimensionData.maxPossibleScore }}</strong> represents the sum of all individual question scores for this dimension.</p>
+            </div>
+          </div>
+          <div v-else class="error-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Unable to load dimension data. Please try again.</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -560,11 +675,19 @@ export default {
       showDetailsModal: false,
       showHistoryModal: false,
       showCompleteHistoryModal: false,
+      showDimensionModal: false,
       selectedStudent: null,
       selectedStudentForHistory: null,
+      selectedStudentForDimension: null,
+      selectedDimension: null,
+      dimensionData: null,
+      loadingDimensionData: false,
       allStudents: [], // Store original unfiltered data from backend
       allHistoricalStudents: [], // Store historical data from ryff_history table
       filteredStudents: [],
+      // Dynamic dropdown options
+      availableColleges: ['CCS', 'CN', 'CBA', 'COE', 'CAS'], // Will be populated from database
+      availableSections: [], // Will be populated from database
       ryffDimensionsList: [
         { key: 'autonomy', name: 'Autonomy' },
         { key: 'environmentalMastery', name: 'Environmental Mastery' },
@@ -735,6 +858,7 @@ export default {
                 section: assessment.student?.section || 'Unknown Section',
                 email: assessment.student?.email || '',
                 submissionDate: assessment.completed_at || assessment.archived_at,
+                completion_time: assessment.completion_time,
                 subscales: {
                   autonomy: parseFloat(scores.autonomy) || 0,
                   environmentalMastery: parseFloat(scores.environmental_mastery) || 0,
@@ -827,6 +951,7 @@ export default {
                 section: assessment.student?.section || assessment.student_section || 'Unknown Section',
                 email: assessment.student?.email || assessment.student_email || '',
                 submissionDate: assessment.completed_at || assessment.submission_date,
+                completion_time: assessment.completion_time,
                 subscales: {
                    autonomy: parseFloat(scores.autonomy) || 0,
                    environmentalMastery: parseFloat(scores.environmental_mastery) || 0,
@@ -850,6 +975,9 @@ export default {
             this.allStudents = transformedStudents;
             this.filteredStudents = [...transformedStudents];
             
+            // Update dynamic dropdown options
+            this.updateDropdownOptions();
+            
             // Emit the updated data to parent component if needed
             this.$emit('students-updated', transformedStudents);
           } else {
@@ -870,6 +998,16 @@ export default {
         this.allStudents = [...this.students];
         this.filteredStudents = [...this.students];
       }
+    },
+    
+    updateDropdownOptions() {
+      // Extract unique colleges from student data
+      const colleges = [...new Set(this.allStudents.map(student => student.college).filter(Boolean))];
+      this.availableColleges = colleges.sort();
+      
+      // Extract unique sections from student data
+      const sections = [...new Set(this.allStudents.map(student => student.section).filter(Boolean))];
+      this.availableSections = sections.sort();
     },
 
     // Get overall score from database (already calculated and stored)
@@ -932,6 +1070,18 @@ export default {
           if (score >= this.riskThresholds.q4) {
             count++;
           }
+        }
+      }
+      return count;
+    },
+    
+    // Get total count of dimensions with valid scores
+    getTotalDimensionsCount(student) {
+      if (!student || !student.subscales) return 0;
+      let count = 0;
+      for (const subscale in student.subscales) {
+        if (student.subscales[subscale] !== undefined) {
+          count++;
         }
       }
       return count;
@@ -1063,9 +1213,9 @@ export default {
     
     // Update filterByDimensionAndCollege to use props
     filterByDimensionAndCollege() {
-      // Reset other filters
+      // Reset other filters but preserve assessment type
       this.sectionFilter = 'all';
-      this.assessmentTypeFilter = '42-item';
+      // Don't reset assessmentTypeFilter to preserve current selection
       this.riskLevelFilter = 'all';
       this.searchQuery = '';
       
@@ -1310,6 +1460,17 @@ export default {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
       return `${day}-${month}-${year}`;
+    },
+
+    formatCompletionTime(timeInMinutes) {
+      if (!timeInMinutes || timeInMinutes === 0) return 'N/A';
+      if (timeInMinutes < 60) {
+        return `${timeInMinutes} min`;
+      } else {
+        const hours = Math.floor(timeInMinutes / 60);
+        const minutes = timeInMinutes % 60;
+        return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+      }
     },
 
     getDimensionScore(assessment, dimensionKey) {
@@ -1583,7 +1744,96 @@ export default {
       this.filterStudents();
     },
     
-    // Method to refresh all data - can be called externally
+    // Open dimension modal to show filtered questions and answers
+    async openDimensionModal(dimension, student) {
+      try {
+        this.selectedDimension = dimension;
+        this.selectedStudentForDimension = student;
+        this.loadingDimensionData = true;
+        this.showDimensionModal = true;
+        
+        // Convert frontend dimension name to backend format
+        const backendDimension = this.convertToBackendDimension(dimension);
+        
+        // Fetch dimension-specific data from backend
+        // Add assessmentId parameter if available to ensure we get the correct assessment data
+        let apiUrl = `http://localhost:3000/api/counselor-assessments/student/${student.id}/dimension/${backendDimension}`;
+        if (student.assessmentId) {
+          apiUrl += `?assessmentId=${student.assessmentId}`;
+        }
+        
+        console.log('Fetching dimension data from:', apiUrl);
+        console.log('Student data:', student);
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const apiResponse = await response.json();
+          console.log('API Response:', apiResponse);
+          if (apiResponse.success) {
+            this.dimensionData = apiResponse.data;
+            console.log('Dimension data set to:', this.dimensionData);
+            console.log('Questions in dimension data:', this.dimensionData.questions);
+            
+            // Debug each question response
+            this.dimensionData.questions.forEach((question, index) => {
+              console.log(`Q${question.questionId}: response=${question.response} (type: ${typeof question.response})`);
+            });
+          } else {
+            console.error('Failed to fetch dimension data:', apiResponse.message);
+            this.dimensionData = null;
+          }
+        } else {
+          console.error('Failed to fetch dimension data');
+          this.dimensionData = null;
+        }
+      } catch (error) {
+        console.error('Error fetching dimension data:', error);
+        this.dimensionData = null;
+      } finally {
+         this.loadingDimensionData = false;
+       }
+     },
+     
+     // Helper methods for dimension modal
+     convertToBackendDimension(frontendDimension) {
+       const dimensionMap = {
+         'autonomy': 'autonomy',
+         'environmentalMastery': 'environmental_mastery',
+         'personalGrowth': 'personal_growth',
+         'positiveRelations': 'positive_relations',
+         'purposeInLife': 'purpose_in_life',
+         'selfAcceptance': 'self_acceptance'
+       };
+       return dimensionMap[frontendDimension] || frontendDimension;
+     },
+     
+     getResponseLabel(response) {
+       const labels = {
+         1: 'Strongly Disagree',
+         2: 'Disagree',
+         3: 'Slightly Disagree',
+         4: 'Slightly Agree',
+         5: 'Agree',
+         6: 'Strongly Agree'
+       };
+       return labels[response] || 'No Response';
+     },
+     
+     getResponseClass(score) {
+       if (score >= 4) return 'score-high';
+       if (score >= 3) return 'score-medium';
+       if (score >= 2) return 'score-low';
+       return 'score-very-low';
+     },
+     
+     // Method to refresh all data - can be called externally
     async refreshData() {
       console.log('Refreshing RyffScoring data...');
       try {
@@ -1598,6 +1848,37 @@ export default {
       } catch (error) {
         console.error('Error refreshing RyffScoring data:', error);
       }
+    },
+    
+    // Get dimension description for tooltip
+    getDimensionDescription(dimension) {
+      const descriptions = {
+        autonomy: 'Measures self-determination, independence, and the ability to resist social pressures.',
+        environmentalMastery: 'Assesses competence in managing the environment and controlling complex external activities.',
+        personalGrowth: 'Evaluates feelings of continued development and potential for growth as a person.',
+        positiveRelations: 'Measures the quality of relationships with others and capacity for empathy and intimacy.',
+        purposeInLife: 'Assesses having goals in life and a sense of directedness and meaning.',
+        selfAcceptance: 'Measures positive attitude toward oneself and acceptance of multiple aspects of self.'
+      };
+      return descriptions[dimension] || 'Psychological well-being dimension';
+    },
+    
+    // Show dimension information modal or tooltip
+    showDimensionInfo(dimension) {
+      const dimensionNames = {
+        autonomy: 'Autonomy',
+        environmentalMastery: 'Environmental Mastery',
+        personalGrowth: 'Personal Growth',
+        positiveRelations: 'Positive Relations with Others',
+        purposeInLife: 'Purpose in Life',
+        selfAcceptance: 'Self-Acceptance'
+      };
+      
+      const description = this.getDimensionDescription(dimension);
+      const name = dimensionNames[dimension] || dimension;
+      
+      // Show alert with dimension information
+      alert(`${name}\n\n${description}`);
     }
   },
   watch: {
@@ -2029,6 +2310,248 @@ export default {
   margin-bottom: 10px;
 }
 
+.clickable-dimension {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid transparent;
+}
+
+.clickable-dimension:hover {
+  background-color: #f8f9fa;
+  border-color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.1);
+}
+
+.subscale-name-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dimension-icon {
+  color: #007bff;
+  font-size: 16px;
+  transition: color 0.3s ease;
+}
+
+.clickable-dimension:hover .dimension-icon {
+  color: #0056b3;
+}
+
+.info-icon {
+  color: #6c757d;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  margin-left: 4px;
+}
+
+.info-icon:hover {
+  color: #007bff;
+  transform: scale(1.1);
+}
+
+.clickable-dimension:hover .info-icon {
+  color: #0056b3;
+}
+
+/* Dimension Modal Styles */
+.dimension-modal {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.dimension-content {
+  padding: 20px;
+}
+
+.student-info-header {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.student-info-header h4 {
+  margin: 0 0 5px 0;
+  color: #333;
+}
+
+.student-info-header p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.dimension-summary {
+  background: #e3f2fd;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.score-summary {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+}
+
+.score-item {
+  text-align: center;
+}
+
+.score-item .label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.score-item .value {
+  display: block;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.questions-section {
+  margin-bottom: 20px;
+}
+
+.questions-section h5 {
+  margin-bottom: 15px;
+  color: #333;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 5px;
+}
+
+.questions-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.question-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background: #fff;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.question-number {
+  background: #007bff;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.question-score {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.score-high {
+  background: #d4edda;
+  color: #155724;
+}
+
+.score-medium {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.score-low {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.score-very-low {
+  background: #f5c6cb;
+  color: #721c24;
+}
+
+.question-text {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.response-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.response-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.response-value {
+  color: #333;
+  font-weight: bold;
+}
+
+.reverse-note {
+  color: #dc3545;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.explanation-section {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+.explanation-section h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.explanation-section p {
+  margin: 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.loading-state, .error-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.loading-state i {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #007bff;
+}
+
+.error-state i {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #dc3545;
+}
+
 .subscale-header {
   display: flex;
   justify-content: space-between;
@@ -2101,6 +2624,49 @@ export default {
   gap: 5px;
 }
 
+/* Split Risk Bar Styles */
+.risk-split-bar {
+  display: flex;
+  width: 100%;
+  height: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 3px;
+}
+
+.risk-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 0;
+  transition: all 0.3s ease;
+}
+
+.risk-section.at-risk {
+  background-color: #f44336;
+  color: white;
+}
+
+.risk-section.moderate {
+  background-color: #ff9800;
+  color: white;
+}
+
+.risk-section.healthy {
+  background-color: #4caf50;
+  color: white;
+}
+
+.risk-text {
+  font-weight: 600;
+  font-size: 11px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Legacy risk count styles for fallback */
 .risk-count {
   font-weight: 600;
   font-size: 13px;

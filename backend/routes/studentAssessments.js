@@ -15,6 +15,7 @@ const supabaseAdmin = createClient(
 router.get('/assigned', verifyStudentSession, async (req, res) => {
   try {
     const studentId = req.user.id;
+    console.log(`Fetching assigned assessments for student: ${studentId}`);
 
     // Get assigned assessments that are not completed or expired
     const { data: assignments, error } = await supabase
@@ -42,6 +43,17 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
       });
     }
 
+    console.log(`Found ${assignments?.length || 0} assigned assessments for student ${studentId}`);
+    if (assignments && assignments.length > 0) {
+      console.log('Assignment details:', assignments.map(a => ({
+        id: a.id,
+        status: a.status,
+        assigned_at: a.assigned_at,
+        completed_at: a.completed_at,
+        expires_at: a.expires_at
+      })));
+    }
+
     res.json({
       success: true,
       data: assignments || []
@@ -49,6 +61,70 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
 
   } catch (error) {
     console.error('Error in assigned assessments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Debug endpoint to check all assessment assignments for a student
+router.get('/debug/all-assignments', verifyStudentSession, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    console.log(`Debug: Fetching ALL assignments for student: ${studentId}`);
+
+    // Get ALL assignments for this student regardless of status
+    const { data: allAssignments, error } = await supabase
+      .from('assessment_assignments')
+      .select(`
+        *,
+        bulk_assessment:bulk_assessments(
+          id,
+          assessment_name,
+          assessment_type,
+          custom_message,
+          scheduled_date
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('assigned_at', { ascending: false });
+
+    if (error) {
+      console.error('Debug: Error fetching all assignments:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch all assignments'
+      });
+    }
+
+    console.log(`Debug: Found ${allAssignments?.length || 0} total assignments for student ${studentId}`);
+    if (allAssignments && allAssignments.length > 0) {
+      console.log('Debug: All assignment details:', allAssignments.map(a => ({
+        id: a.id,
+        status: a.status,
+        assigned_at: a.assigned_at,
+        completed_at: a.completed_at,
+        expires_at: a.expires_at,
+        assessment_name: a.bulk_assessment?.assessment_name
+      })));
+    }
+
+    res.json({
+      success: true,
+      data: allAssignments || [],
+      debug: {
+        studentId,
+        totalCount: allAssignments?.length || 0,
+        statusBreakdown: allAssignments?.reduce((acc, a) => {
+          acc[a.status] = (acc[a.status] || 0) + 1;
+          return acc;
+        }, {}) || {}
+      }
+    });
+
+  } catch (error) {
+    console.error('Debug: Error in all assignments fetch:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -112,8 +188,15 @@ router.get('/take/:assignmentId', verifyStudentSession, async (req, res) => {
 router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
   try {
     const { assignmentId } = req.params;
-    const { responses } = req.body;
+    const { responses, timeTakenMinutes, questionTimes, startTime, endTime } = req.body;
     const studentId = req.user.id;
+    
+    console.log('Received submission with timing data:', {
+      timeTakenMinutes,
+      hasQuestionTimes: !!questionTimes,
+      startTime,
+      endTime
+    });
 
     // Validate responses
     if (!responses || typeof responses !== 'object') {
@@ -188,7 +271,8 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
         scores: scores,
         overall_score: parseFloat(overallScore.toFixed(2)),
         risk_level: riskLevel,
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
+        completion_time: timeTakenMinutes || null
       })
       .select()
       .single();
@@ -201,18 +285,46 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
       });
     }
 
+    // Create assessment analytics record if timing data is provided
+    if (timeTakenMinutes !== undefined && timeTakenMinutes !== null) {
+      const analyticsData = {
+        assessment_id: assessmentRecord.id,
+        student_id: studentId,
+        time_taken_minutes: timeTakenMinutes,
+        question_times: questionTimes || {},
+        start_time: startTime ? new Date(startTime).toISOString() : null,
+        end_time: endTime ? new Date(endTime).toISOString() : null,
+        navigation_pattern: [], // Can be enhanced later to track navigation
+        created_at: new Date().toISOString()
+      };
+
+      const { error: analyticsError } = await supabaseAdmin
+        .from('assessment_analytics')
+        .insert(analyticsData);
+
+      if (analyticsError) {
+        console.error('Error creating assessment analytics:', analyticsError);
+        // Don't fail the whole operation, assessment is already saved
+      } else {
+        console.log('Assessment analytics saved successfully');
+      }
+    }
+
     // Update assignment status to completed using admin client
-    const { error: updateError } = await supabaseAdmin
+    const { data: updateData, error: updateError } = await supabaseAdmin
       .from('assessment_assignments')
       .update({
         status: 'completed',
         completed_at: new Date().toISOString()
       })
-      .eq('id', assignmentId);
+      .eq('id', assignmentId)
+      .select();
 
     if (updateError) {
       console.error('Error updating assignment status:', updateError);
       // Don't fail the whole operation, assessment is already saved
+    } else {
+      console.log('Assignment status updated successfully:', updateData);
     }
 
     res.json({

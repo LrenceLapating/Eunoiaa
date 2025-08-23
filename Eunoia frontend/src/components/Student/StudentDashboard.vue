@@ -46,7 +46,7 @@
             </a>
           </li>
           <li class="logout-item">
-            <a @click="logout; closeMobileNav()" class="menu-item">
+            <a @click="logout(); closeMobileNav()" class="menu-item">
               <div class="menu-icon logout-icon">
                 <i class="fas fa-sign-out-alt"></i>
               </div>
@@ -250,6 +250,9 @@
         <AssessmentComplete 
           v-if="currentView === 'assessment-complete'"
           :assessment-type="currentAssessment?.type || '42'"
+          :time-taken-minutes="completionData?.timeTakenMinutes"
+          :time-taken-seconds="completionData?.timeTakenSeconds"
+          :assigned-assessment-id="currentAssessment?.assignedAssessmentId"
           @return-to-dashboard="onReturnToDashboard"
         />
 
@@ -600,6 +603,7 @@ export default {
       hasAssignedAssessments: false,
       assignedAssessments: [],
       currentAssessment: null,
+      completionData: null, // Store timing data from assessment completion
       loadingInterventions: false,
       aiInterventions: [],
       // Mobile navigation
@@ -836,6 +840,8 @@ export default {
     async onAssessmentComplete(completionData) {
       // Handle assessment completion
       console.log('Assessment completed:', completionData);
+      // Store completion data including timing information
+      this.completionData = completionData;
       this.currentView = 'assessment-complete';
       // Add a longer delay to ensure database transaction is fully committed
       await new Promise(resolve => setTimeout(resolve, 2000));

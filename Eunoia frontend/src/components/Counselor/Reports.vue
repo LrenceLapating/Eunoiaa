@@ -170,8 +170,8 @@
           <label class="assessment-checkbox">
             <input 
               type="checkbox" 
-              :value="assessment.id"
-              v-model="selectedAssessments"
+              :checked="selectedAssessments.includes(String(assessment.id))"
+              @change="toggleAssessmentSelection(assessment.id, $event)"
             >
             <span class="checkmark"></span>
             <div class="assessment-info">
@@ -252,6 +252,8 @@
 
 <script>
 import authService from '@/services/authService';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default {
   name: 'Reports',
@@ -307,12 +309,44 @@ export default {
   },
   computed: {
     canGenerateReport() {
-      if (this.selectedReportType === 'individual') {
-        return this.selectedStudent !== null && this.selectedAssessments.length > 0;
-      } else if (this.selectedReportType === 'college') {
+      const reportType = this.selectedReportType;
+      const student = this.selectedStudent;
+      
+      if (reportType === 'individual') {
+        return student !== null;
+      } else if (reportType === 'college') {
         return this.selectedColleges.length > 0 && this.selectedYearLevels.length > 0 && this.selectedPeriods.length > 0;
       }
       return false;
+    },
+    $authService() {
+      return authService;
+    }
+  },
+  watch: {
+    selectedAssessments: {
+      handler(newVal, oldVal) {
+        console.log('selectedAssessments watcher triggered:', {
+          oldVal,
+          newVal,
+          canGenerateReport: this.canGenerateReport
+        });
+      },
+      deep: true
+    },
+    selectedStudent(newVal, oldVal) {
+      console.log('selectedStudent watcher triggered:', {
+        oldVal: oldVal?.name || null,
+        newVal: newVal?.name || null,
+        canGenerateReport: this.canGenerateReport
+      });
+    },
+    selectedReportType(newVal, oldVal) {
+      console.log('selectedReportType watcher triggered:', {
+        oldVal,
+        newVal,
+        canGenerateReport: this.canGenerateReport
+      });
     }
   },
   async created() {
@@ -399,6 +433,10 @@ export default {
           if (apiResponse.success && apiResponse.data) {
             this.studentAssessmentHistory = apiResponse.data.assessments || [];
             console.log(`Found ${this.studentAssessmentHistory.length} assessments for student`);
+            console.log('Assessment history data:', this.studentAssessmentHistory);
+            
+            // Force reactivity update
+            this.$forceUpdate();
           } else {
             console.error('Invalid API response structure:', apiResponse);
             this.studentAssessmentHistory = [];
@@ -416,9 +454,9 @@ export default {
     getStudentAssessments(studentId) {
       // Return the fetched assessment history for the selected student
       if (this.selectedStudent && this.selectedStudent.id === studentId) {
-        return this.studentAssessmentHistory.map((assessment, index) => ({
-          id: assessment.id,
-          number: assessment.assessmentNumber,
+        const assessments = this.studentAssessmentHistory.map((assessment, index) => ({
+          id: String(assessment.id), // Ensure ID is a string for v-model binding
+          number: assessment.assessmentNumber || (index + 1),
           date: assessment.displayDate || assessment.completedAt,
           score: assessment.overallScore,
           assessmentType: assessment.assessmentType,
@@ -426,6 +464,9 @@ export default {
           isArchived: assessment.isArchived,
           originalData: assessment // Store original data for report generation
         }));
+        console.log('getStudentAssessments returning:', assessments);
+        console.log('Assessment IDs:', assessments.map(a => a.id));
+        return assessments;
       }
       
       // Fallback for legacy data or when no history is loaded
@@ -483,6 +524,46 @@ export default {
       return 'unknown';
     },
     
+    toggleAssessmentSelection(assessmentId, event) {
+        const id = String(assessmentId);
+        const isChecked = event.target.checked;
+        
+        console.log('Toggling assessment selection for ID:', id);
+        console.log('Checkbox checked:', isChecked);
+        console.log('Current selectedReportType:', this.selectedReportType);
+        console.log('Current selectedStudent:', this.selectedStudent);
+        console.log('selectedAssessments before:', JSON.stringify(this.selectedAssessments));
+        console.log('selectedAssessments array length before:', this.selectedAssessments.length);
+        
+        if (isChecked) {
+          if (!this.selectedAssessments.includes(id)) {
+            // Vue 3 compatible array mutation
+            this.selectedAssessments.push(id);
+            console.log('Added ID to array:', id);
+          } else {
+            console.log('ID already in array:', id);
+          }
+        } else {
+          const index = this.selectedAssessments.indexOf(id);
+          if (index > -1) {
+            // Vue 3 compatible array mutation
+            this.selectedAssessments.splice(index, 1);
+            console.log('Removed ID from array:', id);
+          }
+        }
+        
+        console.log('selectedAssessments after:', JSON.stringify(this.selectedAssessments));
+        console.log('selectedAssessments array length after:', this.selectedAssessments.length);
+        
+        // Immediately check the computed property
+        console.log('canGenerateReport (immediate):', this.canGenerateReport);
+        
+        // Also check in nextTick
+        this.$nextTick(() => {
+          console.log('canGenerateReport (nextTick):', this.canGenerateReport);
+        });
+      },
+    
     generateReport() {
       if (!this.canGenerateReport) return;
       
@@ -495,40 +576,48 @@ export default {
     
     async generateIndividualReport() {
       try {
-        // Show loading message
-        const assessmentCount = this.selectedAssessments.length;
+        // Show loading notification
         this.$emit('show-notification', {
           type: 'info',
-          message: `Generating individual report for ${this.selectedStudent.name} with ${assessmentCount} assessments...`
+          message: `Generating individual report for ${this.selectedStudent.name}...`
         });
         
-        // Call the backend PDF generation endpoint using authService
-        const assessmentIds = this.selectedAssessments.join(',');
-        const response = await this.$authService.makeAuthenticatedRequest(`http://localhost:3000/api/counselor-assessments/student/${this.selectedStudent.id}/report/pdf?assessmentIds=${assessmentIds}`, {
-          method: 'GET'
+        // Fetch student assessment data
+        const response = await fetch(`http://localhost:3000/api/counselor-assessments/student/${this.selectedStudent.id}/history`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         });
         
         if (!response.ok) {
-          throw new Error(`Failed to generate PDF: ${response.statusText}`);
+          throw new Error(`Failed to fetch assessment data: ${response.statusText}`);
         }
         
-        // Get the PDF blob
-        const blob = await response.blob();
+        const apiResponse = await response.json();
+        const allAssessments = apiResponse.data?.assessments || [];
         
-        // Create download link
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${this.selectedStudent.name}_WellbeingReport_${assessmentCount}_assessments.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        if (allAssessments.length === 0) {
+          throw new Error('No assessment data found for this student');
+        }
+        
+        // Filter assessments based on selected ones
+        const selectedAssessments = allAssessments.filter(assessment => 
+          this.selectedAssessments.includes(String(assessment.id))
+        );
+        
+        if (selectedAssessments.length === 0) {
+          throw new Error('No selected assessments found. Please select at least one assessment.');
+        }
+        
+        // Generate PDF using jsPDF
+        await this.createPDFReport(apiResponse.data.student, selectedAssessments);
         
         // Show success message
         this.$emit('show-notification', {
           type: 'success',
-          message: `Report downloaded: ${this.selectedStudent.name}_WellbeingReport_${assessmentCount}_assessments.pdf`
+          message: `Report downloaded: ${apiResponse.data.student.name}_WellbeingReport.pdf`
         });
         
       } catch (error) {
@@ -538,6 +627,344 @@ export default {
           message: `Failed to generate PDF report: ${error.message}`
         });
       }
+    },
+    
+    async createPDFReport(student, assessments) {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let yPosition = 20;
+      
+      // Header
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Student Assessment Details', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 20;
+      
+      // Student Information
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(student.name, 20, yPosition);
+      yPosition += 8;
+      
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      const assessmentTypes = [...new Set(assessments.map(a => a.assessmentType))];
+      pdf.text(`${student.idNumber || 'N/A'} • ${student.college || 'N/A'} • ${assessmentTypes.join(', ')} Assessment(s)`, 20, yPosition);
+      yPosition += 15;
+      
+      // Process each selected assessment
+      assessments.forEach((assessment, assessmentIndex) => {
+        // Check if we need a new page for each assessment (except the first)
+        if (assessmentIndex > 0) {
+          pdf.addPage();
+          yPosition = 20;
+          
+          // Add assessment header
+          pdf.setFontSize(18);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`Assessment #${assessmentIndex + 1}`, 20, yPosition);
+          yPosition += 15;
+        }
+        
+        // Assessment Summary Box
+        pdf.setFillColor(248, 249, 250);
+        pdf.rect(15, yPosition - 5, 180, 35, 'F');
+        pdf.setDrawColor(200, 200, 200);
+        pdf.rect(15, yPosition - 5, 180, 35, 'S');
+        
+        // Assessment details
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        
+        const submissionDate = assessment.completedAt ? 
+          new Date(assessment.completedAt).toLocaleDateString() : 'N/A';
+        pdf.text(`Submission Date: ${submissionDate}`, 20, yPosition + 5);
+        
+        const overallScore = assessment.overallScore || 'N/A';
+        const riskLevel = assessment.riskLevel || 'N/A';
+        pdf.text(`Overall Score: ${overallScore}`, 20, yPosition + 15);
+        pdf.text(`Assessment Type: ${assessment.assessmentType}`, 20, yPosition + 25);
+        
+        // Risk level with color coding
+        let riskColor = [0, 0, 0]; // Default black
+        if (riskLevel === 'High Risk') riskColor = [231, 76, 60]; // Red
+        else if (riskLevel === 'Moderate Risk') riskColor = [243, 156, 18]; // Orange
+        else if (riskLevel === 'Low Risk') riskColor = [39, 174, 96]; // Green
+        
+        pdf.setTextColor(...riskColor);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Risk Level: ${riskLevel}`, 120, yPosition + 15);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        
+        yPosition += 50;
+        
+        // Subscale Scores for this assessment
+         if (assessment.scores) {
+           let scores;
+           try {
+             scores = typeof assessment.scores === 'string' ? 
+               JSON.parse(assessment.scores) : assessment.scores;
+             console.log('Parsed scores for PDF:', scores);
+             console.log('Available score keys:', Object.keys(scores));
+           } catch (e) {
+             console.error('Error parsing scores:', e);
+             scores = null;
+           }
+          
+          if (scores && typeof scores === 'object') {
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`Subscale Scores - Assessment #${assessmentIndex + 1}`, 20, yPosition);
+            yPosition += 15;
+            
+            // Define subscales with proper key mapping
+            const subscales = [
+              { key: 'autonomy', name: 'Autonomy' },
+              { key: 'environmental_mastery', name: 'Environmental Mastery' },
+              { key: 'personal_growth', name: 'Personal Growth' },
+              { key: 'positive_relations', name: 'Positive Relations' },
+              { key: 'purpose_in_life', name: 'Purpose in Life' },
+              { key: 'self_acceptance', name: 'Self Acceptance' }
+            ];
+            
+            const maxScore = assessment.assessmentTypeRaw === '42-item' ? 42 : 84;
+            
+            // Table header
+            pdf.setFillColor(52, 73, 94); // Dark blue header
+            pdf.rect(15, yPosition, 180, 12, 'F');
+            
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Dimension', 20, yPosition + 8);
+            pdf.text('Score', 80, yPosition + 8);
+            pdf.text('Percentage', 110, yPosition + 8);
+            pdf.text('Status', 150, yPosition + 8);
+            pdf.text('Visual', 175, yPosition + 8);
+            
+            yPosition += 12;
+            pdf.setTextColor(0, 0, 0);
+            
+            subscales.forEach((subscale, index) => {
+              const score = scores[subscale.key] || 'N/A';
+              const percentage = score !== 'N/A' ? ((score / maxScore) * 100).toFixed(1) : 'N/A';
+              
+              // Determine health status and color
+              let healthStatus = 'Unknown';
+              let statusColor = [128, 128, 128]; // Gray
+              let barColor = [200, 200, 200]; // Light gray
+              
+              if (score !== 'N/A') {
+                if (percentage >= 70) {
+                  healthStatus = 'Healthy';
+                  statusColor = [39, 174, 96]; // Green
+                  barColor = [39, 174, 96];
+                } else if (percentage >= 50) {
+                  healthStatus = 'Moderate';
+                  statusColor = [243, 156, 18]; // Orange
+                  barColor = [243, 156, 18];
+                } else {
+                  healthStatus = 'At Risk';
+                  statusColor = [231, 76, 60]; // Red
+                  barColor = [231, 76, 60];
+                }
+              }
+              
+              // Alternating row colors
+              if (index % 2 === 0) {
+                pdf.setFillColor(248, 249, 250);
+                pdf.rect(15, yPosition, 180, 10, 'F');
+              }
+              
+              // Row border
+              pdf.setDrawColor(220, 220, 220);
+              pdf.rect(15, yPosition, 180, 10, 'S');
+              
+              // Text content
+              pdf.setFontSize(9);
+              pdf.setFont('helvetica', 'normal');
+              pdf.setTextColor(0, 0, 0);
+              pdf.text(subscale.name, 20, yPosition + 6);
+              pdf.text(score.toString(), 80, yPosition + 6);
+              pdf.text(percentage !== 'N/A' ? `${percentage}%` : 'N/A', 110, yPosition + 6);
+              
+              pdf.setTextColor(...statusColor);
+              pdf.setFont('helvetica', 'bold');
+              pdf.text(healthStatus, 150, yPosition + 6);
+              
+              // Visual bar indicator
+              if (percentage !== 'N/A') {
+                const barWidth = (percentage / 100) * 15;
+                pdf.setFillColor(...barColor);
+                pdf.rect(175, yPosition + 2, barWidth, 6, 'F');
+                pdf.setDrawColor(150, 150, 150);
+                pdf.rect(175, yPosition + 2, 15, 6, 'S');
+              }
+              
+              yPosition += 10;
+            });
+            
+            yPosition += 15;
+          }
+        }
+      });
+      
+      // Assessment History Summary
+      if (assessments.length > 1) {
+        // Check if we need a new page
+        if (yPosition > pageHeight - 100) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Assessment History Summary', 20, yPosition);
+        yPosition += 15;
+        
+        // Table header
+        pdf.setFillColor(52, 73, 94);
+        pdf.rect(15, yPosition, 180, 12, 'F');
+        
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('#', 20, yPosition + 8);
+        pdf.text('Date', 35, yPosition + 8);
+        pdf.text('Type', 80, yPosition + 8);
+        pdf.text('Overall Score', 120, yPosition + 8);
+        pdf.text('Risk Level', 160, yPosition + 8);
+        
+        yPosition += 12;
+        pdf.setTextColor(0, 0, 0);
+        
+        // Assessment rows
+        assessments.forEach((assessment, index) => {
+          // Alternating row colors
+          if (index % 2 === 0) {
+            pdf.setFillColor(248, 249, 250);
+            pdf.rect(15, yPosition, 180, 10, 'F');
+          }
+          
+          // Row border
+          pdf.setDrawColor(220, 220, 220);
+          pdf.rect(15, yPosition, 180, 10, 'S');
+          
+          // Content
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(0, 0, 0);
+          
+          const assessmentNumber = index + 1;
+          const date = assessment.completedAt ? 
+            new Date(assessment.completedAt).toLocaleDateString() : 'N/A';
+          const type = assessment.assessmentType || 'N/A';
+          const score = assessment.overallScore || 'N/A';
+          const risk = assessment.riskLevel || 'N/A';
+          
+          pdf.text(assessmentNumber.toString(), 20, yPosition + 6);
+          pdf.text(date, 35, yPosition + 6);
+          pdf.text(type, 80, yPosition + 6);
+          pdf.text(score.toString(), 120, yPosition + 6);
+          
+          // Risk level with color
+          let riskColor = [0, 0, 0];
+          if (risk === 'High Risk') riskColor = [231, 76, 60];
+          else if (risk === 'Moderate Risk') riskColor = [243, 156, 18];
+          else if (risk === 'Low Risk') riskColor = [39, 174, 96];
+          
+          pdf.setTextColor(...riskColor);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(risk, 160, yPosition + 6);
+          
+          yPosition += 10;
+        });
+        
+        yPosition += 15;
+      }
+      
+      // Professional Footer
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        
+        // Footer line
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(15, pageHeight - 25, 195, pageHeight - 25);
+        
+        // Footer content
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        
+        // Left side - System info
+        pdf.text('EUNOIA - Psychological Well-Being Assessment System', 20, pageHeight - 18);
+        pdf.text('Confidential Report - For Professional Use Only', 20, pageHeight - 12);
+        
+        // Right side - Page and date info
+        const rightText = `Page ${i} of ${pageCount}`;
+        const dateText = `Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB', { hour12: false })}`;
+        
+        pdf.text(rightText, 195 - pdf.getTextWidth(rightText), pageHeight - 18);
+        pdf.text(dateText, 195 - pdf.getTextWidth(dateText), pageHeight - 12);
+        
+        // Warning text
+        pdf.setFontSize(7);
+        pdf.setTextColor(150, 150, 150);
+        const warningText = 'This report contains sensitive psychological assessment data. Handle with appropriate confidentiality.';
+        const warningWidth = pdf.getTextWidth(warningText);
+        pdf.text(warningText, (210 - warningWidth) / 2, pageHeight - 6);
+      }
+      
+      // Download the PDF
+      pdf.save(`${student.name}_WellbeingReport.pdf`);
+    },
+    
+    getRiskLevelColor(riskLevel) {
+      switch (riskLevel?.toLowerCase()) {
+        case 'low':
+        case 'healthy':
+          return { r: 76, g: 175, b: 80 }; // Green
+        case 'moderate':
+          return { r: 255, g: 152, b: 0 }; // Orange
+        case 'high':
+        case 'at risk':
+          return { r: 244, g: 67, b: 54 }; // Red
+        default:
+          return { r: 0, g: 0, b: 0 }; // Black
+      }
+    },
+    
+    getDimensionHealthStatus(score, maxScore) {
+      const percentage = (score / maxScore) * 100;
+      if (percentage >= 70) return 'healthy';
+      if (percentage >= 50) return 'moderate';
+      return 'at risk';
+    },
+    
+    getHealthStatusColor(status) {
+      switch (status?.toLowerCase()) {
+        case 'healthy':
+          return { r: 76, g: 175, b: 80 }; // Green
+        case 'moderate':
+          return { r: 255, g: 152, b: 0 }; // Orange
+        case 'at risk':
+          return { r: 244, g: 67, b: 54 }; // Red
+        default:
+          return { r: 0, g: 0, b: 0 }; // Black
+      }
+    },
+    
+    getAtRiskDimensions(scores, maxScore) {
+      const dimensions = ['autonomy', 'environmental_mastery', 'personal_growth', 'positive_relations', 'purpose_in_life', 'self_acceptance'];
+      return dimensions.filter(dim => {
+        const score = scores[dim] || 0;
+        const percentage = (score / maxScore) * 100;
+        return percentage < 70; // Consider moderate and at-risk as "at-risk"
+      });
     },
     
     generateCollegeReport() {
@@ -643,11 +1070,6 @@ export default {
         return words[0].substring(0, 3).toUpperCase();
       }
       return words.map(word => word.charAt(0)).join('').toUpperCase();
-    }
-  },
-  computed: {
-    $authService() {
-      return authService;
     }
   },
   watch: {

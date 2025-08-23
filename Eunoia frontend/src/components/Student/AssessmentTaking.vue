@@ -287,9 +287,32 @@ export default {
       this.isSubmitting = true
       
       try {
+        // Calculate total time taken in minutes
+        const endTime = new Date()
+        const timeTakenSeconds = Math.round((endTime - this.startTime) / 1000)
+        const timeTakenMinutes = Math.max(1, Math.round(timeTakenSeconds / 60)) // Ensure at least 1 minute
+        
+        // Calculate time spent on each question
+        const questionTimes = {}
+        Object.keys(this.questionStartTimes).forEach(questionId => {
+          const questionStartTime = this.questionStartTimes[questionId]
+          if (questionStartTime) {
+            questionTimes[questionId] = Math.round((endTime - questionStartTime) / 1000) // in seconds
+          }
+        })
+        
         const submissionData = {
-          responses: this.responses
+          responses: this.responses,
+          timeTakenMinutes: timeTakenMinutes,
+          questionTimes: questionTimes,
+          startTime: this.startTime.toISOString(),
+          endTime: endTime.toISOString()
         }
+        
+        console.log('Submitting assessment with timing data:', {
+          timeTakenMinutes,
+          totalQuestions: Object.keys(this.responses).length
+        })
         
         const response = await fetch(`http://localhost:3000/api/student-assessments/submit/${this.assignedAssessmentId}`, {
           method: 'POST',
@@ -311,10 +334,15 @@ export default {
             console.error('Error clearing progress:', error)
           }
           
-          // Emit assessment completion event to parent
+          // Emit assessment completion event to parent with timing data
           this.$emit('assessment-complete', {
             assessmentType: this.assessmentType,
-            assignedAssessmentId: this.assignedAssessmentId
+            assignedAssessmentId: this.assignedAssessmentId,
+            timeTakenMinutes: timeTakenMinutes,
+            timeTakenSeconds: timeTakenSeconds,
+            questionTimes: questionTimes,
+            startTime: this.startTime.toISOString(),
+            endTime: endTime.toISOString()
           })
         } else {
           throw new Error('Failed to submit assessment')

@@ -262,37 +262,12 @@
             <div class="preview-message">{{ customMessage || 'No custom message' }}</div>
           </div>
           
-          <!-- 42-Item Questionnaire Preview -->
-          <div v-if="selectedVersion === '42'" class="questionnaire-preview">
-            <div class="questionnaire-header">
-              <h3>{{ questionnaire.instructions.title }}</h3>
-              <p class="questionnaire-description">{{ questionnaire.instructions.description }}</p>
-              
-              <div class="scale-legend">
-                <h4>Rating Scale:</h4>
-                <div class="scale-items">
-                  <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="scale-item">
-                    <span class="scale-number">{{ value }}</span>
-                    <span class="scale-label">{{ label }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="questionnaire-items">
-              <h4>Assessment Items ({{ questionnaire.items.length }} total):</h4>
-              <div class="items-container">
-                <div v-for="item in questionnaire.items" :key="item.id" class="questionnaire-item">
-                  <div class="item-number">{{ item.id }}.</div>
-                  <div class="item-content">
-                    <p class="item-text">{{ item.text }}</p>
-                    <div class="item-meta">
-                      <span class="dimension-tag">{{ formatDimensionName(item.dimension) }}</span>
-                      <span v-if="item.reverse" class="reverse-tag">Reverse Scored</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <!-- Simple Assessment Confirmation -->
+          <div class="assessment-confirmation">
+            <div class="confirmation-message">
+              <i class="fas fa-check-circle confirmation-icon"></i>
+              <h3>Ready to Send Assessment</h3>
+              <p>The {{ selectedVersion }}-item Ryff Scales assessment is ready to be sent to the selected students.</p>
             </div>
           </div>
         </div>
@@ -354,68 +329,12 @@
               </div>
             </div>
             
-            <!-- 84-Item Assessment Form Preview -->
-            <div class="assessment-form">
-              <div class="form-header">
-                <h3>{{ questionnaire.instructions.title }}</h3>
-                <p class="form-description">{{ questionnaire.instructions.description }}</p>
-                
-                <div class="rating-scale-header">
-                  <h4>Please rate each statement using the scale below:</h4>
-                  <div class="scale-options">
-                    <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="scale-option">
-                      <span class="scale-value">{{ value }}</span>
-                      <span class="scale-text">{{ label }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="form-questions">
-                <div v-for="item in questionnaire.items" :key="item.id" class="question-item">
-                  <div class="question-header">
-                    <span class="question-number">{{ item.id }}.</span>
-                    <div class="question-content">
-                      <p class="question-text">{{ item.text }}</p>
-                      <div class="question-meta">
-                        <span class="dimension-badge">{{ formatDimensionName(item.dimension) }}</span>
-                        <span v-if="item.reverse" class="reverse-badge">Reverse Scored</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="rating-options">
-                    <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="rating-option">
-                      <input type="radio" :name="`preview-${item.id}`" :value="value" disabled>
-                      <label class="rating-label">
-                        <span class="rating-number">{{ value }}</span>
-                        <span class="rating-text">{{ label }}</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="preview-note">
-                  <p><strong>All {{ questionnaire.items.length }} items displayed</strong></p>
-                  <p>The complete assessment includes all {{ questionnaire.items.length }} items across 6 psychological well-being dimensions.</p>
-                </div>
-              </div>
-              
-              <div class="form-footer">
-                <div class="completion-info">
-                  <div class="info-item">
-                    <i class="fas fa-clock"></i>
-                    <span>Estimated completion: 20-25 minutes</span>
-                  </div>
-                  <div class="info-item">
-                    <i class="fas fa-chart-line"></i>
-                    <span>{{ questionnaire.items.length }} total items</span>
-                  </div>
-                  <div class="info-item">
-                    <i class="fas fa-brain"></i>
-                    <span>6 well-being dimensions</span>
-                  </div>
-                </div>
+            <!-- Simple Assessment Confirmation -->
+            <div class="assessment-confirmation">
+              <div class="confirmation-message">
+                <i class="fas fa-check-circle confirmation-icon"></i>
+                <h3>Ready to Send Assessment</h3>
+                <p>The {{ selectedVersion }}-item Ryff Scales assessment is ready to be sent to the selected students.</p>
               </div>
             </div>
           </div>
@@ -1877,6 +1796,41 @@ textarea.form-control {
 
 .completion-info strong {
   color: #202124;
+}
+
+/* Assessment Confirmation Styles */
+.assessment-confirmation {
+  padding: 40px 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.confirmation-message {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.confirmation-icon {
+  font-size: 48px;
+  color: #34a853;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.confirmation-message h3 {
+  color: #202124;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 12px 0;
+}
+
+.confirmation-message p {
+  color: #5f6368;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
 }
 
 @media (max-width: 768px) {

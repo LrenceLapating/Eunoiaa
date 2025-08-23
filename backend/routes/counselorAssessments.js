@@ -606,9 +606,22 @@ router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
       allAssessments = allAssessments.concat(result84.data.map(a => ({...a, assessment_type: 'ryff_84'})));
     }
 
-    // Sort by created_at and apply pagination
+    // Sort by created_at and deduplicate by student_id (keep only latest assessment per student)
     allAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const paginatedAssessments = allAssessments.slice(offset, offset + limitNum);
+    
+    // Deduplicate: keep only the latest assessment per student
+    const uniqueAssessments = [];
+    const seenStudents = new Set();
+    
+    for (const assessment of allAssessments) {
+      if (!seenStudents.has(assessment.student_id)) {
+        uniqueAssessments.push(assessment);
+        seenStudents.add(assessment.student_id);
+      }
+    }
+    
+    // Apply pagination to deduplicated results
+    const paginatedAssessments = uniqueAssessments.slice(offset, offset + limitNum);
 
     let enrichedStudents = [];
     
@@ -652,7 +665,7 @@ router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: allAssessments.length
+        total: uniqueAssessments.length
       }
     });
 
@@ -713,9 +726,22 @@ router.get('/students/moderate', verifyCounselorSession, async (req, res) => {
       allAssessments = allAssessments.concat(result84.data.map(a => ({...a, assessment_type: 'ryff_84'})));
     }
 
-    // Sort by created_at and apply pagination
+    // Sort by created_at and deduplicate by student_id (keep only latest assessment per student)
     allAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const paginatedAssessments = allAssessments.slice(offset, offset + limitNum);
+    
+    // Deduplicate: keep only the latest assessment per student
+    const uniqueAssessments = [];
+    const seenStudents = new Set();
+    
+    for (const assessment of allAssessments) {
+      if (!seenStudents.has(assessment.student_id)) {
+        uniqueAssessments.push(assessment);
+        seenStudents.add(assessment.student_id);
+      }
+    }
+    
+    // Apply pagination to deduplicated results
+    const paginatedAssessments = uniqueAssessments.slice(offset, offset + limitNum);
 
     let enrichedStudents = [];
     
@@ -759,7 +785,7 @@ router.get('/students/moderate', verifyCounselorSession, async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: allAssessments.length
+        total: uniqueAssessments.length
       }
     });
 
@@ -1249,35 +1275,67 @@ router.get('/student/:studentId/history', verifyCounselorSession, async (req, re
       });
     }
 
-    // Get current assessments from ryffscoring table
-    const { data: currentAssessments, error: currentError } = await supabaseAdmin
-      .from('ryffscoring')
-      .select(`
-        id,
-        student_id,
-        assessment_type,
-        responses,
-        scores,
-        overall_score,
-        risk_level,
-        at_risk_dimensions,
-        assignment_id,
-        completed_at,
-        created_at,
-        updated_at
-      `)
-      .eq('student_id', studentId)
-      .order('completed_at', { ascending: false });
+    // Get current assessments from both assessment tables
+    const [assessments42Result, assessments84Result] = await Promise.all([
+      supabaseAdmin
+        .from('assessments_42items')
+        .select(`
+          id,
+          student_id,
+          assessment_type,
+          responses,
+          scores,
+          overall_score,
+          risk_level,
+          at_risk_dimensions,
+          assignment_id,
+          completed_at,
+          created_at,
+          updated_at
+        `)
+        .eq('student_id', studentId)
+        .order('completed_at', { ascending: false }),
+      supabaseAdmin
+        .from('assessments_84items')
+        .select(`
+          id,
+          student_id,
+          assessment_type,
+          responses,
+          scores,
+          overall_score,
+          risk_level,
+          at_risk_dimensions,
+          assignment_id,
+          completed_at,
+          created_at,
+          updated_at
+        `)
+        .eq('student_id', studentId)
+        .order('completed_at', { ascending: false })
+    ]);
 
-    if (currentError) {
-      console.error('Error fetching current assessments:', currentError);
+    if (assessments42Result.error) {
+      console.error('Error fetching 42-item assessments:', assessments42Result.error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch current assessments'
+        message: 'Failed to fetch 42-item assessments'
       });
     }
 
-    let allAssessments = currentAssessments || [];
+    if (assessments84Result.error) {
+      console.error('Error fetching 84-item assessments:', assessments84Result.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch 84-item assessments'
+      });
+    }
+
+    // Combine assessments from both tables
+    let allAssessments = [
+      ...(assessments42Result.data || []),
+      ...(assessments84Result.data || [])
+    ];
 
     // If includeArchived is true, also get historical assessments
     if (includeArchived === 'true') {
@@ -1368,7 +1426,7 @@ router.get('/student/:studentId/history', verifyCounselorSession, async (req, re
         },
         assessments: transformedAssessments,
         totalAssessments: transformedAssessments.length,
-        currentAssessments: currentAssessments?.length || 0,
+        currentAssessments: transformedAssessments.filter(a => !a.isArchived).length,
         archivedAssessments: transformedAssessments.filter(a => a.isArchived).length
       }
     });
@@ -1386,16 +1444,6 @@ router.get('/student/:studentId/history', verifyCounselorSession, async (req, re
 router.get('/student/:studentId/report/pdf', verifyCounselorSession, async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { assessmentIds } = req.query; // Comma-separated assessment IDs
-    
-    if (!assessmentIds) {
-      return res.status(400).json({
-        success: false,
-        message: 'Assessment IDs are required'
-      });
-    }
-
-    const assessmentIdArray = assessmentIds.split(',');
     
     // Get student information
     const { data: student, error: studentError } = await supabaseAdmin
@@ -1411,32 +1459,47 @@ router.get('/student/:studentId/report/pdf', verifyCounselorSession, async (req,
       });
     }
 
-    // Get assessment data for the specified assessments
+    // Get all assessment data for the student from both tables
     const assessmentData = [];
     
-    for (const assessmentId of assessmentIdArray) {
-      // Try different assessment tables
-      const tables = ['assessments_42items', 'assessments_84items'];
-      let assessment = null;
-      
-      for (const table of tables) {
-        const { data, error } = await supabaseAdmin
-          .from(table)
-          .select('*')
-          .eq('id', assessmentId)
-          .eq('student_id', studentId)
-          .single();
-          
-        if (data && !error) {
-          assessment = { ...data, table_source: table };
-          break;
-        }
-      }
-      
-      if (assessment) {
-        assessmentData.push(assessment);
-      }
+    // Fetch from 42-item assessments
+    const { data: assessments42, error: error42 } = await supabaseAdmin
+      .from('assessments_42items')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('completed_at', { ascending: false });
+    
+    if (assessments42 && assessments42.length > 0) {
+      assessmentData.push(...assessments42.map(assessment => ({
+        ...assessment,
+        assessment_type: 'ryff_42'
+      })));
     }
+    
+    // Fetch from 84-item assessments
+    const { data: assessments84, error: error84 } = await supabaseAdmin
+      .from('assessments_84items')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('completed_at', { ascending: false });
+    
+    if (assessments84 && assessments84.length > 0) {
+      assessmentData.push(...assessments84.map(assessment => ({
+        ...assessment,
+        assessment_type: 'ryff_84'
+      })));
+    }
+    
+    // Check if student has any assessments
+    if (assessmentData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No assessments found for this student'
+      });
+    }
+    
+    // Sort all assessments by completion date (newest first)
+    assessmentData.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 
     if (assessmentData.length === 0) {
       return res.status(404).json({
@@ -1777,5 +1840,152 @@ function generateReportHTML(student, assessmentData) {
     </html>
   `;
 }
+
+// Get student assessment responses by dimension
+router.get('/student/:studentId/dimension/:dimension', verifyCounselorSession, async (req, res) => {
+  try {
+    const { studentId, dimension } = req.params;
+    const { assessmentId } = req.query;
+    
+    console.log(`Fetching ${dimension} responses for student ${studentId}`);
+    
+    // Fetch the specific assessment from both tables
+    let assessment;
+    let assessmentType = 'ryff_42'; // default
+    
+    if (assessmentId) {
+      // Try to fetch from 42-item table first
+      const { data: assessment42, error: error42 } = await supabaseAdmin
+        .from('assessments_42items')
+        .select('*')
+        .eq('id', assessmentId)
+        .eq('student_id', studentId)
+        .single();
+        
+      if (assessment42) {
+        assessment = assessment42;
+        assessmentType = 'ryff_42';
+      } else {
+        // Try 84-item table
+        const { data: assessment84, error: error84 } = await supabaseAdmin
+          .from('assessments_84items')
+          .select('*')
+          .eq('id', assessmentId)
+          .eq('student_id', studentId)
+          .single();
+          
+        if (assessment84) {
+          assessment = assessment84;
+          assessmentType = 'ryff_84';
+        } else {
+          console.error('Assessment not found in either table:', { error42, error84 });
+          return res.status(404).json({
+            success: false,
+            message: 'Assessment not found'
+          });
+        }
+      }
+    } else {
+      // Fetch latest assessment for the student from both tables
+      const [result42, result84] = await Promise.all([
+        supabaseAdmin
+          .from('assessments_42items')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('completed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin
+          .from('assessments_84items')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('completed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
+      
+      // Choose the most recent assessment
+      const assessments = [];
+      if (result42.data) assessments.push({ ...result42.data, type: 'ryff_42' });
+      if (result84.data) assessments.push({ ...result84.data, type: 'ryff_84' });
+      
+      if (assessments.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'No assessments found for this student'
+        });
+      }
+      
+      // Sort by completion date and get the latest
+      assessments.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+      const latestAssessment = assessments[0];
+      assessment = latestAssessment;
+      assessmentType = latestAssessment.type;
+    }
+    
+    if (!assessment || !assessment.responses) {
+      return res.status(404).json({
+        success: false,
+        message: 'No assessment responses found'
+      });
+    }
+    
+    // Import the appropriate questionnaire based on assessment type
+    let questionnaireQuestions;
+    if (assessmentType === 'ryff_84') {
+      questionnaireQuestions = require('../utils/ryff84ItemQuestionnaire');
+    } else {
+      questionnaireQuestions = require('../utils/ryff42ItemQuestionnaire');
+    }
+    
+    // Filter questions by dimension
+    const dimensionQuestions = questionnaireQuestions.filter(q => q.dimension === dimension);
+    
+    // Get responses for this dimension
+    const dimensionResponses = dimensionQuestions.map(question => {
+      const response = assessment.responses[question.id.toString()];
+      const responseValue = response || null;
+      let actualScore = 0;
+      
+      if (responseValue !== null) {
+        actualScore = question.reverse ? (7 - responseValue) : responseValue;
+      }
+      
+      return {
+        questionId: question.id,
+        questionText: question.text,
+        response: responseValue,
+        reverse: question.reverse,
+        actualScore: actualScore
+      };
+    });
+    
+    // Calculate dimension score
+    const totalScore = dimensionResponses.reduce((sum, item) => sum + (item.actualScore || 0), 0);
+    const maxPossibleScore = dimensionQuestions.length * 6; // 6 is max score per question
+    const averageScore = dimensionQuestions.length > 0 ? totalScore / dimensionQuestions.length : 0;
+    
+    res.json({
+      success: true,
+      data: {
+        dimension,
+        dimensionName: formatDimensionName(dimension),
+        assessmentType,
+        questions: dimensionResponses,
+        totalScore,
+        maxPossibleScore,
+        averageScore: parseFloat(averageScore.toFixed(2)),
+        questionCount: dimensionQuestions.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching dimension responses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
 
 module.exports = router;

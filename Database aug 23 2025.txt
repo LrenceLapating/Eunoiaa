@@ -16,95 +16,32 @@ create index IF not exists idx_activity_date on public.activity_logs using btree
 
 
 
-
-
-
-create table public.ai_interventions (
+create table public.assessment_analytics (
   id uuid not null default gen_random_uuid (),
+  assessment_id uuid not null,
   student_id uuid not null,
-  assessment_id uuid null,
-  counselor_id uuid null,
-  risk_level character varying(20) not null,
-  intervention_title text not null,
-  intervention_text text not null,
-  overall_strategy text null,
-  dimension_interventions jsonb null default '{}'::jsonb,
-  action_plan jsonb null default '[]'::jsonb,
-  intervention_type character varying(50) null default 'ai_generated'::character varying,
-  status character varying(20) null default 'generated'::character varying,
-  counselor_name character varying(255) null,
-  counselor_message text null,
-  is_read boolean null default false,
-  read_at timestamp with time zone null,
+  time_taken_minutes integer not null,
+  question_times jsonb null default '{}'::jsonb,
+  start_time timestamp with time zone null,
+  end_time timestamp with time zone null,
+  navigation_pattern jsonb null default '[]'::jsonb,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
-  constraint ai_interventions_pkey primary key (id),
-  constraint fk_ai_interventions_counselor foreign KEY (counselor_id) references counselors (id) on delete set null,
-  constraint fk_ai_interventions_student foreign KEY (student_id) references students (id) on delete CASCADE,
-  constraint ai_interventions_intervention_type_check check (
-    (
-      (intervention_type)::text = any (
-        (
-          array[
-            'ai_generated'::character varying,
-            'ai_structured'::character varying,
-            'manual'::character varying
-          ]
-        )::text[]
-      )
-    )
-  ),
-  constraint ai_interventions_risk_level_check check (
-    (
-      (risk_level)::text = any (
-        (
-          array[
-            'at-risk'::character varying,
-            'moderate'::character varying,
-            'healthy'::character varying
-          ]
-        )::text[]
-      )
-    )
-  ),
-  constraint ai_interventions_status_check check (
-    (
-      (status)::text = any (
-        (
-          array[
-            'generated'::character varying,
-            'sent'::character varying,
-            'read'::character varying,
-            'archived'::character varying
-          ]
-        )::text[]
-      )
-    )
-  )
+  constraint assessment_analytics_pkey primary key (id),
+  constraint fk_assessment_analytics_student foreign KEY (student_id) references students (id) on delete CASCADE
 ) TABLESPACE pg_default;
 
-create index IF not exists idx_ai_interventions_student_id on public.ai_interventions using btree (student_id) TABLESPACE pg_default;
+create index IF not exists idx_assessment_analytics_assessment_id on public.assessment_analytics using btree (assessment_id) TABLESPACE pg_default;
 
-create index IF not exists idx_ai_interventions_counselor_id on public.ai_interventions using btree (counselor_id) TABLESPACE pg_default;
+create index IF not exists idx_assessment_analytics_student_id on public.assessment_analytics using btree (student_id) TABLESPACE pg_default;
 
-create index IF not exists idx_ai_interventions_risk_level on public.ai_interventions using btree (risk_level) TABLESPACE pg_default;
+create index IF not exists idx_assessment_analytics_time_taken on public.assessment_analytics using btree (time_taken_minutes) TABLESPACE pg_default;
 
-create index IF not exists idx_ai_interventions_status on public.ai_interventions using btree (status) TABLESPACE pg_default;
+create index IF not exists idx_assessment_analytics_created_at on public.assessment_analytics using btree (created_at) TABLESPACE pg_default;
 
-create index IF not exists idx_ai_interventions_created_at on public.ai_interventions using btree (created_at) TABLESPACE pg_default;
-
-create index IF not exists idx_ai_interventions_is_read on public.ai_interventions using btree (is_read) TABLESPACE pg_default;
-
-create trigger trigger_update_ai_interventions_updated_at BEFORE
-update on ai_interventions for EACH row
-execute FUNCTION update_ai_interventions_updated_at ();
-
-create trigger update_ai_interventions_updated_at BEFORE
-update on ai_interventions for EACH row
-execute FUNCTION update_updated_at_column ();
-
-
-
+create trigger trigger_update_assessment_analytics_updated_at BEFORE
+update on assessment_analytics for EACH row
+execute FUNCTION update_assessment_analytics_updated_at ();
 
 
 create table public.assessment_assignments (
@@ -155,13 +92,6 @@ create index IF not exists idx_assessment_assignments_status on public.assessmen
 
 
 
-
-
-
-
-
-
-
 create table public.assessments_42items (
   id uuid not null default gen_random_uuid (),
   student_id uuid null,
@@ -175,6 +105,7 @@ create table public.assessments_42items (
   assignment_id uuid null,
   at_risk_dimensions jsonb null default '[]'::jsonb,
   updated_at timestamp with time zone null default now(),
+  completion_time integer null,
   constraint assessments_pkey primary key (id),
   constraint assessments_risk_level_check check (
     (
@@ -194,6 +125,8 @@ create table public.assessments_42items (
 create index IF not exists idx_assessments_student_id on public.assessments_42items using btree (student_id) TABLESPACE pg_default;
 
 create index IF not exists idx_assessments_completed_at on public.assessments_42items using btree (completed_at) TABLESPACE pg_default;
+
+create index IF not exists idx_assessments_42items_completion_time on public.assessments_42items using btree (completion_time) TABLESPACE pg_default;
 
 create index IF not exists idx_assessments_assignment_id on public.assessments_42items using btree (assignment_id) TABLESPACE pg_default;
 
@@ -216,41 +149,6 @@ execute FUNCTION update_updated_at_column ();
 
 
 
-
-
-
-
-create table public.assessments_42items_history (
-  id uuid not null default gen_random_uuid (),
-  original_assessment_id uuid not null,
-  student_id uuid not null,
-  student_name text not null,
-  student_email text not null,
-  assessment_type text not null default 'ryff_42'::text,
-  responses jsonb not null default '{}'::jsonb,
-  scores jsonb not null default '{}'::jsonb,
-  original_created_at timestamp with time zone not null default now(),
-  archived_at timestamp with time zone not null default now(),
-  constraint assessments_42items_history_pkey primary key (id)
-) TABLESPACE pg_default;
-
-create index IF not exists idx_assessments_42items_history_original_id on public.assessments_42items_history using btree (original_assessment_id) TABLESPACE pg_default;
-
-create index IF not exists idx_assessments_42items_history_student_id on public.assessments_42items_history using btree (student_id) TABLESPACE pg_default;
-
-create index IF not exists idx_assessments_42items_history_archived_at on public.assessments_42items_history using btree (archived_at) TABLESPACE pg_default;
-
-
-
-
-
-
-
-
-
-
-
-
 create table public.assessments_84items (
   id uuid not null default gen_random_uuid (),
   student_id uuid not null,
@@ -264,6 +162,7 @@ create table public.assessments_84items (
   assignment_id uuid null,
   at_risk_dimensions jsonb null default '[]'::jsonb,
   updated_at timestamp with time zone null default now(),
+  completion_time integer null,
   constraint assessments_84items_pkey primary key (id),
   constraint assessments_84items_assignment_id_fkey foreign KEY (assignment_id) references assessment_assignments (id) on delete CASCADE,
   constraint assessments_84items_risk_level_check check (
@@ -281,6 +180,8 @@ create table public.assessments_84items (
   )
 ) TABLESPACE pg_default;
 
+create index IF not exists idx_assessments_84items_completion_time on public.assessments_84items using btree (completion_time) TABLESPACE pg_default;
+
 create index IF not exists idx_assessments_84items_updated_at on public.assessments_84items using btree (updated_at) TABLESPACE pg_default;
 
 create index IF not exists idx_assessments_84items_student on public.assessments_84items using btree (student_id) TABLESPACE pg_default;
@@ -296,35 +197,6 @@ create index IF not exists idx_assessments_84items_assignment on public.assessme
 create trigger update_assessments_84items_updated_at BEFORE
 update on assessments_84items for EACH row
 execute FUNCTION update_updated_at_column ();
-
-
-
-
-
-
-
-
-
-
-create table public.assessments_84items_history (
-  id uuid not null default gen_random_uuid (),
-  original_assessment_id uuid not null,
-  student_id uuid not null,
-  student_name text not null,
-  student_email text not null,
-  assessment_type text not null default 'ryff_84'::text,
-  responses jsonb not null default '{}'::jsonb,
-  scores jsonb not null default '{}'::jsonb,
-  original_created_at timestamp with time zone not null default now(),
-  archived_at timestamp with time zone not null default now(),
-  constraint assessments_84items_history_pkey primary key (id)
-) TABLESPACE pg_default;
-
-create index IF not exists idx_assessments_84items_history_original_id on public.assessments_84items_history using btree (original_assessment_id) TABLESPACE pg_default;
-
-create index IF not exists idx_assessments_84items_history_student_id on public.assessments_84items_history using btree (student_id) TABLESPACE pg_default;
-
-create index IF not exists idx_assessments_84items_history_archived_at on public.assessments_84items_history using btree (archived_at) TABLESPACE pg_default;
 
 
 
@@ -380,59 +252,6 @@ execute FUNCTION update_updated_at_column ();
 
 
 
-
-
-
-
-
-
-create table public.college_scores (
-  id uuid not null default gen_random_uuid (),
-  college_name text not null,
-  dimension_name text not null,
-  raw_score numeric(5, 2) not null,
-  student_count integer not null default 0,
-  risk_level text not null,
-  last_calculated timestamp with time zone null default now(),
-  assessment_type text not null default '42items'::text,
-  created_at timestamp with time zone null default now(),
-  updated_at timestamp with time zone null default now(),
-  constraint college_scores_pkey primary key (id),
-  constraint unique_college_dimension_assessment unique (college_name, dimension_name, assessment_type),
-  constraint college_scores_assessment_type_check check (
-    (
-      assessment_type = any (array['42items'::text, '84items'::text])
-    )
-  ),
-  constraint college_scores_risk_level_check check (
-    (
-      risk_level = any (array['low'::text, 'medium'::text, 'high'::text])
-    )
-  )
-) TABLESPACE pg_default;
-
-create index IF not exists idx_college_scores_college_name on public.college_scores using btree (college_name) TABLESPACE pg_default;
-
-create index IF not exists idx_college_scores_dimension_name on public.college_scores using btree (dimension_name) TABLESPACE pg_default;
-
-create index IF not exists idx_college_scores_risk_level on public.college_scores using btree (risk_level) TABLESPACE pg_default;
-
-create index IF not exists idx_college_scores_assessment_type on public.college_scores using btree (assessment_type) TABLESPACE pg_default;
-
-create index IF not exists idx_college_scores_last_calculated on public.college_scores using btree (last_calculated) TABLESPACE pg_default;
-
-create trigger update_college_scores_updated_at BEFORE
-update on college_scores for EACH row
-execute FUNCTION update_updated_at_column ();
-
-
-
-
-
-
-
-
-
 create table public.college_scores_history (
   id uuid not null default gen_random_uuid (),
   college_name character varying not null,
@@ -461,8 +280,6 @@ create index IF not exists idx_college_scores_history_assessment_type on public.
 create trigger update_college_scores_history_updated_at BEFORE
 update on college_scores_history for EACH row
 execute FUNCTION update_updated_at_column ();
-
-
 
 
 
@@ -528,6 +345,7 @@ execute FUNCTION update_updated_at_column ();
 
 
 
+
 create table public.counselors (
   id uuid not null default gen_random_uuid (),
   email character varying(255) not null,
@@ -545,6 +363,11 @@ create table public.counselors (
 create index IF not exists idx_counselors_email on public.counselors using btree (email) TABLESPACE pg_default;
 
 create index IF not exists idx_counselors_college on public.counselors using btree (college) TABLESPACE pg_default;
+
+
+
+
+
 
 
 
@@ -575,63 +398,6 @@ create index IF not exists idx_ryff_history_archived_at on public.ryff_history u
 
 
 
-
-
-
-
-create table public.ryffscoring (
-  id uuid not null default gen_random_uuid (),
-  student_id uuid not null,
-  assessment_type character varying(20) not null,
-  responses jsonb not null,
-  scores jsonb not null,
-  overall_score numeric(5, 2) null,
-  risk_level character varying(20) null,
-  at_risk_dimensions jsonb null default '[]'::jsonb,
-  assignment_id uuid null,
-  completed_at timestamp with time zone null,
-  created_at timestamp with time zone null default now(),
-  updated_at timestamp with time zone null default now(),
-  constraint ryffscoring_pkey primary key (id),
-  constraint ryffscoring_assignment_id_fkey foreign KEY (assignment_id) references assessment_assignments (id) on delete set null,
-  constraint ryffscoring_assessment_type_check check (
-    (
-      (assessment_type)::text = any (
-        (
-          array[
-            'ryff_42'::character varying,
-            'ryff_84'::character varying
-          ]
-        )::text[]
-      )
-    )
-  ),
-  constraint ryffscoring_risk_level_check check (
-    (
-      (risk_level)::text = any (
-        (
-          array[
-            'low'::character varying,
-            'moderate'::character varying,
-            'high'::character varying
-          ]
-        )::text[]
-      )
-    )
-  )
-) TABLESPACE pg_default;
-
-create index IF not exists idx_ryffscoring_student_id on public.ryffscoring using btree (student_id) TABLESPACE pg_default;
-
-create index IF not exists idx_ryffscoring_assessment_type on public.ryffscoring using btree (assessment_type) TABLESPACE pg_default;
-
-create index IF not exists idx_ryffscoring_risk_level on public.ryffscoring using btree (risk_level) TABLESPACE pg_default;
-
-create index IF not exists idx_ryffscoring_completed_at on public.ryffscoring using btree (completed_at) TABLESPACE pg_default;
-
-create trigger update_ryffscoring_updated_at_trigger BEFORE
-update on ryffscoring for EACH row
-execute FUNCTION update_ryffscoring_updated_at ();
 
 
 
@@ -720,18 +486,3 @@ create index IF not exists idx_sessions_token on public.user_sessions using btre
 create index IF not exists idx_sessions_user on public.user_sessions using btree (user_id, user_type) TABLESPACE pg_default;
 
 create index IF not exists idx_sessions_expires on public.user_sessions using btree (expires_at) TABLESPACE pg_default;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
