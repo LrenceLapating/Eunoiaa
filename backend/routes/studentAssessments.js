@@ -4,6 +4,8 @@ const { supabase } = require('../config/database');
 const { createClient } = require('@supabase/supabase-js');
 const { verifyStudentSession } = require('../middleware/sessionManager');
 const { calculateRyffScores, determineRiskLevel } = require('../utils/ryffScoring');
+const { computeAndStoreCollegeScores } = require('../utils/collegeScoring');
+const riskLevelSyncService = require('../services/riskLevelSyncService');
 
 // Create service role client for bypassing RLS
 const supabaseAdmin = createClient(
@@ -213,7 +215,8 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
         *,
         bulk_assessment:bulk_assessments(
           id,
-          assessment_type
+          assessment_type,
+          assessment_name
         )
       `)
       .eq('id', assignmentId)
@@ -325,6 +328,43 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
       // Don't fail the whole operation, assessment is already saved
     } else {
       console.log('Assignment status updated successfully:', updateData);
+    }
+
+    // Sync risk level to assessment_assignments using centralized service
+    try {
+      await riskLevelSyncService.syncRiskLevelToAssignments(assessmentRecord.id, tableName);
+      console.log('Risk level synchronized to assessment_assignments successfully');
+    } catch (syncError) {
+      console.error('Error synchronizing risk level:', syncError);
+      // Don't fail the whole operation, assessment is already saved
+    }
+
+    // Get student's college information for college score computation
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('college')
+      .eq('id', studentId)
+      .single();
+
+    // Trigger college score computation for the student's college
+    if (studentData && studentData.college && !studentError) {
+      const assessmentName = assignment.bulk_assessment.assessment_name;
+      console.log(`Triggering college score computation for ${studentData.college}, assessment: ${assessmentName}, type: ${assessmentType}`);
+      
+      // Run college score computation asynchronously (don't wait for it to complete)
+      computeAndStoreCollegeScores(studentData.college, assessmentType, assessmentName)
+        .then(result => {
+          if (result.success) {
+            console.log(`College scores updated successfully for ${studentData.college}:`, result.message);
+          } else {
+            console.error(`Failed to update college scores for ${studentData.college}:`, result.error);
+          }
+        })
+        .catch(error => {
+          console.error(`Error in college score computation for ${studentData.college}:`, error);
+        });
+    } else {
+      console.log('Could not determine student college for score computation:', studentError);
     }
 
     res.json({

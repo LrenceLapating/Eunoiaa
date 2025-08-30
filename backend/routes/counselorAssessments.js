@@ -36,62 +36,133 @@ router.get('/results', verifyCounselorSession, async (req, res) => {
     if (tableName === 'assessments_42items') {
       console.log('🎯 Fetching 42-item assessments directly from table...');
       
-      // SIMPLIFIED: Direct query to assessments_42items table
-      const { data: assessmentData, error: assessmentError } = await supabase
-        .from('assessments_42items')
-        .select('*')
-        .limit(limitNum)
-        .range(offset, offset + limitNum - 1);
-
-      if (assessmentError) {
-        console.error('Error fetching 42-item assessments:', assessmentError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to fetch 42-item assessments'
-        });
-      }
+      let assessmentData;
+      let studentIds = [];
       
-      console.log(`✅ Found ${assessmentData?.length || 0} 42-item assessments`);
-      
-      if (!assessmentData || assessmentData.length === 0) {
-        assessments = [];
-      } else {
-        // Get student data for these assessments
-        const studentIds = [...new Set(assessmentData.map(a => a.student_id))];
-        
-        const { data: students, error: studentError } = await supabase
+      if (college) {
+        // OPTIMIZED: First get students from the specified college
+        console.log(`🔍 Getting students from college: ${college}`);
+        const { data: students, error: studentsError } = await supabase
           .from('students')
-          .select('id, id_number, name, college, section, email')
-          .in('id', studentIds)
+          .select('id, name, college, year_level, section')
+          .eq('college', college)
           .eq('status', 'active');
         
-        if (studentError) {
-          console.error('Error fetching students:', studentError);
+        if (studentsError) {
+          console.error('Error fetching students:', studentsError);
+          return res.status(500).json({ success: false, message: 'Failed to fetch students' });
+        }
+        
+        console.log(`✅ Found ${students?.length || 0} students in ${college}`);
+        
+        if (!students || students.length === 0) {
+          assessments = [];
+        } else {
+          studentIds = students.map(s => s.id);
+          
+          // Fetch assessments for these students only
+          const { data: filteredAssessments, error: assessmentError } = await supabase
+            .from('assessments_42items')
+            .select('*')
+            .in('student_id', studentIds)
+            .limit(limitNum)
+            .range(offset, offset + limitNum - 1);
+          
+          if (assessmentError) {
+            console.error('Error fetching 42-item assessments:', assessmentError);
+            return res.status(500).json({
+              success: false,
+              message: 'Failed to fetch 42-item assessments'
+            });
+          }
+          
+          assessmentData = filteredAssessments;
+          console.log(`✅ Found ${assessmentData?.length || 0} 42-item assessments for college`);
+          
+          // Create student map for quick lookup
+          const studentMap = {};
+          students.forEach(student => {
+            studentMap[student.id] = student;
+          });
+          
+          // Combine assessment and student data
+          assessments = assessmentData.map(assessment => {
+            const student = studentMap[assessment.student_id];
+            
+            return {
+              ...assessment,
+              student: student,
+              assignment: {
+                id: assessment.assignment_id || 'N/A',
+                assigned_at: assessment.created_at,
+                completed_at: assessment.completed_at,
+                bulk_assessment_id: 'direct-fetch',
+                bulk_assessment: {
+                  assessment_name: '42-Item Ryff Assessment',
+                  assessment_type: 'ryff_42'
+                }
+              }
+            };
+          }).filter(a => a.student);
+        }
+      } else {
+        // Original logic when no college filter
+        const { data: allAssessments, error: assessmentError } = await supabase
+          .from('assessments_42items')
+          .select('*')
+          .limit(limitNum)
+          .range(offset, offset + limitNum - 1);
+
+        if (assessmentError) {
+          console.error('Error fetching 42-item assessments:', assessmentError);
           return res.status(500).json({
             success: false,
-            message: 'Failed to fetch student data'
+            message: 'Failed to fetch 42-item assessments'
           });
         }
         
-        // Combine assessment and student data (simplified structure)
-        assessments = assessmentData.map(assessment => {
-          const student = students.find(s => s.id === assessment.student_id);
+        console.log(`✅ Found ${allAssessments?.length || 0} 42-item assessments`);
+        
+        if (!allAssessments || allAssessments.length === 0) {
+          assessments = [];
+        } else {
+          // Get student data for these assessments
+          studentIds = [...new Set(allAssessments.map(a => a.student_id))];
           
-          return {
-            ...assessment,
-            student: student,
-            assignment: {
-              id: assessment.assignment_id || 'N/A',
-              assigned_at: assessment.created_at,
-              completed_at: assessment.completed_at,
-              bulk_assessment_id: 'direct-fetch',
-              bulk_assessment: {
-                assessment_name: '42-Item Ryff Assessment',
-                assessment_type: 'ryff_42'
+          const { data: students, error: studentError } = await supabase
+            .from('students')
+            .select('id, id_number, name, college, section, email')
+            .in('id', studentIds)
+            .eq('status', 'active');
+          
+          if (studentError) {
+            console.error('Error fetching students:', studentError);
+            return res.status(500).json({
+              success: false,
+              message: 'Failed to fetch student data'
+            });
+          }
+          
+          // Combine assessment and student data (simplified structure)
+          assessments = allAssessments.map(assessment => {
+            const student = students.find(s => s.id === assessment.student_id);
+            
+            return {
+              ...assessment,
+              student: student,
+              assignment: {
+                id: assessment.assignment_id || 'N/A',
+                assigned_at: assessment.created_at,
+                completed_at: assessment.completed_at,
+                bulk_assessment_id: 'direct-fetch',
+                bulk_assessment: {
+                  assessment_name: '42-Item Ryff Assessment',
+                  assessment_type: 'ryff_42'
+                }
               }
-            }
-          };
-        }).filter(a => a.student); // Only include assessments with valid students
+            };
+          }).filter(a => a.student); // Only include assessments with valid students
+        }
       }
     } else if (tableName === 'assessments_84items') {
       console.log('🎯 Fetching 84-item assessments directly from table...');
@@ -228,10 +299,11 @@ router.get('/results', verifyCounselorSession, async (req, res) => {
       filteredAssessments = filteredAssessments.filter(a => a.assessment_type === assessmentType);
       console.log(`🔍 After assessment type filter: ${filteredAssessments.length} assessments (was ${beforeTypeFilter})`);
     }
-    if (college) {
-      filteredAssessments = filteredAssessments.filter(a => a.student?.college === college);
-      console.log(`🔍 After college filter: ${filteredAssessments.length} assessments`);
-    }
+    // College filtering is now done at database level, so skip this filter
+    // if (college) {
+    //   filteredAssessments = filteredAssessments.filter(a => a.student?.college === college);
+    //   console.log(`🔍 After college filter: ${filteredAssessments.length} assessments`);
+    // }
 
     // Sort by completion date
     filteredAssessments.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
@@ -1981,6 +2053,170 @@ router.get('/student/:studentId/dimension/:dimension', verifyCounselorSession, a
     
   } catch (error) {
     console.error('Error fetching dimension responses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Get risk distribution for a specific college and assessment
+router.get('/risk-distribution', verifyCounselorSession, async (req, res) => {
+  try {
+    const { college, assessmentName, yearLevel, section } = req.query;
+    
+    console.log('🎯 Fetching risk distribution from assessment_assignments:', {
+      college,
+      assessmentName,
+      yearLevel,
+      section
+    });
+    
+    if (!college || !assessmentName) {
+      return res.status(400).json({
+        success: false,
+        message: 'College and assessment name are required'
+      });
+    }
+    
+    // First, get bulk assessments that match the assessment name
+    const { data: bulkAssessments, error: bulkError } = await supabaseAdmin
+      .from('bulk_assessments')
+      .select('id, assessment_name, assessment_type')
+      .ilike('assessment_name', `%${assessmentName}%`);
+    
+    if (bulkError) {
+      console.error('Error fetching bulk assessments:', bulkError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch bulk assessments'
+      });
+    }
+    
+    if (!bulkAssessments || bulkAssessments.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          riskDistribution: { atRisk: 0, moderate: 0, healthy: 0, total: 0 },
+          totalStudents: 0,
+          filters: { college, assessmentName, yearLevel: yearLevel || 'All Years', section: section || 'All Sections' }
+        }
+      });
+    }
+    
+    const bulkAssessmentIds = bulkAssessments.map(ba => ba.id);
+    
+    // Get assessment assignments for these bulk assessments
+    const { data: assignments, error: assignmentError } = await supabaseAdmin
+      .from('assessment_assignments')
+      .select('id, student_id, bulk_assessment_id, status, risk_level')
+      .in('bulk_assessment_id', bulkAssessmentIds)
+      .eq('status', 'completed');
+    
+    if (assignmentError) {
+      console.error('Error fetching assignments:', assignmentError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch assignments'
+      });
+    }
+    
+    if (!assignments || assignments.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          riskDistribution: { atRisk: 0, moderate: 0, healthy: 0, total: 0 },
+          totalStudents: 0,
+          filters: { college, assessmentName, yearLevel: yearLevel || 'All Years', section: section || 'All Sections' }
+        }
+      });
+    }
+    
+    // Get student data for filtering
+    const studentIds = assignments.map(a => a.student_id);
+    let studentQuery = supabaseAdmin
+      .from('students')
+      .select('id, name, college, year_level, section, status')
+      .in('id', studentIds)
+      .eq('status', 'active')
+      .eq('college', college);
+    
+    // Apply additional filters if provided
+    if (yearLevel && yearLevel !== 'All Years') {
+      studentQuery = studentQuery.eq('year_level', yearLevel);
+    }
+    
+    if (section && section !== 'All Sections') {
+      studentQuery = studentQuery.eq('section', section);
+    }
+    
+    const { data: students, error: studentError } = await studentQuery;
+    
+    if (studentError) {
+      console.error('Error fetching students:', studentError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch students'
+      });
+    }
+    
+    // Filter assignments to only include students that match our criteria
+    const validStudentIds = new Set(students?.map(s => s.id) || []);
+    const filteredAssignments = assignments.filter(a => validStudentIds.has(a.student_id));
+    
+    console.log(`✅ Found ${filteredAssignments?.length || 0} completed assignments after filtering`);
+    
+    // Calculate risk distribution
+    const riskDistribution = {
+      atRisk: 0,
+      moderate: 0,
+      healthy: 0,
+      total: 0
+    };
+    
+    if (filteredAssignments && filteredAssignments.length > 0) {
+      filteredAssignments.forEach(assignment => {
+        const riskLevel = assignment.risk_level;
+        const student = students?.find(s => s.id === assignment.student_id);
+        const bulkAssessment = bulkAssessments?.find(ba => ba.id === assignment.bulk_assessment_id);
+        
+        console.log('🔍 Processing assignment:', {
+          studentName: student?.name,
+          riskLevel: riskLevel,
+          assessmentName: bulkAssessment?.assessment_name
+        });
+        
+        // Map risk levels to distribution categories
+        if (riskLevel === 'at-risk' || riskLevel === 'high') {
+          riskDistribution.atRisk++;
+        } else if (riskLevel === 'moderate') {
+          riskDistribution.moderate++;
+        } else if (riskLevel === 'healthy' || riskLevel === 'low') {
+          riskDistribution.healthy++;
+        }
+        
+        riskDistribution.total++;
+      });
+    }
+    
+    console.log('📊 Risk distribution calculated:', riskDistribution);
+    
+    res.json({
+      success: true,
+      data: {
+        riskDistribution,
+        totalStudents: riskDistribution.total,
+        filters: {
+          college,
+          assessmentName,
+          yearLevel: yearLevel || 'All Years',
+          section: section || 'All Sections'
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in risk distribution endpoint:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

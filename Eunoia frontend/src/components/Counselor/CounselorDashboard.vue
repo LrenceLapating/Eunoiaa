@@ -258,49 +258,21 @@
           <YearlyTrendAnalysis />
         </div>
 
-        <!-- Bulk Assessment View -->
-        <bulk-assessment v-if="currentView === 'bulkAssessment'" />
-
-        <!-- Auto Reminders View -->
-        <auto-reminders v-if="currentView === 'autoReminders'" />
-
-        <!-- Ryff Scoring View -->
-        <ryff-scoring v-if="currentView === 'ryffScoring'" 
-                     ref="ryffScoringComponent"
-                     :selected-dimension="selectedRiskDimension" 
-                     :selected-college="selectedRiskCollege"
-                     :students="students"
-                     @clear-risk-filters="clearRiskFilters"
-                     @navigate-to-reports="handleNavigateToReports" />
-
-        <!-- Guidance Feedback View -->
-        <college-view v-if="currentView === 'guidance' && !selectedCollegeDetail" 
-                     @navigate-to-college="showCollegeDetail" />
-        
-        <!-- College Detail View -->
-        <college-detail v-if="currentView === 'guidance' && selectedCollegeDetail" 
-                       :selected-college="selectedCollegeDetail"
-                       :assessment-type="selectedCollegeDetail.assessmentType"
-                       @go-back="hideCollegeDetail" />
-
-        <!-- AI Intervention View -->
-        <AIintervention v-if="currentView === 'intervention'" />
-        
-        <!-- Assessment Status View -->
-        <AccountManagement v-if="currentView === 'status'" 
-                          @students-updated="updateStudentData"
-                          @students-deactivated="handleStudentsDeactivated" />
-        
-        <!-- Reports View -->
-        <Reports v-if="currentView === 'reports'" 
-                :students="students" 
-                :pre-selected-student="preSelectedStudent"
-                :pre-selected-report-type="preSelectedReportType" />
-        
-
-        
-        <!-- Settings View -->
-        <Settings v-if="currentView === 'settings'" />
+        <!-- Router View for Nested Components -->
+        <router-view 
+          :students="students"
+          :selected-dimension="selectedRiskDimension" 
+          :selected-college="selectedCollegeDetail"
+          :assessment-type="$route.query.assessmentType || '42-item'"
+          :pre-selected-student="preSelectedStudent"
+          :pre-selected-report-type="preSelectedReportType"
+          @clear-risk-filters="clearRiskFilters"
+          @navigate-to-reports="handleNavigateToReports"
+          @students-updated="updateStudentData"
+          @students-deactivated="handleStudentsDeactivated"
+          @navigate-to-college="showCollegeDetail"
+          @go-back="hideCollegeDetail"
+        />
       </div>
 
       <!-- Dimension Details Modal -->
@@ -367,7 +339,6 @@ export default {
   },
   data() {
     return {
-      currentView: 'dashboard',
       showSubmenu: null,
       selectedCollege: 'all',
       showModal: false,
@@ -418,6 +389,22 @@ export default {
     }
   },
   computed: {
+    currentView() {
+      const routeName = this.$route.name;
+      const routeToViewMap = {
+        'CounselorDashboard': 'dashboard',
+        'BulkAssessment': 'bulkAssessment',
+        'AutoReminders': 'autoReminders',
+        'RyffScoring': 'ryffScoring',
+        'CollegeSummary': 'guidance',
+        'CollegeDetail': 'guidance',
+        'AIIntervention': 'intervention',
+        'AccountManagement': 'status',
+        'Reports': 'reports',
+        'Settings': 'settings'
+      };
+      return routeToViewMap[routeName] || 'dashboard';
+    },
     pageTitle() {
       switch(this.currentView) {
         case 'bulkAssessment':
@@ -463,7 +450,21 @@ export default {
     setView(view) {
       if (this.viewChangeTimeout) clearTimeout(this.viewChangeTimeout);
       this.viewChangeTimeout = setTimeout(() => {
-        this.currentView = view;
+        // Map view names to router paths
+        const routeMap = {
+          'dashboard': '/counselor',
+          'bulkAssessment': '/counselor/bulk-assessment',
+          'autoReminders': '/counselor/auto-reminders',
+          'ryffScoring': '/counselor/ryff-scoring',
+          'guidance': '/counselor/college-summary',
+          'intervention': '/counselor/ai-intervention',
+          'status': '/counselor/account-management',
+          'reports': '/counselor/reports',
+          'settings': '/counselor/settings'
+        };
+        
+        const routePath = routeMap[view] || '/counselor';
+        this.$router.push(routePath);
       }, 300);
     },
     async logout() {
@@ -484,7 +485,7 @@ export default {
     viewStudentsAtRisk(dimensionName, collegeName) {
       this.selectedRiskDimension = dimensionName;
       this.selectedRiskCollege = collegeName;
-      this.setView('ryffScoring');
+      this.$router.push('/counselor/ryff-scoring');
       this.closeModal();
       
       // Log the navigation for debugging
@@ -499,7 +500,7 @@ export default {
       this.preSelectedReportType = data.reportType;
       
       // Navigate to reports view
-      this.setView('reports');
+      this.$router.push('/counselor/reports');
     },
     refreshData() {
       // Refresh dashboard data
@@ -592,7 +593,21 @@ export default {
         }
       };
       
+      // Set the college detail data for the component to access
       this.selectedCollegeDetail = enhancedCollege;
+      
+      // Navigate to the college detail route with assessment type as query parameter
+      const collegeId = encodeURIComponent(college.name || college.code || 'unknown');
+      const routeParams = {
+        path: `/counselor/college-detail/${collegeId}`
+      };
+      
+      // Include assessment type as query parameter if available
+      if (college.assessmentType) {
+        routeParams.query = { assessmentType: college.assessmentType };
+      }
+      
+      this.$router.push(routeParams);
     },
     
     // Generate year-specific dimension scores based on base dimensions

@@ -140,7 +140,7 @@ export default {
               
               return {
                 ...college,
-                students: collegeScore.studentCount || 0,
+                students: college.users || 0, // Use total enrolled students from college data
                 avgScore: avgScore,
                 atRisk: atRiskCount,
                 dimensions: this.formatDimensionsForDisplay(dimensions)
@@ -149,7 +149,7 @@ export default {
               // Return college with default values when no score data exists
               return {
                 ...college,
-                students: 0,
+                students: college.users || 0, // Use total enrolled students even when no score data
                 avgScore: 0,
                 atRisk: 0,
                 dimensions: this.getDefaultDimensions()
@@ -188,17 +188,11 @@ export default {
         const assessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
         console.log(`🔍 Loading college scores for assessment type: ${assessmentType}`);
         
-        // First, trigger computation of college scores with assessment type filter
-        console.log(`⚙️ Computing scores for ${assessmentType}...`);
-        await fetch('http://localhost:3000/api/accounts/colleges/compute-scores', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ assessmentType })
-        });
-        
-        // Then fetch the computed scores with assessment type filter
+        // Fetch the computed scores with assessment type filter
+        // Note: We removed the automatic compute-scores call because:
+        // 1. It was causing "General Assessment" records due to missing assessmentName
+        // 2. College scores should be computed when assessments are submitted, not on-demand
+        // 3. The getCollegeScores function can handle dynamic computation if needed
         console.log(`📥 Fetching computed scores for ${assessmentType}...`);
         const response = await fetch(`http://localhost:3000/api/accounts/colleges/scores?assessmentType=${assessmentType}`);
         if (response.ok) {

@@ -1,5 +1,5 @@
 <template>
-  <div class="college-detail-container">
+  <div class="college-detail-container" v-if="selectedCollege">
     <!-- Header with back button -->
     <div class="header-section">
       <button class="back-button" @click="goBack">
@@ -14,22 +14,33 @@
         </div>
       </div>
       <div class="header-controls">
-        <div class="year-selector">
-            <label for="studentYear">Select Student Year:</label>
-            <select id="studentYear" v-model="selectedYear" class="year-dropdown">
-              <option value="">All Year</option>
-              <option value="1st">1st Year</option>
-              <option value="2nd">2nd Year</option>
-              <option value="3rd">3rd Year</option>
-              <option value="4th">4th Year</option>
+        <div class="assessment-selector">
+            <label for="assessmentName">Select Assessment Name:</label>
+            <select id="assessmentName" v-model="selectedAssessmentName" class="assessment-dropdown" :disabled="loadingAssessmentNames">
+              <option value="">Select Assessment</option>
+              <option v-for="assessmentName in assessmentNames" :key="assessmentName" :value="assessmentName">
+                {{ assessmentName }}
+              </option>
             </select>
           </div>
-        <button class="history-button" @click="showHistoryPanel = true">
+        <button class="history-button" @click="showHistoryPanel = true" v-if="selectedAssessmentName">
           <i class="fas fa-history"></i>
           <span>History</span>
         </button>
       </div>
     </div>
+
+    <!-- Empty State when no assessment is selected -->
+    <div class="empty-state" v-if="!selectedAssessmentName">
+      <div class="empty-state-content">
+        <i class="fas fa-clipboard-list"></i>
+        <h3>Please Select Assessment Name</h3>
+        <p>Choose an assessment from the dropdown above to view the college data and analytics.</p>
+      </div>
+    </div>
+
+    <!-- Main content when assessment is selected -->
+    <div v-else>
 
     <!-- College Info Card -->
     <div class="college-info-card">
@@ -37,8 +48,8 @@
         <i class="fas fa-graduation-cap"></i>
       </div>
       <div class="college-details">
-        <h2>{{ selectedCollege.name }}</h2>
-        <p>{{ selectedCollege.students }} Total students</p>
+        <h2>{{ selectedCollege?.name || 'Loading...' }}</h2>
+        <p>{{ selectedCollege?.students || 0 }} Total students</p>
         <span class="risk-level medium-risk">Medium Risk</span>
         <div v-if="selectedHistoryData" class="history-indicator">
               <i class="fas fa-history"></i>
@@ -53,41 +64,54 @@
           <div class="metric-row">
             <div class="metric-item">
               <span class="metric-label">Completion Rate</span>
-              <span class="metric-value">{{ currentData.completionRate || '85%' }}</span>
+              <span class="metric-value">{{ completionRateDisplay }}</span>
             </div>
             <div class="metric-item">
-                <span class="metric-label">Assessment</span>
-                <span class="metric-value">{{ currentData.assessmentName || 'Current Assessment' }}</span>
+                <span class="metric-label">Students Year</span>
+                <div class="dropdown-container">
+                  <select v-model="selectedYear" class="metric-dropdown" :disabled="!selectedAssessmentName || loadingYears">
+                    <option value="">{{ loadingYears ? 'Loading years...' : (selectedAssessmentName ? 'All Years' : 'Select Assessment First') }}</option>
+                    <option v-for="year in availableYears" :key="year" :value="year">{{ getYearDisplayName(year) }}</option>
+                  </select>
+                </div>
               </div>
           </div>
           <div class="metric-row">
             <div class="metric-item">
               <span class="metric-label">Overall Score</span>
-              <span class="metric-value">{{ currentData.overallScore || '150' }}</span>
+              <span class="metric-value">{{ dynamicOverallScore || '0' }}</span>
             </div>
-            <div class="metric-item">
-              <span class="metric-label">At Risk</span>
-              <span class="metric-value">{{ currentData.atRiskCount || selectedCollege.atRisk || 0 }}</span>
+            <div class="metric-item" v-show="selectedYear && selectedAssessmentName">
+              <span class="metric-label">Sections</span>
+              <div class="dropdown-container">
+                <select v-model="selectedSection" class="metric-dropdown" :disabled="!selectedAssessmentName || loadingSections || !selectedYear">
+                  <option value="">{{ loadingSections ? 'Loading sections...' : 'All Sections' }}</option>
+                  <option v-for="section in filteredSections" :key="section" :value="section">{{ section }}</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
       </div>
   
       <div class="risk-distribution">
-        <h3>Risk Distribution</h3>
-        <div class="risk-stats">
+        <h3>Risk Distribution (Overall Score of Student)</h3>
+        <div class="risk-stats" v-if="!loadingRiskDistribution">
           <div class="risk-item high-risk">
-            <span class="risk-count">12</span>
+            <span class="risk-count">{{ riskDistribution.atRisk }}</span>
             <span class="risk-label">At Risk</span>
           </div>
           <div class="risk-item medium-risk">
-            <span class="risk-count">34</span>
+            <span class="risk-count">{{ riskDistribution.moderate }}</span>
             <span class="risk-label">Moderate</span>
           </div>
           <div class="risk-item low-risk">
-            <span class="risk-count">34</span>
+            <span class="risk-count">{{ riskDistribution.healthy }}</span>
             <span class="risk-label">Healthy</span>
           </div>
+        </div>
+        <div class="loading-risk" v-else>
+          <p>Loading risk distribution...</p>
         </div>
       </div>
       <div class="risk-legend">
@@ -127,7 +151,7 @@
           <div class="dimension-score-section">
             <div class="score-display" :style="{ borderLeft: `4px solid ${getDimensionColor(dimension)}` }">
               <span class="score-label">Dimension Score:</span>
-              <span class="score-value" style="color: black;">{{ dimension.averageScore }}</span>
+              <span class="score-value" style="color: black;">{{ getDisplayScore(dimension) }}</span>
             </div>
             <div class="score-interpretation">
               <h4>Score Interpretation</h4>
@@ -183,6 +207,15 @@
         </div>
       </div>
     </div>
+    </div> <!-- End of main content when assessment is selected -->
+  </div>
+  
+  <!-- Loading state when college data is not available -->
+  <div class="loading-container" v-else>
+    <div class="loading-content">
+      <h3>Loading college details...</h3>
+      <p>Please wait while we fetch the data.</p>
+    </div>
   </div>
 </template>
 
@@ -205,7 +238,24 @@ export default {
     return {
       showHistoryPanel: false,
       selectedHistoryData: null,
+      selectedAssessmentName: '',
+      assessmentNames: [],
+      loadingAssessmentNames: false,
       selectedYear: '',
+      selectedSection: '',
+      availableSections: [],
+      loadingSections: false,
+      availableYears: [],
+      loadingYears: false,
+      // Reactive property to trigger computed updates
+      completionDataUpdateTrigger: 0,
+      // Risk distribution data
+      riskDistribution: {
+        atRisk: 0,
+        moderate: 0,
+        healthy: 0
+      },
+      loadingRiskDistribution: false,
       assessmentHistory: [
         {
           id: 1,
@@ -330,15 +380,91 @@ export default {
       ]
     };
   },
+  watch: {
+    selectedCollege: {
+      handler(newVal, oldVal) {
+        console.log('🏫 selectedCollege watcher triggered');
+        console.log('🏫 oldVal completionData:', oldVal?.completionData);
+        console.log('🏫 newVal completionData:', newVal?.completionData);
+        
+        if (newVal) {
+          // Reset any selected history data when college changes
+          this.selectedHistoryData = null;
+          this.selectedAssessmentName = '';
+          // Refetch assessment names for the new college
+          this.fetchAssessmentNames();
+        }
+      },
+      immediate: true,
+      deep: true
+    },
+    assessmentType: {
+      handler() {
+        // Refetch assessment names when assessment type changes
+        if (this.selectedCollege) {
+          this.selectedAssessmentName = '';
+          this.fetchAssessmentNames();
+        }
+      }
+    },
+    selectedAssessmentName: {
+      handler(newVal, oldVal) {
+        console.log('selectedAssessmentName changed from', oldVal, 'to', newVal);
+        // Reset section and year selection and fetch both when assessment changes
+        this.selectedSection = '';
+        this.selectedYear = '';
+        if (newVal) {
+          this.fetchYearsForAssessment();
+          // Also fetch college scores for the selected assessment
+          this.fetchCollegeScores();
+        } else {
+          this.availableSections = [];
+          this.availableYears = [];
+        }
+      }
+    },
+    selectedYear: {
+      handler(newVal, oldVal) {
+        console.log('selectedYear changed from', oldVal, 'to', newVal);
+        // Reset section selection when year changes
+        this.selectedSection = '';
+        // Fetch updated college scores when year filter changes
+        if (this.selectedAssessmentName) {
+          this.fetchCollegeScores();
+        }
+      }
+    },
+    selectedSection: {
+      handler(newVal, oldVal) {
+        console.log('selectedSection changed from', oldVal, 'to', newVal);
+        // Fetch updated college scores when section filter changes
+        if (this.selectedAssessmentName) {
+          this.fetchCollegeScores();
+        }
+      }
+    }
+  },
   computed: {
     currentData() {
+      // Add null checks to prevent runtime errors
+      if (!this.selectedCollege) {
+        return {
+          name: 'Loading...',
+          completionRate: '0%',
+          overallScore: 0,
+          atRiskCount: 0,
+          dimensions: {},
+          assessmentName: 'No Data'
+        };
+      }
+      
       if (this.selectedHistoryData) {
         // If viewing historical data
-        if (this.selectedYear && this.selectedHistoryData.yearData && this.selectedHistoryData.yearData[this.selectedYear]) {
-          // Return year-specific historical data
+        if (this.selectedAssessmentName && this.selectedHistoryData.yearData && this.selectedHistoryData.yearData[this.selectedAssessmentName]) {
+          // Return assessment-specific historical data
           return {
             ...this.selectedHistoryData,
-            ...this.selectedHistoryData.yearData[this.selectedYear],
+            ...this.selectedHistoryData.yearData[this.selectedAssessmentName],
             assessmentName: this.selectedHistoryData.assessmentName
           };
         } else if (this.selectedHistoryData.yearData) {
@@ -362,7 +488,7 @@ export default {
             overallScore: Math.round(totalScore / totalStudents),
             atRiskCount: totalAtRisk,
             // Use original historical dimensions instead of averaging synthetic year data
-            dimensions: this.selectedHistoryData.dimensions,
+            dimensions: this.selectedHistoryData.dimensions || {},
             assessmentName: this.selectedHistoryData.assessmentName
           };
         } else {
@@ -371,11 +497,11 @@ export default {
         }
       } else {
         // Return current college data (with year filtering if applicable)
-        if (this.selectedYear && this.selectedCollege.yearData && this.selectedCollege.yearData[this.selectedYear]) {
-          // Return year-specific current data
+        if (this.selectedAssessmentName && this.selectedCollege.yearData && this.selectedCollege.yearData[this.selectedAssessmentName]) {
+          // Return assessment-specific current data
           return {
             ...this.selectedCollege,
-            ...this.selectedCollege.yearData[this.selectedYear],
+            ...this.selectedCollege.yearData[this.selectedAssessmentName],
             assessmentName: 'Current Assessment'
           };
         } else if (this.selectedCollege.yearData) {
@@ -409,6 +535,11 @@ export default {
       }
     },
     dimensions() {
+      // Add null checks to prevent runtime errors
+      if (!this.currentData || !this.currentData.dimensions) {
+        return [];
+      }
+      
       // Dynamic interpretations based on risk levels
       const getInterpretation = (dimensionKey, riskLevel) => {
         const interpretations = {
@@ -450,29 +581,154 @@ export default {
       // Use actual scores from current data (either selected history or current college)
       const dimensionsData = this.currentData.dimensions || {};
       
-      return Object.entries(dimensionsData).map(([key, dimData]) => {
+      // Create a Set to track unique dimension keys to prevent duplicates
+      const uniqueDimensions = new Map();
+      
+      Object.entries(dimensionsData).forEach(([key, dimData]) => {
         // Handle both structures: {score: X, riskLevel: Y} from CollegeView and {score: X} from yearData
-        const score = dimData.score || dimData || 0;
+        const score = dimData.score || dimData.averageScore || dimData || 0;
         const riskLevel = dimData.riskLevel || this.getRiskLevelFromScore(score);
         
-        const interpretation = getInterpretation(key, riskLevel);
+        const interpretation = getInterpretation(formatDimensionName(key), riskLevel);
         
-        return {
-          name: formatDimensionName(key),
-          averageScore: score,
-          dimensionKey: key,
-          interpretation: interpretation,
-          recommendation: 'No recommendation available.' // Keep existing recommendations for now
-        };
+        // Use formatted dimension name as key to prevent duplicates
+        const formattedName = formatDimensionName(key);
+        
+        // Only add if not already present (prevents duplicates)
+        if (!uniqueDimensions.has(formattedName)) {
+          uniqueDimensions.set(formattedName, {
+            name: formattedName,
+            averageScore: score, // Keep for backward compatibility
+            score: score, // Add for new API format
+            dimensionKey: key,
+            interpretation: interpretation,
+            recommendation: 'No recommendation available.' // Keep existing recommendations for now
+          });
+        }
       });
+      
+      return Array.from(uniqueDimensions.values());
+    },
+    filteredSections() {
+      // If no year is selected or "All Years" is selected, return empty array
+      if (!this.selectedYear || this.selectedYear === '') {
+        return [];
+      }
+      
+      // Filter sections based on selected year
+      return this.availableSections.filter(section => {
+        // Extract year number from section name (e.g., "BSIT 2A" -> "2")
+        const yearMatch = section.match(/\b(\d+)[A-Z]?\b/);
+        if (yearMatch) {
+          const sectionYear = parseInt(yearMatch[1]);
+          const selectedYearNum = parseInt(this.selectedYear);
+          return sectionYear === selectedYearNum;
+        }
+        return false;
+      });
+    },
+    dynamicOverallScore() {
+      // Calculate overall score by summing all dimension scores
+      if (!this.selectedCollege || !this.selectedCollege.dimensions) {
+        return 0;
+      }
+      
+      // Use the raw college data directly from API, not the processed currentData
+      const dimensionsData = this.selectedCollege.dimensions || {};
+      let totalScore = 0;
+      
+      Object.entries(dimensionsData).forEach(([key, dimData]) => {
+        // Handle both structures: {score: X} from API and {averageScore: X} from historical
+        const score = dimData.score || dimData.averageScore || 0;
+        if (score > 0) {
+          totalScore += score;
+        }
+      });
+      
+      // Return the sum of all dimension scores (not average)
+      return Math.round(totalScore * 100) / 100; // Round to 2 decimal places
+    },
+    completionRateDisplay() {
+      // Use reactive trigger to ensure updates
+      this.completionDataUpdateTrigger; // Access to make it reactive
+      
+      // Use real completion data from the API
+      console.log('🔍 completionRateDisplay computed called');
+      console.log('🔍 selectedCollege exists:', !!this.selectedCollege);
+      console.log('🔍 selectedAssessmentName:', this.selectedAssessmentName);
+      console.log('🔍 selectedYear:', this.selectedYear);
+      console.log('🔍 selectedSection:', this.selectedSection);
+      
+      // If no assessment is selected yet, show a placeholder
+      if (!this.selectedAssessmentName) {
+        console.log('ℹ️ No assessment selected yet, showing placeholder');
+        return 'Select Assessment';
+      }
+      
+      if (this.selectedCollege) {
+        // If a specific assessment is selected, use data for that assessment
+        if (this.selectedAssessmentName && this.selectedCollege.completionDataByAssessment) {
+          const assessmentData = this.selectedCollege.completionDataByAssessment[this.selectedAssessmentName];
+          if (assessmentData) {
+            console.log('✅ Using assessment-specific completion data:', assessmentData);
+            return `${assessmentData.completed || 0}/${assessmentData.total || 0}`;
+          }
+        }
+        
+        // Fallback to aggregated completion data if available
+        if (this.selectedCollege.completionData) {
+          const { completed, total } = this.selectedCollege.completionData;
+          console.log('✅ Using aggregated completion data:', { completed, total });
+          return `${completed || 0}/${total || 0}`;
+        }
+      }
+      
+      // If assessment is selected but no completion data is available, check if it's still loading or failed
+      console.log('⏳ Assessment selected but completion data not loaded yet');
+      
+      // If completion data is explicitly null, it means the API call failed
+      if (this.selectedCollege && this.selectedCollege.completionData === null) {
+        console.log('❌ Completion data failed to load');
+        return 'No Data';
+      }
+      
+      return 'Loading...';
     }
   },
   methods: {
     goBack() {
+      // Emit the event for parent component to handle
       this.$emit('go-back');
+      
+      // Also handle router navigation as fallback
+      // Navigate back to college summary if parent doesn't handle the event
+      setTimeout(() => {
+        if (this.$route.name === 'CollegeDetail') {
+          this.$router.push('/counselor/college-summary');
+        }
+      }, 100);
     },
     getRiskLevelFromScore(score) {
-      return getCollegeDimensionRiskLevel(score, this.assessmentType);
+      // Convert assessment type format to match RyffScoringUtils expectations
+      const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+      return getCollegeDimensionRiskLevel(score, dbAssessmentType);
+    },
+    getDisplayScore(dimension) {
+      // Handle both score formats: averageScore (historical) and score (API)
+      const score = dimension.score || dimension.averageScore || 0;
+      
+      // Format score to show appropriate decimal places
+      if (score === 0) {
+        return '0';
+      }
+      
+      // If it's a whole number, show without decimals
+      if (score % 1 === 0) {
+        return score.toString();
+      }
+      
+      // Otherwise, show with up to 2 decimal places
+      return parseFloat(score.toFixed(2)).toString();
     },
     getDimensionColor(dimensionOrKey) {
       // Handle both dimension object and dimension key
@@ -485,8 +741,11 @@ export default {
         dimension = this.dimensions.find(d => d.dimensionKey === dimensionOrKey);
       }
       
-      if (dimension && dimension.averageScore !== undefined && dimension.averageScore !== null) {
-        return getCollegeDimensionColor(dimension.averageScore, this.assessmentType);
+      // Use the same logic as getDisplayScore to get the actual score
+      const actualScore = dimension ? (dimension.score || dimension.averageScore || 0) : 0;
+      
+      if (actualScore > 0) {
+        return getCollegeDimensionColor(actualScore, this.assessmentType);
       }
       return '#6c757d'; // Gray for no data
     },
@@ -552,6 +811,126 @@ export default {
        });
        return totalAtRisk;
      },
+     async fetchCollegeScores() {
+       if (!this.selectedAssessmentName || !this.selectedCollege) {
+         return;
+       }
+       
+       try {
+         // Convert assessment type to backend format
+         const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+         
+         // Build query parameters for college scores
+         const params = new URLSearchParams();
+         params.append('college', this.selectedCollege.name);
+         params.append('assessmentType', dbAssessmentType);
+         params.append('assessmentName', this.selectedAssessmentName);
+         
+         // Add year and section filters if selected
+         if (this.selectedYear && this.selectedYear !== '' && this.selectedYear !== 'All Years') {
+           params.append('yearLevel', this.selectedYear);
+         }
+         
+         if (this.selectedSection && this.selectedSection !== '' && this.selectedSection !== 'All Sections') {
+           params.append('section', this.selectedSection);
+         }
+         
+         console.log('🔍 Fetching college scores with filters:', {
+           college: this.selectedCollege.name,
+           assessmentType: dbAssessmentType,
+           assessmentName: this.selectedAssessmentName,
+           yearLevel: this.selectedYear,
+           section: this.selectedSection
+         });
+         
+         const response = await fetch(`http://localhost:3000/api/accounts/colleges/scores?${params.toString()}`, {
+           method: 'GET',
+           credentials: 'include',
+           headers: {
+             'Content-Type': 'application/json'
+           }
+         });
+         
+         if (response.ok) {
+           const data = await response.json();
+           console.log('🔍 College scores API response:', data);
+           if (data.success && data.colleges && data.colleges.length > 0) {
+             // Find the college data for this specific college
+             const collegeData = data.colleges.find(c => c.name === this.selectedCollege.name);
+             console.log('🔍 Found collegeData for', this.selectedCollege.name, ':', collegeData);
+             if (collegeData) {
+               // Update dimensions if available
+               if (collegeData.dimensions) {
+                 console.log('📊 Updating dimensions:', collegeData.dimensions);
+                 // Update the selected college's dimensions with the filtered data
+                 this.$emit('update-college-dimensions', {
+                   collegeName: this.selectedCollege.name,
+                   dimensions: collegeData.dimensions
+                 });
+                 
+                 // Replace local college data for immediate display (don't merge to avoid accumulation)
+                 this.selectedCollege.dimensions = collegeData.dimensions;
+               }
+               
+               // Check for completion data in different possible locations
+               console.log('🔍 Checking for completion data...');
+               console.log('🔍 collegeData.completionData:', collegeData.completionData);
+               console.log('🔍 collegeData.completion:', collegeData.completion);
+               console.log('🔍 collegeData keys:', Object.keys(collegeData));
+               
+               // Update completion data if available (check multiple possible property names)
+                if (collegeData.completionData) {
+                  console.log('📊 Updating completion data from completionData:', collegeData.completionData);
+                  // Direct assignment for Vue 3 reactivity
+                  this.selectedCollege.completionData = collegeData.completionData;
+                  console.log('✅ After assignment, selectedCollege.completionData:', this.selectedCollege.completionData);
+                  // Trigger reactive update
+                  this.completionDataUpdateTrigger++;
+                } else if (collegeData.completion) {
+                  console.log('📊 Updating completion data from completion:', collegeData.completion);
+                  // Direct assignment for Vue 3 reactivity
+                  this.selectedCollege.completionData = collegeData.completion;
+                  console.log('✅ After assignment, selectedCollege.completionData:', this.selectedCollege.completionData);
+                  // Trigger reactive update
+                  this.completionDataUpdateTrigger++;
+                } else {
+                  console.log('❌ No completion data found in API response');
+                  console.log('❌ Setting completionData to null');
+                  // Direct assignment for Vue 3 reactivity
+                  this.selectedCollege.completionData = null;
+                  // Trigger reactive update
+                  this.completionDataUpdateTrigger++;
+                }
+                
+                // Also handle the new completionDataByAssessment field
+                if (collegeData.completionDataByAssessment) {
+                  console.log('📊 Updating completionDataByAssessment:', collegeData.completionDataByAssessment);
+                  this.selectedCollege.completionDataByAssessment = collegeData.completionDataByAssessment;
+                  // Trigger reactive update
+                  this.completionDataUpdateTrigger++;
+                }
+                
+                // Fetch risk distribution after college scores are updated
+                this.fetchRiskDistribution();
+             } else {
+               console.log('❌ No college data found for:', this.selectedCollege.name);
+             }
+           } else {
+             console.log('❌ API response structure invalid:', { success: data.success, colleges: data.colleges });
+           }
+         } else {
+           console.error('❌ API response not ok:', response.status, response.statusText);
+           if (response.status === 401) {
+             console.error('❌ Authentication required - user may need to log in');
+           }
+         }
+       } catch (error) {
+         console.error('Error fetching college scores for assessment:', error);
+         // Set completion data to null on error to stop loading state
+         this.selectedCollege.completionData = null;
+         this.completionDataUpdateTrigger++;
+       }
+     },
      getAggregatedCompletionRate(history) {
        if (!history.yearData) return 'N/A';
        const years = Object.keys(history.yearData);
@@ -562,14 +941,29 @@ export default {
        return Math.round(totalCompletion / years.length) + '%';
      },
      getAggregatedOverallScore(history) {
-       if (!history.yearData) return 'N/A';
-       const years = Object.keys(history.yearData);
-       let totalScore = 0;
-       years.forEach(year => {
-         totalScore += history.yearData[year].overallScore;
-       });
-       return Math.round(totalScore / years.length);
-     },
+      if (!history.yearData) return 'N/A';
+      const years = Object.keys(history.yearData);
+      let totalScore = 0;
+      let validYears = 0;
+      
+      years.forEach(year => {
+        const yearData = history.yearData[year];
+        if (yearData && yearData.dimensions) {
+          // Calculate dynamic score by summing all dimension scores for this year
+          let yearScore = 0;
+          Object.entries(yearData.dimensions).forEach(([key, dimData]) => {
+            const score = dimData.score || dimData.averageScore || dimData || 0;
+            if (score > 0) {
+              yearScore += score;
+            }
+          });
+          totalScore += yearScore;
+          validYears++;
+        }
+      });
+      
+      return validYears > 0 ? Math.round(totalScore / validYears) : 'N/A';
+    },
      getAggregatedAtRiskCount(history) {
        if (!history.yearData) return 'N/A';
        const years = Object.keys(history.yearData);
@@ -578,7 +972,242 @@ export default {
          totalAtRisk += history.yearData[year].atRiskCount;
        });
        return totalAtRisk;
-     }
+     },
+     async fetchAssessmentNames() {
+        this.loadingAssessmentNames = true;
+        try {
+          // Build query parameters
+          const params = new URLSearchParams();
+          
+          // Add college name if available (use college_scores table filtering)
+          if (this.selectedCollege && this.selectedCollege.name) {
+            params.append('college', this.selectedCollege.name);
+          }
+          
+          // Add assessment type filter to match the selected filter from college summary
+          if (this.assessmentType) {
+            const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+            params.append('assessmentType', dbAssessmentType);
+          }
+          
+          // Use the new endpoint that fetches from college_scores table
+          const url = `http://localhost:3000/api/accounts/colleges/assessment-names${params.toString() ? '?' + params.toString() : ''}`;
+          
+          console.log('🔍 Fetching assessment names with assessmentType filter:', this.assessmentType);
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          if (data.success) {
+            this.assessmentNames = data.assessmentNames || [];
+          } else {
+            console.error('Failed to fetch assessment names:', data.message);
+            this.assessmentNames = [];
+          }
+        } catch (error) {
+          console.error('Error fetching assessment names:', error);
+          this.assessmentNames = [];
+        } finally {
+          this.loadingAssessmentNames = false;
+        }
+      },
+      async fetchSectionsForAssessment() {
+        // This method is now handled by fetchYearsForAssessment since both come from the same endpoint
+        // Keep this method for backward compatibility but delegate to fetchYearsForAssessment
+        await this.fetchYearsForAssessment();
+      },
+      async fetchYearsForAssessment() {
+         if (!this.selectedAssessmentName || !this.selectedCollege) {
+           this.availableYears = [];
+           this.availableSections = [];
+           return;
+         }
+ 
+         this.loadingYears = true;
+         this.loadingSections = true;
+         try {
+          // Build query parameters
+          const params = new URLSearchParams();
+          params.append('collegeName', this.selectedCollege.name);
+          
+          // Add assessment type
+          if (this.assessmentType) {
+            const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+            params.append('assessmentType', dbAssessmentType);
+          }
+          
+          // Add specific assessment name
+          if (this.selectedAssessmentName) {
+            params.append('assessmentName', this.selectedAssessmentName);
+          }
+
+          const url = `http://localhost:3000/api/accounts/colleges/${encodeURIComponent(this.selectedCollege.name)}/assessment-filters?${params.toString()}`;
+          
+          const response = await fetch(url, {
+             method: 'GET',
+             credentials: 'include',
+             headers: {
+               'Content-Type': 'application/json'
+             }
+           });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('API Response for assessment filters:', data);
+          if (data.success) {
+            this.availableYears = data.data.yearLevels || [];
+            // Also update sections from the same endpoint
+            this.availableSections = data.data.sections || [];
+            console.log('Updated availableYears:', this.availableYears);
+            console.log('Updated availableSections:', this.availableSections);
+          } else {
+            console.error('Failed to fetch assessment filters:', data.message);
+            this.availableYears = [];
+          }
+        } catch (error) {
+          console.error('Error fetching years for assessment:', error);
+          this.availableYears = [];
+        } finally {
+           this.loadingYears = false;
+           this.loadingSections = false;
+         }
+         
+         // Note: fetchCollegeScores will be called by watchers when filters change
+         // No need to call it here to avoid duplicate API calls
+      },
+      getYearDisplayName(year) {
+        // Convert numeric year level to display format
+        const yearMap = {
+          1: '1st Year',
+          2: '2nd Year', 
+          3: '3rd Year',
+          4: '4th Year'
+        };
+        return yearMap[year] || `${year} Year`;
+      },
+      
+      // Fetch risk distribution using the new optimized endpoint
+      async fetchRiskDistribution() {
+        if (!this.selectedAssessmentName || !this.selectedCollege) {
+          return;
+        }
+        
+        this.loadingRiskDistribution = true;
+        
+        try {
+          // Build query parameters for the new risk distribution endpoint
+          const params = new URLSearchParams({
+            college: this.selectedCollege.name,
+            assessmentName: this.selectedAssessmentName
+          });
+          
+          // Add optional filters if selected
+          if (this.selectedYear && this.selectedYear !== 'All Years') {
+            params.append('yearLevel', this.selectedYear);
+          }
+          
+          if (this.selectedSection && this.selectedSection !== 'All Sections') {
+            params.append('section', this.selectedSection);
+          }
+          
+          console.log('🔍 Fetching risk distribution from assessment_assignments:', {
+            college: this.selectedCollege.name,
+            assessmentName: this.selectedAssessmentName,
+            yearLevel: this.selectedYear,
+            section: this.selectedSection
+          });
+          
+          const response = await fetch(`http://localhost:3000/api/counselor-assessments/risk-distribution?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('🔍 Risk distribution API response:', data);
+            
+            if (data.success && data.data) {
+              // Use the pre-calculated risk distribution from the new endpoint
+              const riskDistribution = data.data.riskDistribution;
+              
+              console.log('📊 Risk distribution from assessment_assignments:', {
+                atRisk: riskDistribution.atRisk,
+                moderate: riskDistribution.moderate,
+                healthy: riskDistribution.healthy,
+                total: riskDistribution.total,
+                filters: data.data.filters
+              });
+              
+              // Update risk distribution data
+              this.riskDistribution = {
+                atRisk: riskDistribution.atRisk,
+                moderate: riskDistribution.moderate,
+                healthy: riskDistribution.healthy
+              };
+            } else {
+              console.log('❌ No risk distribution data found in API response');
+              this.riskDistribution = { atRisk: 0, moderate: 0, healthy: 0 };
+            }
+          } else {
+            console.error('❌ Failed to fetch risk distribution:', response.status);
+            this.riskDistribution = { atRisk: 0, moderate: 0, healthy: 0 };
+          }
+        } catch (error) {
+          console.error('❌ Error fetching risk distribution:', error);
+          this.riskDistribution = { atRisk: 0, moderate: 0, healthy: 0 };
+        } finally {
+          this.loadingRiskDistribution = false;
+        }
+      }
+  },
+  watch: {
+    selectedAssessmentName(newValue, oldValue) {
+      if (newValue && newValue !== oldValue) {
+        // Fetch years and sections for the selected assessment
+        this.fetchYearsForAssessment();
+        // Fetch college scores for the new assessment to update dimension analysis
+        this.fetchCollegeScores();
+        // Fetch risk distribution for the new assessment
+        this.fetchRiskDistribution();
+      }
+    },
+    
+    // Watch for year and section changes to update risk distribution
+    selectedYear() {
+      if (this.selectedAssessmentName) {
+        this.fetchRiskDistribution();
+      }
+    },
+    
+    selectedSection() {
+      if (this.selectedAssessmentName) {
+        this.fetchRiskDistribution();
+      }
+    }
+  },
+  mounted() {
+    // Fetch assessment names when component is mounted
+    this.fetchAssessmentNames();
+    // Fetch risk distribution if college and assessment are already selected
+    if (this.selectedCollege && this.selectedAssessmentName) {
+      this.fetchRiskDistribution();
+    }
   }
 };
 </script>
@@ -604,19 +1233,19 @@ export default {
   margin-left: auto;
 }
 
-.year-selector {
+.assessment-selector {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.year-selector label {
+.assessment-selector label {
   font-size: 14px;
   color: #546e7a;
   font-weight: 500;
 }
 
-.year-dropdown {
+.assessment-dropdown {
   padding: 6px 12px;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
@@ -627,7 +1256,7 @@ export default {
   transition: border-color 0.2s;
 }
 
-.year-dropdown:focus {
+.assessment-dropdown:focus {
   outline: none;
   border-color: var(--primary);
 }
@@ -758,6 +1387,32 @@ export default {
   font-size: 18px;
   font-weight: 700;
   color: var(--primary);
+}
+
+.dropdown-container {
+  width: 100%;
+}
+
+.metric-dropdown {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.metric-dropdown:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.metric-dropdown:hover {
+  border-color: var(--primary);
 }
 
 .assessment-overview h3,
@@ -1195,5 +1850,69 @@ export default {
 
 .view-details-btn:hover {
   background: #00a8a5;
+}
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 40px;
+}
+
+.loading-content {
+  text-align: center;
+  color: #546e7a;
+}
+
+.loading-content h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a2e35;
+}
+
+.loading-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #546e7a;
+}
+
+/* Empty State Styles */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: white;
+  border-radius: 12px;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.empty-state-content {
+  text-align: center;
+  max-width: 400px;
+  padding: 40px 20px;
+}
+
+.empty-state-content i {
+  font-size: 48px;
+  color: #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.empty-state-content h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a2e35;
+  margin: 0 0 12px 0;
+}
+
+.empty-state-content p {
+  font-size: 14px;
+  color: #546e7a;
+  margin: 0;
+  line-height: 1.5;
 }
 </style>

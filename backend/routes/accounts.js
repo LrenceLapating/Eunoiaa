@@ -69,6 +69,111 @@ router.get('/colleges', async (req, res) => {
 });
 
 // GET /api/accounts/colleges/:collegeName/sections - Get sections data for a specific college (active students only)
+// GET /api/accounts/colleges/:collegeName/assessment-filters - Get dynamic year levels and sections based on bulk assessments
+router.get('/colleges/:collegeName/assessment-filters', async (req, res) => {
+  try {
+    const { collegeName } = req.params;
+    const { assessmentType, assessmentName } = req.query; // 'ryff_42' or 'ryff_84' or 'all', and specific assessment name
+    
+    // Get bulk assessments for this college and assessment type with their target year levels and sections
+    let assessmentQuery = supabase
+      .from('bulk_assessments')
+      .select('id, assessment_name, target_year_levels, target_sections')
+      .contains('target_colleges', [collegeName])
+      .neq('status', 'archived');
+    
+    // Filter by assessment type if specified
+    if (assessmentType && assessmentType !== 'all') {
+      assessmentQuery = assessmentQuery.eq('assessment_type', assessmentType);
+    }
+    
+    // Filter by specific assessment name if specified
+    if (assessmentName) {
+      assessmentQuery = assessmentQuery.eq('assessment_name', assessmentName);
+    }
+    
+    const { data: bulkAssessments, error: assessmentError } = await assessmentQuery;
+    
+    if (assessmentError) throw assessmentError;
+    
+    // Debug logging
+    console.log('🔍 Assessment Filters Debug:');
+    console.log(`   College: ${collegeName}`);
+    console.log(`   Assessment Type: ${assessmentType}`);
+    console.log(`   Assessment Name: ${assessmentName}`);
+    console.log(`   Found ${bulkAssessments ? bulkAssessments.length : 0} assessments`);
+    if (bulkAssessments) {
+      bulkAssessments.forEach((assessment, index) => {
+        console.log(`     ${index + 1}. "${assessment.assessment_name}"`);
+        console.log(`        Year Levels: ${JSON.stringify(assessment.target_year_levels)}`);
+        console.log(`        Sections: ${JSON.stringify(assessment.target_sections)}`);
+      });
+    }
+    
+    // If no assessments found, return empty arrays
+    if (!bulkAssessments || bulkAssessments.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          yearLevels: [],
+          sections: [],
+          totalAssessments: 0
+        }
+      });
+    }
+    
+    // Extract unique year levels and sections from all bulk assessments
+    const yearLevelsSet = new Set();
+    const sectionsSet = new Set();
+    
+    bulkAssessments.forEach(assessment => {
+      // Add target year levels from this assessment
+      if (assessment.target_year_levels && Array.isArray(assessment.target_year_levels)) {
+        assessment.target_year_levels.forEach(year => {
+          if (year !== null && year !== undefined) {
+            yearLevelsSet.add(year);
+          }
+        });
+      }
+      
+      // Add target sections from this assessment
+      if (assessment.target_sections && Array.isArray(assessment.target_sections)) {
+        assessment.target_sections.forEach(section => {
+          if (section && section.trim() !== '') {
+            sectionsSet.add(section);
+          }
+        });
+      }
+    });
+    
+    // Convert to sorted arrays
+    const availableYearLevels = Array.from(yearLevelsSet).sort((a, b) => a - b);
+    const availableSections = Array.from(sectionsSet).sort();
+    
+    // Debug logging for final results
+    console.log('📊 Final Results:');
+    console.log(`   Year Levels: ${JSON.stringify(availableYearLevels)}`);
+    console.log(`   Sections: ${JSON.stringify(availableSections)}`);
+    console.log(`   Total Assessments: ${bulkAssessments.length}`);
+    console.log('');
+    
+    res.json({
+      success: true,
+      data: {
+        yearLevels: availableYearLevels,
+        sections: availableSections,
+        totalAssessments: bulkAssessments.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching assessment filters:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch assessment filters' 
+    });
+  }
+});
+
 router.get('/colleges/:collegeName/sections', async (req, res) => {
   try {
     const { collegeName } = req.params;
@@ -732,11 +837,20 @@ router.post('/debug/test-deactivation', async (req, res) => {
   }
 });
 
-// GET /api/accounts/colleges/scores - Get computed college scores
+// GET /api/accounts/colleges/scores - Get computed college scores with optional year and section filtering
 router.get('/colleges/scores', async (req, res) => {
   try {
-    const { college, assessmentType } = req.query;
-    const result = await getCollegeScores(college, assessmentType);
+    const { college, assessmentType, assessmentName, yearLevel, section } = req.query;
+    
+    console.log('🔍 College scores request with filters:', {
+      college,
+      assessmentType,
+      assessmentName,
+      yearLevel,
+      section
+    });
+    
+    const result = await getCollegeScores(college, assessmentType, assessmentName, yearLevel, section);
     
     if (result.success) {
       res.json({
@@ -761,8 +875,17 @@ router.get('/colleges/scores', async (req, res) => {
 // POST /api/accounts/colleges/compute-scores - Compute and store college scores
 router.post('/colleges/compute-scores', async (req, res) => {
   try {
-    const { college, assessmentType } = req.body;
-    const result = await computeAndStoreCollegeScores(college, assessmentType);
+    const { college, assessmentType, assessmentName } = req.body;
+    
+    // Validate that assessmentName is provided to prevent "General Assessment" records
+    if (!assessmentName || assessmentName.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'assessmentName is required. Cannot compute scores without specifying the assessment name to prevent data conflicts.'
+      });
+    }
+    
+    const result = await computeAndStoreCollegeScores(college, assessmentType, assessmentName);
     
     if (result.success) {
       res.json({
@@ -782,6 +905,58 @@ router.post('/colleges/compute-scores', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to compute college scores'
+    });
+  }
+});
+
+// GET /api/accounts/colleges/assessment-names - Get assessment names from college_scores table
+router.get('/colleges/assessment-names', async (req, res) => {
+  try {
+    const { college, assessmentType } = req.query;
+    
+    console.log('🔍 Fetching assessment names from college_scores for college:', college, 'assessmentType:', assessmentType);
+    
+    // Build query to get unique assessment names from college_scores
+    let query = supabase
+      .from('college_scores')
+      .select('assessment_name, college_name, assessment_type')
+      .not('assessment_name', 'is', null);
+    
+    // Filter by college if provided
+    if (college) {
+      query = query.eq('college_name', college);
+    }
+    
+    // Filter by assessment type if provided
+    if (assessmentType && assessmentType !== 'all') {
+      query = query.eq('assessment_type', assessmentType);
+    }
+    
+    const { data: scores, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching assessment names from college_scores:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch assessment names'
+      });
+    }
+    
+    // Get unique assessment names
+    const uniqueAssessmentNames = [...new Set(scores.map(score => score.assessment_name))];
+    
+    console.log('✅ Found assessment names for type', assessmentType, ':', uniqueAssessmentNames);
+    
+    res.json({
+      success: true,
+      assessmentNames: uniqueAssessmentNames
+    });
+    
+  } catch (error) {
+    console.error('Error in assessment-names endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch assessment names'
     });
   }
 });

@@ -7,60 +7,41 @@
       </div>
     </div>
   </div>
-  <div v-else>
-    <LandingPage v-if="currentPage === 'landing'" @navigate-to-login="currentPage = 'login'" />
-    <Login v-else-if="currentPage === 'login'" @switch-to-landing="currentPage = 'landing'" @counselor-login="currentPage = 'counselor'" @student-login="currentPage = 'student'" />
-    <CounselorDashboard v-else-if="currentPage === 'counselor'" @switch-to-landing="currentPage = 'landing'" />
-    <StudentDashboard v-else-if="currentPage === 'student'" @switch-to-landing="currentPage = 'landing'" />
-  </div>
+  <router-view v-else />
 </template>
 
 <script>
-import LandingPage from './components/Main/LandingPage.vue'
-import Login from './components/Main/Login.vue'
-import CounselorDashboard from './components/Counselor/CounselorDashboard.vue'
-import StudentDashboard from './components/Student/StudentDashboard.vue'
+// Remove component imports as they'll be handled in routes
 import authService from './services/authService'
 
 export default {
   name: 'App',
-  components: {
-    LandingPage,
-    Login,
-    CounselorDashboard,
-    StudentDashboard
-  },
   data() {
     return { 
-      currentPage: null, // Don't set default page until auth check completes
       isLoading: true
     };
   },
   async mounted() {
-    // Initialize auth service and check for existing session
     try {
       const authState = await authService.initialize();
       
       if (authState.userType === 'student') {
-        this.currentPage = 'student';
+        this.$router.push('/student');
       } else if (authState.userType === 'counselor') {
-        this.currentPage = 'counselor';
+        this.$router.push('/counselor');
       } else {
-        this.currentPage = 'landing';
+        this.$router.push('/');
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
-      this.currentPage = 'landing';
+      this.$router.push('/');
     } finally {
-      // Hide loading immediately after auth check
       this.isLoading = false;
     }
 
-    // Listen for authentication events
     window.addEventListener('auth-event', this.handleAuthEvent);
   },
   beforeUnmount() {
-    // Clean up event listener
     window.removeEventListener('auth-event', this.handleAuthEvent);
   },
   methods: {
@@ -69,21 +50,19 @@ export default {
       
       switch (type) {
         case 'student-login':
-          this.currentPage = 'student';
+          this.$router.push('/student');
           break;
         case 'counselor-login':
-          this.currentPage = 'counselor';
+          this.$router.push('/counselor');
           break;
         case 'logout':
         case 'session-expired':
-          this.currentPage = 'landing';
+          this.$router.push('/');
           break;
         default:
           break;
       }
-    },
-    
-    // Methods can be added here as needed
+    }
   }
 }
 </script>

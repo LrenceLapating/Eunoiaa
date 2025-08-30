@@ -703,16 +703,50 @@ export default {
       this.error = null;
       
       try {
+        // Extract year levels and sections from selected colleges
+        const selectedColleges = this.colleges.filter(college => college.selected);
+        const targetYearLevels = new Set();
+        const targetSections = new Set();
+        
+        selectedColleges.forEach(college => {
+          const filters = this.collegeFilters[college.name];
+          if (filters && filters.programs) {
+            // Extract year levels and sections from the college filters
+            filters.programs.forEach(program => {
+              program.yearLevels.forEach(yearLevel => {
+                // Add year level if it has selected sections
+                const hasSelectedSections = yearLevel.sections.some(section => 
+                  filters.selectedSections.includes(section.id)
+                );
+                if (hasSelectedSections) {
+                  targetYearLevels.add(yearLevel.year);
+                  
+                  // Add sections that are selected
+                  yearLevel.sections.forEach(section => {
+                    if (filters.selectedSections.includes(section.id)) {
+                      targetSections.add(section.name);
+                    }
+                  });
+                }
+              });
+            });
+          }
+        });
+        
         // Prepare the request payload
         const payload = {
           assessmentName: this.fullAssessmentName,
           assessmentType: this.selectedVersion === '84' ? 'ryff_84' : 'ryff_42',
           targetType: 'college', // Currently only supporting college targeting
-          targetColleges: this.colleges.filter(college => college.selected).map(college => college.name),
+          targetColleges: selectedColleges.map(college => college.name),
+          targetYearLevels: Array.from(targetYearLevels).sort((a, b) => a - b), // Convert Set to sorted array
+          targetSections: Array.from(targetSections).sort(), // Convert Set to sorted array
           customMessage: this.customMessage,
           scheduleOption: this.scheduleOption,
           scheduledDate: this.scheduleOption === 'scheduled' ? this.scheduledDate : null
         };
+        
+        console.log('Payload with target data:', payload); // Debug log
 
         // Call the backend API
         const response = await fetch('http://localhost:3000/api/bulk-assessments/create', {

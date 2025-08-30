@@ -1069,7 +1069,7 @@ export default {
       });
     },
     navigateToLogin() {
-      this.$emit('navigate-to-login');
+      this.$router.push('/login');
     }
   }
 }

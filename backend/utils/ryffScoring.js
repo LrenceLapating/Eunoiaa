@@ -122,16 +122,8 @@ function calculateRyffScores(responses, assessmentType = 'ryff_42') {
  * @returns {string} - 'low', 'moderate', or 'high' risk
  */
 function determineRiskLevel(dimensionScores, overallScore, assessmentType = 'ryff_42') {
-  // First, check at-risk dimensions count - this takes priority
-  const atRiskDimensions = getAtRiskDimensions(dimensionScores, assessmentType);
-  const atRiskCount = atRiskDimensions.length;
-  
-  // If student has ANY at-risk dimensions, classify as 'high' risk (At Risk)
-  if (atRiskCount >= 1) {
-    return 'high';
-  }
-  
   // Define tertile thresholds for overall scores (sum of all 6 dimensions)
+  // Risk level is determined ONLY by overall_score, not individual dimensions
   const overallThresholds = {
     ryff_42: {
       atRisk: 111,    // ≤111: At-Risk (42-111)
@@ -145,8 +137,7 @@ function determineRiskLevel(dimensionScores, overallScore, assessmentType = 'ryf
   
   const threshold = overallThresholds[assessmentType] || overallThresholds.ryff_42;
   
-  // Use the passed overallScore parameter (which is now the sum of all dimensions)
-  // Determine risk level based on tertile thresholds
+  // Determine risk level based ONLY on overall score thresholds
   if (overallScore > threshold.moderate) {
     return 'low';
   } else if (overallScore > threshold.atRisk) {
