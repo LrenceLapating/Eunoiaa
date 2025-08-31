@@ -542,44 +542,99 @@ export default {
       
       // Dynamic interpretations based on risk levels
       const getInterpretation = (dimensionKey, riskLevel) => {
+        console.log('=== INTERPRETATION DEBUG ===');
+        console.log('Dimension key received:', JSON.stringify(dimensionKey));
+        console.log('Risk level received:', JSON.stringify(riskLevel));
+        console.log('Dimension type:', typeof dimensionKey);
+        console.log('Risk level type:', typeof riskLevel);
+        
         const interpretations = {
-          'Autonomy': {
-            'Healthy': 'The individual demonstrates a strong sense of independence and self-direction. They are capable of resisting social pressures and make decisions based on internal values and personal standards. Their behavior is regulated from within, and they tend to evaluate themselves rather than rely on others\' judgments.',
-            'Moderate': 'The individual shows a balanced level of autonomy. While they are able to make independent decisions in many situations, they may still be somewhat influenced by social expectations or others\' opinions. They strive to maintain personal standards but occasionally seek validation or adjust behavior to align with external input.',
-            'At Risk': 'The individual appears to be highly influenced by the expectations and evaluations of others. They tend to rely on external judgments when making important decisions and are likely to conform to social norms and pressures. Their behavior is shaped more by external approval than by internal convictions.'
+          // Use original dimension keys (snake_case and camelCase) as they come from backend
+          'autonomy': {
+            'Healthy': 'Most students in this college demonstrate a strong sense of independence and self-direction. They are generally able to resist social pressures and make decisions based on their own values and standards. On average, their behavior is regulated from within, and they rely less on external judgments.',
+            'Moderate': 'Students in this college show a balanced level of autonomy. While they are often capable of making independent decisions, they may still be influenced by social expectations or others\’ opinions. On average, they strive to maintain personal standards but sometimes seek validation or adjust their behavior based on external input.',
+            'At Risk': 'Most students in this college appear to be highly influenced by the expectations and evaluations of others. They tend to rely more on external judgments when making important decisions and are likely to conform to social norms and pressures. On average, their behavior is shaped more by external approval than internal convictions.'
           },
-          'Environmental Mastery': {
-            'Healthy': 'The individual shows a strong sense of competence in managing life\'s demands and shaping their environment. They effectively handle external responsibilities and are able to identify and act on opportunities that align with their goals and values. They demonstrate adaptability and initiative in creating a supportive context for themselves.',
-            'Moderate': 'The individual shows a reasonable level of environmental mastery. They are generally able to cope with everyday tasks and make use of their environment, though they may occasionally feel uncertain or passive when facing more complex or overwhelming situations. They demonstrate some control but may benefit from additional support or strategies for navigating external demands.',
-            'At Risk': 'The individual experiences difficulty managing their environment and daily responsibilities. They may feel powerless to influence or improve their circumstances and often miss or fail to act on available opportunities. There is a general sense of disconnection or lack of control in relation to the external world.'
+          'environmental_mastery': {
+            'Healthy': 'Most students in this college show competence in managing life\’s demands and shaping their environment. They handle responsibilities effectively and can identify opportunities that align with their goals and values. On average, they demonstrate adaptability and initiative in creating supportive contexts for themselves.',
+            'Moderate': 'Students in this college show a reasonable ability to manage their environment. They generally cope with everyday tasks, though they may occasionally feel uncertain or passive in more complex situations. On average, they demonstrate some control but may still benefit from additional support in navigating external demands.',
+            'At Risk': 'Most students in this college experience difficulty managing their environment and daily responsibilities. They may feel powerless to influence their circumstances and often fail to act on available opportunities. On average, they show a sense of disconnection or lack of control in relation to the external world.'
           },
-          'Personal Growth': {
-            'Healthy': 'The individual demonstrates a strong sense of ongoing personal development. They perceive themselves as growing and expanding over time, showing openness to new experiences and a clear awareness of their evolving potential. Their self-perception reflects continuous learning, increased effectiveness, and meaningful behavioral change.',
-            'Moderate': 'The individual shows some indicators of personal growth but may not consistently feel a strong sense of progress. They occasionally engage in self-reflection and development but might struggle with direction or motivation at times. While there is evidence of change, it may be slow, uncertain, or sporadic.',
-            'At Risk': 'The individual reports feeling stagnant and disconnected from a sense of personal development. They may lack interest in new experiences and struggle to adopt new perspectives or behaviors. Life may feel monotonous, and they often experience a diminished sense of growth or self-improvement.'
+          'environmentalMastery': {
+            'Healthy': 'Most students in this college show competence in managing life\’s demands and shaping their environment. They handle responsibilities effectively and can identify opportunities that align with their goals and values. On average, they demonstrate adaptability and initiative in creating supportive contexts for themselves.',
+            'Moderate': 'Students in this college show a reasonable ability to manage their environment. They generally cope with everyday tasks, though they may occasionally feel uncertain or passive in more complex situations. On average, they demonstrate some control but may still benefit from additional support in navigating external demands.',
+            'At Risk': 'Most students in this college experience difficulty managing their environment and daily responsibilities. They may feel powerless to influence their circumstances and often fail to act on available opportunities. On average, they show a sense of disconnection or lack of control in relation to the external world.'
+          },
+          'personal_growth': {
+            'Healthy': 'Most students in this college perceive themselves as growing and developing over time. They are generally open to new experiences and aware of their evolving potential. On average, they reflect continuous learning, adaptability, and meaningful positive change.',
+            'Moderate': 'Students in this college show some signs of personal growth but may not consistently feel a strong sense of progress. While they occasionally engage in self-reflection and development, they sometimes struggle with direction or motivation. On average, growth is present but may be slow or uneven.',
+            'At Risk': 'Most students in this college report feeling stagnant and disconnected from a sense of personal development. They may lack interest in new experiences and find it difficult to adopt new perspectives. On average, their sense of growth and self-improvement is limited or diminished.'
+          },
+          'personalGrowth': {
+            'Healthy': 'Most students in this college perceive themselves as growing and developing over time. They are generally open to new experiences and aware of their evolving potential. On average, they reflect continuous learning, adaptability, and meaningful positive change.',
+            'Moderate': 'Students in this college show some signs of personal growth but may not consistently feel a strong sense of progress. While they occasionally engage in self-reflection and development, they sometimes struggle with direction or motivation. On average, growth is present but may be slow or uneven.',
+            'At Risk': 'Most students in this college report feeling stagnant and disconnected from a sense of personal development. They may lack interest in new experiences and find it difficult to adopt new perspectives. On average, their sense of growth and self-improvement is limited or diminished.'
+          },
+          'positive_relations': {
+            'Healthy': 'Most students in this college demonstrate the capacity to form deep, trusting, and emotionally fulfilling relationships. They show concern for others\’ well-being and display empathy, affection, and cooperation. On average, students value emotional closeness and meaningful connections.',
+            'Moderate': 'Students in this college show some ability to maintain positive relationships but may find it challenging to engage in deeper emotional connections. While they value social interaction, they may sometimes hold back emotionally or avoid vulnerability. On average, relationships are present but not always consistent in depth or satisfaction.',
+            'At Risk': 'Most students in this college have difficulty building or sustaining trusting and meaningful relationships. They may feel emotionally disconnected or isolated in their interactions. On average, they show lower levels of warmth, openness, or willingness to compromise, which can hinder lasting social bonds.'
+          },
+          'positiveRelations': {
+            'Healthy': 'Most students in this college demonstrate the capacity to form deep, trusting, and emotionally fulfilling relationships. They show concern for others\’ well-being and display empathy, affection, and cooperation. On average, students value emotional closeness and meaningful connections.',
+            'Moderate': 'Students in this college show some ability to maintain positive relationships but may find it challenging to engage in deeper emotional connections. While they value social interaction, they may sometimes hold back emotionally or avoid vulnerability. On average, relationships are present but not always consistent in depth or satisfaction.',
+            'At Risk': 'Most students in this college have difficulty building or sustaining trusting and meaningful relationships. They may feel emotionally disconnected or isolated in their interactions. On average, they show lower levels of warmth, openness, or willingness to compromise, which can hinder lasting social bonds.'
           },
           'Positive Relations with Others': {
-            'Healthy': 'The individual demonstrates the capacity to form deep, trusting, and emotionally fulfilling relationships. They show concern for others\' well-being and exhibit empathy, affection, and intimacy in their interactions. They understand the reciprocal nature of relationships and value emotional closeness and connection.',
-            'Moderate': 'The individual shows some ability to maintain positive relationships but may experience difficulty with deeper emotional engagement or consistent relational satisfaction. While they value connection, they might hold back emotionally, avoid vulnerability, or find it challenging to maintain long-term relational closeness.',
-            'At Risk': 'The individual has difficulty establishing or maintaining trusting and meaningful relationships. They may feel emotionally disconnected, isolated, or frustrated with their interactions. A lack of warmth, openness, or willingness to compromise may hinder their ability to build lasting social bonds.'
+            'Healthy': 'Most students in this college demonstrate the capacity to form deep, trusting, and emotionally fulfilling relationships. They show concern for others\’ well-being and display empathy, affection, and cooperation. On average, students value emotional closeness and meaningful connections.',
+            'Moderate': 'Students in this college show some ability to maintain positive relationships but may find it challenging to engage in deeper emotional connections. While they value social interaction, they may sometimes hold back emotionally or avoid vulnerability. On average, relationships are present but not always consistent in depth or satisfaction.',
+            'At Risk': 'Most students in this college have difficulty building or sustaining trusting and meaningful relationships. They may feel emotionally disconnected or isolated in their interactions. On average, they show lower levels of warmth, openness, or willingness to compromise, which can hinder lasting social bonds.'
           },
-          'Purpose in Life': {
-             'Healthy': 'The individual demonstrates a strong sense of purpose and direction in life. They have clearly defined goals and derive meaning from both their past and present experiences. Their beliefs help guide their actions, giving their life a coherent and motivating structure.',
-             'Moderate': 'The individual shows some awareness of purpose and direction but may experience periods of uncertainty or lack of clarity. They may have short-term goals or aspirations but struggle to connect them with a deeper sense of meaning. While they seek purpose, it may not yet feel fully established.',
-             'At Risk': 'The individual appears to lack clear goals, direction, or a sense of meaning in life. They may feel disconnected from both their past experiences and future aspirations. A lack of guiding beliefs or motivating objectives may contribute to a sense of aimlessness or confusion.'
+          'purpose_in_life': {
+             'Healthy': 'Most students in this college demonstrate a strong sense of purpose and direction in life. They have clear goals and derive meaning from their past and present experiences. On average, their beliefs and values provide guidance, giving their lives a coherent and motivating structure.',
+             'Moderate': 'Students in this college show some awareness of purpose and direction, but may also experience periods of uncertainty or lack of clarity. They often set short-term goals but may struggle to connect them with a deeper sense of meaning. On average, their sense of purpose is present but not fully established.',
+             'At Risk': 'Most students in this college appear to lack clear goals or a strong sense of meaning in life. They may feel disconnected from both their past experiences and future aspirations. On average, the group shows lower motivation and direction, which can contribute to a sense of aimlessness.'
            },
-           'Self-Acceptance': {
-              'Healthy': 'The individual demonstrates a positive and accepting attitude toward themselves. They are aware of and embrace both their strengths and shortcomings, and they reflect on their life history with a sense of appreciation and self-respect. They exhibit psychological maturity and inner peace.',
-              'Moderate': 'The individual shows partial self-acceptance. While they acknowledge some personal strengths, they may also experience recurring doubts or dissatisfaction with certain aspects of themselves or their past. They are working toward greater self-understanding but have not fully resolved internal conflicts.',
-              'At Risk': 'The individual expresses dissatisfaction with themselves and their life history. They may feel regretful or critical about past experiences and troubled by aspects of their personality. There is a persistent desire to be different, indicating challenges with self-worth and personal acceptance.'
+           'purposeInLife': {
+             'Healthy': 'Most students in this college demonstrate a strong sense of purpose and direction in life. They have clear goals and derive meaning from their past and present experiences. On average, their beliefs and values provide guidance, giving their lives a coherent and motivating structure.',
+             'Moderate': 'Students in this college show some awareness of purpose and direction, but may also experience periods of uncertainty or lack of clarity. They often set short-term goals but may struggle to connect them with a deeper sense of meaning. On average, their sense of purpose is present but not fully established.',
+             'At Risk': 'Most students in this college appear to lack clear goals or a strong sense of meaning in life. They may feel disconnected from both their past experiences and future aspirations. On average, the group shows lower motivation and direction, which can contribute to a sense of aimlessness.'
+           },
+           'self_acceptance': {
+              'Healthy': 'Most students in this college demonstrate a positive and accepting attitude toward themselves. They are aware of both strengths and shortcomings and reflect on their life experiences with appreciation and self-respect. On average, they show psychological maturity and inner peace.',
+              'Moderate': 'Students in this college show partial self-acceptance. While they acknowledge certain strengths, they may also experience recurring doubts or dissatisfaction with aspects of themselves or their past. On average, they are working toward greater self-understanding but have not fully resolved internal conflicts.',
+              'At Risk': 'Most students in this college express dissatisfaction with themselves and their life experiences. They may feel regretful about past events or critical of personal traits. On average, there is a stronger desire to be different, reflecting challenges with self-worth and acceptance.'
+            },
+            'selfAcceptance': {
+              'Healthy': 'Most students in this college demonstrate a positive and accepting attitude toward themselves. They are aware of both strengths and shortcomings and reflect on their life experiences with appreciation and self-respect. On average, they show psychological maturity and inner peace.',
+              'Moderate': 'Students in this college show partial self-acceptance. While they acknowledge certain strengths, they may also experience recurring doubts or dissatisfaction with aspects of themselves or their past. On average, they are working toward greater self-understanding but have not fully resolved internal conflicts.',
+              'At Risk': 'Most students in this college express dissatisfaction with themselves and their life experiences. They may feel regretful about past events or critical of personal traits. On average, there is a stronger desire to be different, reflecting challenges with self-worth and acceptance.'
             }
         };
         
-        return interpretations[dimensionKey]?.[riskLevel] || 'No interpretation available.';
+        console.log('Available interpretation keys:', Object.keys(interpretations));
+        console.log('Looking for key:', dimensionKey, 'in interpretations');
+        console.log('Found dimension object:', interpretations[dimensionKey]);
+        
+        // Fix case sensitivity issue - handle risk level formatting
+        // Convert 'at-risk' to 'At Risk' and capitalize other risk levels
+        let capitalizedRiskLevel;
+        if (riskLevel === 'at-risk') {
+          capitalizedRiskLevel = 'At Risk';
+        } else {
+          capitalizedRiskLevel = riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1).toLowerCase();
+        }
+        console.log('Original risk level:', riskLevel, '-> Capitalized:', capitalizedRiskLevel);
+        
+        const result = interpretations[dimensionKey]?.[capitalizedRiskLevel] || 'No interpretation available.';
+        console.log('Final interpretation result:', result);
+        
+        return result;
       };
 
       // Use actual scores from current data (either selected history or current college)
       const dimensionsData = this.currentData.dimensions || {};
+      console.log('🔍 Raw dimensionsData:', dimensionsData);
       
       // Create a Set to track unique dimension keys to prevent duplicates
       const uniqueDimensions = new Map();
@@ -589,7 +644,10 @@ export default {
         const score = dimData.score || dimData.averageScore || dimData || 0;
         const riskLevel = dimData.riskLevel || this.getRiskLevelFromScore(score);
         
-        const interpretation = getInterpretation(formatDimensionName(key), riskLevel);
+        // Debug logging to see actual dimension keys and lookup results
+        console.log('🔍 Dimension key:', key, 'Risk level:', riskLevel);
+        const interpretation = getInterpretation(key, riskLevel);
+        console.log('📝 Interpretation result:', interpretation);
         
         // Use formatted dimension name as key to prevent duplicates
         const formattedName = formatDimensionName(key);

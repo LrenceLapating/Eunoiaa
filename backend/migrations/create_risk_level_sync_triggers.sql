@@ -15,8 +15,7 @@ BEGIN
         WHEN NEW.risk_level = 'moderate' THEN 'moderate' 
         WHEN NEW.risk_level = 'high' THEN 'at-risk'
         ELSE NEW.risk_level
-    END,
-    updated_at = NOW()
+    END
     WHERE id = NEW.assignment_id;
     
     -- Log the sync operation (optional, can be removed in production)
