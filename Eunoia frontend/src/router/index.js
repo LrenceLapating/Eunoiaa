@@ -12,6 +12,7 @@ import AutoReminders from '../components/Counselor/AutoReminders.vue'
 import BulkAssessment from '../components/Counselor/BulkAssessment.vue'
 import CollegeDetail from '../components/Counselor/CollegeDetail.vue'
 import CollegeFilter from '../components/Counselor/CollegeFilter.vue'
+import CollegeHistoryDetail from '../components/Counselor/CollegeHistoryDetail.vue'
 import CollegeView from '../components/Counselor/CollegeView.vue'
 import Reports from '../components/Counselor/Reports.vue'
 import RyffScoring from '../components/Counselor/RyffScoring.vue'
@@ -88,6 +89,17 @@ const routes = [
         name: 'CollegeDetail',
         component: CollegeDetail,
         meta: { view: 'collegeDetail' }
+      },
+      {
+        path: 'college-history/:collegeId/:assessmentName?',
+        name: 'CollegeHistoryDetail',
+        component: CollegeHistoryDetail,
+        meta: { view: 'collegeHistoryDetail' },
+        props: route => ({
+          collegeName: decodeURIComponent(route.params.collegeId),
+          assessmentName: route.params.assessmentName ? decodeURIComponent(route.params.assessmentName) : null,
+          assessmentType: route.query.assessmentType || '42-item'
+        })
       },
       {
         path: 'ai-intervention',

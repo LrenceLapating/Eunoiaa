@@ -398,6 +398,7 @@ export default {
         'RyffScoring': 'ryffScoring',
         'CollegeSummary': 'guidance',
         'CollegeDetail': 'guidance',
+        'CollegeHistoryDetail': 'collegeHistoryDetail',
         'AIIntervention': 'intervention',
         'AccountManagement': 'status',
         'Reports': 'reports',
@@ -415,6 +416,8 @@ export default {
           return 'Ryff Scoring';
         case 'guidance':
           return 'College Summary';
+        case 'collegeHistoryDetail':
+          return 'College History Detail';
         case 'intervention':
           return 'AI Intervention';
         case 'status':
@@ -435,6 +438,8 @@ export default {
           return 'Review and analyze assessment scores';
         case 'guidance':
           return 'View and analyze assessment results by college';
+        case 'collegeHistoryDetail':
+          return 'View detailed historical assessment data for the selected college';
         case 'intervention':
           return 'Intelligent categorization and intervention recommendations for student well-being';
         case 'status':

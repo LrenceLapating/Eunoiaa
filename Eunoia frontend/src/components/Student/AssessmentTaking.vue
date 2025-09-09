@@ -39,10 +39,7 @@
     <div class="question-section">
       <div class="question-card">
         <div class="question-header">
-          <span class="question-number">Q{{ currentQuestion.id }}</span>
-          <span class="dimension-badge" :class="getDimensionClass(currentQuestion.dimension)">
-            {{ formatDimensionName(currentQuestion.dimension) }}
-          </span>
+          <span class="question-number">Q{{ currentQuestionIndex + 1 }}</span>
         </div>
         
         <div class="question-text">
@@ -249,14 +246,12 @@ export default {
     selectResponse(value) {
       this.responses[this.currentQuestion.id] = value
       
-      // Auto-advance to next question after a short delay
-      setTimeout(() => {
-        if (this.currentQuestionIndex < this.totalQuestions - 1) {
-          this.nextQuestion()
-        } else {
-          this.showCompletionSummary = true
-        }
-      }, 500)
+      // Auto-advance to next question immediately
+      if (this.currentQuestionIndex < this.totalQuestions - 1) {
+        this.nextQuestion()
+      } else {
+        this.showCompletionSummary = true
+      }
     },
     
     nextQuestion() {
@@ -434,30 +429,6 @@ export default {
       } catch (error) {
         console.error('Error loading progress:', error)
       }
-    },
-    
-    formatDimensionName(dimension) {
-      const dimensionNames = {
-        autonomy: 'Autonomy',
-        environmentalMastery: 'Environmental Mastery',
-        personalGrowth: 'Personal Growth',
-        positiveRelations: 'Positive Relations with Others',
-        purposeInLife: 'Purpose in Life',
-        selfAcceptance: 'Self-Acceptance'
-      }
-      return dimensionNames[dimension] || dimension
-    },
-    
-    getDimensionClass(dimension) {
-      const classMap = {
-        autonomy: 'dimension-autonomy',
-        environmentalMastery: 'dimension-environmental',
-        personalGrowth: 'dimension-growth',
-        positiveRelations: 'dimension-relations',
-        purposeInLife: 'dimension-purpose',
-        selfAcceptance: 'dimension-acceptance'
-      }
-      return classMap[dimension] || 'dimension-default'
     }
   }
 }
@@ -664,21 +635,7 @@ export default {
   font-size: 0.875rem;
 }
 
-.dimension-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
-.dimension-autonomy { background: #fed7d7; color: #c53030; }
-.dimension-environmental { background: #c6f6d5; color: #2f855a; }
-.dimension-growth { background: #bee3f8; color: #2b6cb0; }
-.dimension-relations { background: #fbb6ce; color: #b83280; }
-.dimension-purpose { background: #faf089; color: #744210; }
-.dimension-acceptance { background: #d6bcfa; color: #553c9a; }
 
 .question-text {
   font-size: 1.1rem;

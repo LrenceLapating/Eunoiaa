@@ -609,6 +609,9 @@ export default {
       // Mobile navigation
       mobileNavOpen: false,
       isMobile: false,
+      // Student status monitoring
+      statusCheckInterval: null,
+      isStudentActive: true,
       studentProfile: {
         name: '',
         email: '',
@@ -690,10 +693,17 @@ export default {
     await this.fetchAssignedAssessments();
     this.checkMobile();
     window.addEventListener('resize', this.checkMobile);
+    
+    // Start monitoring student status every 2 seconds
+    this.startStatusMonitoring();
   },
   
   beforeUnmount() {
     window.removeEventListener('resize', this.checkMobile);
+    // Clear status monitoring interval
+    if (this.statusCheckInterval) {
+      clearInterval(this.statusCheckInterval);
+    }
   },
   watch: {
     currentView(newView) {
@@ -717,6 +727,62 @@ export default {
     
     closeMobileNav() {
       this.mobileNavOpen = false;
+    },
+    
+    // Student Status Monitoring Methods
+    startStatusMonitoring() {
+      // Check student status every 2 seconds
+      this.statusCheckInterval = setInterval(() => {
+        this.checkStudentStatus();
+      }, 2000);
+    },
+    
+    async checkStudentStatus() {
+      try {
+        const response = await fetch('http://localhost:3000/api/accounts/student-status', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          const currentStatus = result.data.status;
+          
+          // If student was active but now inactive, clear assessments immediately
+          if (this.isStudentActive && currentStatus === 'inactive') {
+            console.log('Student deactivated - clearing assessments');
+            this.clearAssessmentsOnDeactivation();
+          }
+          
+          this.isStudentActive = currentStatus === 'active';
+        }
+      } catch (error) {
+        console.error('Error checking student status:', error);
+      }
+    },
+    
+    clearAssessmentsOnDeactivation() {
+      // Immediately clear all assessment data
+      this.assignedAssessments = [];
+      this.hasAssignedAssessments = false;
+      this.currentAssessment = null;
+      
+      // If currently taking an assessment, redirect to main view
+      if (this.currentView === 'taking-assessment') {
+        this.currentView = 'assessment';
+      }
+      
+      // Stop status monitoring since student is deactivated
+      if (this.statusCheckInterval) {
+        clearInterval(this.statusCheckInterval);
+        this.statusCheckInterval = null;
+      }
+      
+      console.log('All assessments cleared due to student deactivation');
     },
     
     async fetchStudentProfile() {
@@ -743,6 +809,26 @@ export default {
     async fetchAssignedAssessments() {
       try {
         console.log('Fetching assigned assessments...');
+        
+        // First check if student is still active
+        const statusResponse = await fetch('http://localhost:3000/api/accounts/student-status', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const statusResult = await statusResponse.json();
+        
+        if (statusResult.success && statusResult.data.status === 'inactive') {
+          console.log('Student is inactive - not fetching assessments');
+          this.assignedAssessments = [];
+          this.hasAssignedAssessments = false;
+          this.isStudentActive = false;
+          return;
+        }
+        
         const response = await fetch('http://localhost:3000/api/student-assessments/assigned', {
           method: 'GET',
           credentials: 'include',

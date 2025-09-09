@@ -14,7 +14,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = './uploads';
     if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+        fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
@@ -872,6 +872,109 @@ router.get('/colleges/scores', async (req, res) => {
   }
 });
 
+// GET /api/accounts/colleges/history - Get historical college scores from college_scores_history
+router.get('/colleges/history', async (req, res) => {
+  try {
+    const { college, assessmentType, assessmentName, yearLevel, section } = req.query;
+    
+    console.log('📊 College History Request:', {
+      college,
+      assessmentType,
+      assessmentName,
+      yearLevel,
+      section
+    });
+
+    // Validate required parameters
+    if (!college) {
+      return res.status(400).json({
+        success: false,
+        error: 'College parameter is required'
+      });
+    }
+
+    if (!assessmentType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Assessment type parameter is required'
+      });
+    }
+
+    let result;
+    
+    // Check if we need dynamic computation (when filters are applied)
+    if (yearLevel || section) {
+      console.log('🔄 Using dynamic computation for filtered college history');
+      const { computeDynamicCollegeHistoryScores } = require('../utils/collegeHistoryDynamicScoring');
+      
+      const dynamicResult = await computeDynamicCollegeHistoryScores(supabase, {
+        collegeName: college,
+        yearLevel,
+        section
+      });
+      
+      if (!dynamicResult.success) {
+        return res.status(500).json({
+          success: false,
+          error: dynamicResult.error || 'Failed to compute dynamic college history scores'
+        });
+      }
+      
+      // Format the response to match the expected structure
+      result = {
+        success: true,
+        college: college,
+        assessmentType: assessmentType,
+        history: dynamicResult.history,
+        filteringMetadata: {
+          ...dynamicResult.filteringMetadata,
+          filtersApplied: {
+            yearLevel: yearLevel || null,
+            section: section || null,
+            assessmentName: assessmentName || null
+          }
+        }
+      };
+    } else {
+      console.log('📋 Using standard filtering for college history');
+      // Use the existing filtering function for non-filtered requests
+      const { getFilteredCollegeHistory } = require('../utils/collegeHistoryFiltering');
+      result = await getFilteredCollegeHistory(
+        college,
+        assessmentType,
+        assessmentName,
+        yearLevel,
+        section
+      );
+    }
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Failed to fetch college history data'
+      });
+    }
+
+    console.log('📊 College History Response:', {
+      college: result.college,
+      assessmentType: result.assessmentType,
+      historyCount: result.history.length,
+      availableYearLevels: result.filteringMetadata.availableYearLevels,
+      availableSections: result.filteringMetadata.availableSections,
+      filtersApplied: result.filteringMetadata.filtersApplied
+    });
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error in college history endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 // POST /api/accounts/colleges/compute-scores - Compute and store college scores
 router.post('/colleges/compute-scores', async (req, res) => {
   try {
@@ -957,6 +1060,57 @@ router.get('/colleges/assessment-names', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch assessment names'
+    });
+  }
+});
+
+// GET /api/accounts/student-status - Check current student status
+router.get('/student-status', async (req, res) => {
+  try {
+    // Get student ID from session/auth
+    const studentId = req.session?.user?.id;
+    
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Student not authenticated'
+      });
+    }
+    
+    // Check student status in database
+    const { data: student, error } = await supabase
+      .from('students')
+      .select('status')
+      .eq('id', studentId)
+      .single();
+    
+    if (error) {
+      console.error('Error checking student status:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to check student status'
+      });
+    }
+    
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        status: student.status
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in student-status endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
     });
   }
 });

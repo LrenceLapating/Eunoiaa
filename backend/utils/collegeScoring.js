@@ -594,12 +594,58 @@ async function computeDynamicCollegeScores(collegeName = null, assessmentType = 
     }
     
     // Get assessments from the appropriate table
-    let assessmentQuery = supabaseAdmin
-      .from(tableName)
-      .select('id, scores, assessment_type, student_id')
-      .not('scores', 'is', null);
+    let assessments, assessmentError;
     
-    const { data: assessments, error: assessmentError } = await assessmentQuery;
+    if (assessmentName) {
+      // When filtering by assessment name, we need to join with assignment and bulk_assessments tables
+      console.log(`Filtering assessments by assessment name: ${assessmentName}`);
+      
+      const { data: assignmentData, error: assignmentError } = await supabaseAdmin
+        .from('assessment_assignments')
+        .select(`
+          id,
+          student_id,
+          bulk_assessment:bulk_assessments!inner(
+            assessment_name,
+            assessment_type
+          )
+        `)
+        .eq('bulk_assessment.assessment_name', assessmentName)
+        .eq('bulk_assessment.assessment_type', assessmentType)
+        .eq('status', 'completed');
+      
+      if (assignmentError) {
+        console.error('Error fetching assignments:', assignmentError);
+        throw assignmentError;
+      }
+      
+      if (!assignmentData || assignmentData.length === 0) {
+        console.log(`No completed assignments found for assessment: ${assessmentName}`);
+        return { success: true, colleges: [] };
+      }
+      
+      // Get the assessment IDs from assignments
+      const assignmentIds = assignmentData.map(a => a.id);
+      
+      // Now get the actual assessment data
+      const { data: assessmentResults, error: assessmentQueryError } = await supabaseAdmin
+        .from(tableName)
+        .select('id, scores, assessment_type, student_id, assignment_id')
+        .in('assignment_id', assignmentIds)
+        .not('scores', 'is', null);
+      
+      assessments = assessmentResults;
+      assessmentError = assessmentQueryError;
+    } else {
+      // No assessment name filter, get all assessments
+      const { data: assessmentResults, error: assessmentQueryError } = await supabaseAdmin
+        .from(tableName)
+        .select('id, scores, assessment_type, student_id')
+        .not('scores', 'is', null);
+      
+      assessments = assessmentResults;
+      assessmentError = assessmentQueryError;
+    }
     
     if (assessmentError) {
       console.error('Error fetching assessments:', assessmentError);

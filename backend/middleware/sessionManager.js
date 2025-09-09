@@ -1,4 +1,6 @@
 const { supabase } = require('../config/database');
+const { cacheManager } = require('../config/redis');
+const logger = require('../config/logger');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
@@ -28,7 +30,7 @@ class SessionManager {
   }
 
   /**
-   * Create a new session in the database
+   * Create a new session in the database with Redis caching
    */
   async createSession(userId, userType, ipAddress = null, userAgent = null) {
     try {
@@ -52,9 +54,23 @@ class SessionManager {
         .single();
 
       if (error) {
-        console.error('Session creation error:', error);
+        logger.logError(new Error('Session creation failed'), `User: ${userId}, Type: ${userType}`);
         throw new Error('Failed to create session');
       }
+
+      // Cache session data in Redis for faster access
+      const sessionData = {
+        id: data.id,
+        user_id: userId,
+        user_type: userType,
+        expires_at: expiresAt.toISOString(),
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        is_active: true,
+        last_accessed: new Date().toISOString()
+      };
+      
+      await cacheManager.setSession(sessionToken, sessionData, Math.floor(this.SESSION_DURATION / 1000));
 
       return {
         sessionId: data.id,
@@ -63,25 +79,39 @@ class SessionManager {
         expiresAt
       };
     } catch (error) {
-      console.error('Create session error:', error);
+      logger.logError(error, `createSession - User: ${userId}, Type: ${userType}`);
       throw error;
     }
   }
 
   /**
-   * Validate and retrieve session from database
+   * Validate and retrieve session with Redis caching fallback to database
    */
   async validateSession(sessionToken) {
     try {
-      const { data: session, error } = await supabase
-        .from('user_sessions')
-        .select('*')
-        .eq('session_token', sessionToken)
-        .eq('is_active', true)
-        .single();
+      // Try Redis cache first
+      let session = await cacheManager.getSession(sessionToken);
+      
+      if (!session) {
+        // Fallback to database if not in cache
+        const { data: dbSession, error } = await supabase
+          .from('user_sessions')
+          .select('*')
+          .eq('session_token', sessionToken)
+          .eq('is_active', true)
+          .single();
 
-      if (error || !session) {
-        return null;
+        if (error || !dbSession) {
+          return null;
+        }
+        
+        session = dbSession;
+        
+        // Cache the session for future requests
+        const ttl = Math.floor((new Date(session.expires_at) - new Date()) / 1000);
+        if (ttl > 0) {
+          await cacheManager.setSession(sessionToken, session, ttl);
+        }
       }
 
       // Check if session is expired
@@ -94,8 +124,8 @@ class SessionManager {
         return null;
       }
 
-      // Update last accessed time
-      await supabase
+      // Update last accessed time in database (async, don't wait)
+      supabase
         .from('user_sessions')
         .update({ last_accessed: now.toISOString() })
         .eq('session_token', sessionToken);
@@ -108,7 +138,7 @@ class SessionManager {
   }
 
   /**
-   * Refresh session if needed
+   * Refresh session if needed with Redis cache update
    */
   async refreshSessionIfNeeded(session) {
     try {
@@ -130,18 +160,26 @@ class SessionManager {
 
         if (!error) {
           session.expires_at = newExpiresAt.toISOString();
+          session.last_accessed = now.toISOString();
+          
+          // Update Redis cache with new expiration
+          await cacheManager.setSession(
+            session.session_token, 
+            session, 
+            Math.floor(this.SESSION_DURATION / 1000)
+          );
         }
       }
 
       return session;
     } catch (error) {
-      console.error('Session refresh error:', error);
+      logger.logError(error, `refreshSessionIfNeeded - Token: ${session?.session_token}`);
       return session;
     }
   }
 
   /**
-   * Deactivate a session
+   * Deactivate a session and clear from Redis cache
    */
   async deactivateSession(sessionToken) {
     try {
@@ -154,13 +192,16 @@ class SessionManager {
         .eq('session_token', sessionToken);
 
       if (error) {
-        console.error('Session deactivation error:', error);
+        logger.logError(new Error('Session deactivation failed'), `Token: ${sessionToken}`);
         return false;
       }
 
+      // Remove from Redis cache
+      await cacheManager.deleteSession(sessionToken);
+
       return true;
     } catch (error) {
-      console.error('Deactivate session error:', error);
+      logger.logError(error, `deactivateSession - Token: ${sessionToken}`);
       return false;
     }
   }

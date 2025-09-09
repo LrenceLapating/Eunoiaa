@@ -1,11 +1,6 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
+const { supabaseAdmin } = require('../config/database');
 const router = express.Router();
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 // Ryff dimension mappings
 const RYFF_DIMENSIONS = {

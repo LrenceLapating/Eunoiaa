@@ -130,8 +130,8 @@ function determineRiskLevel(dimensionScores, overallScore, assessmentType = 'ryf
       moderate: 181   // 112-181: Moderate, ≥182: Healthy (182-252)
     },
     ryff_84: {
-      atRisk: 222,    // ≤222: At-Risk (84-222) - scaled from 42-item
-      moderate: 362   // 223-362: Moderate, ≥363: Healthy (363-504) - scaled from 42-item
+      atRisk: 223,    // ≤223: At-Risk (84-223)
+      moderate: 363   // 224-363: Moderate, ≥364: Healthy (364-504)
     }
   };
   

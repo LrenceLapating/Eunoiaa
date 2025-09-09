@@ -792,9 +792,11 @@ export default {
     await this.fetchAssessmentResults();
     await this.fetchHistoricalResults();
     
+    // Always set college filter to 'all'
+    this.collegeFilter = 'all';
+    
     // Apply filters from props if they exist
-    if (this.selectedDimension || this.selectedCollege !== 'all') {
-      this.collegeFilter = this.selectedCollege;
+    if (this.selectedDimension) {
       this.filterByDimensionAndCollege();
     } else {
       this.filterStudents();
@@ -1905,7 +1907,7 @@ export default {
       this.filterByDimensionAndCollege();
     },
     selectedCollege() {
-      this.collegeFilter = this.selectedCollege;
+      // Keep college filter as 'all' - don't change it based on selectedCollege prop
       this.filterByDimensionAndCollege();
     },
     async currentTab() {

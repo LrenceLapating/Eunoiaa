@@ -1,10 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
-
-// Create Supabase admin client
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const { supabaseAdmin } = require('../config/database');
 
 class RiskLevelSyncService {
   /**

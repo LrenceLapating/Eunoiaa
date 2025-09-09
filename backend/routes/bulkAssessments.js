@@ -29,6 +29,36 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
       });
     }
 
+    // Check for duplicate bulk assessments (prevent rapid clicking duplicates)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: recentAssessments, error: duplicateCheckError } = await supabase
+      .from('bulk_assessments')
+      .select('id, assessment_name, target_colleges, target_year_levels, target_sections')
+      .eq('counselor_id', counselorId)
+      .eq('assessment_name', assessmentName)
+      .eq('assessment_type', assessmentType)
+      .gte('created_at', fiveMinutesAgo)
+      .neq('status', 'cancelled');
+
+    if (duplicateCheckError) {
+      console.error('Error checking for duplicates:', duplicateCheckError);
+    } else if (recentAssessments && recentAssessments.length > 0) {
+      // Check if any recent assessment has the same target parameters
+      const isDuplicate = recentAssessments.some(assessment => {
+        const sameColleges = JSON.stringify(assessment.target_colleges?.sort()) === JSON.stringify(targetColleges?.sort());
+        const sameYearLevels = JSON.stringify(assessment.target_year_levels?.sort()) === JSON.stringify(targetYearLevels?.sort());
+        const sameSections = JSON.stringify(assessment.target_sections?.sort()) === JSON.stringify(targetSections?.sort());
+        return sameColleges && sameYearLevels && sameSections;
+      });
+
+      if (isDuplicate) {
+        return res.status(409).json({
+          success: false,
+          message: 'A similar assessment was recently created. Please wait a few minutes before creating another identical assessment.'
+        });
+      }
+    }
+
     // Determine scheduled date
     let finalScheduledDate = null;
     if (scheduleOption === 'scheduled' && scheduledDate) {
@@ -114,32 +144,71 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
 
     // Create assessment assignments for target students
     if (targetStudents.length > 0) {
-      const assignments = targetStudents.map(student => ({
-        bulk_assessment_id: bulkAssessment.id,
-        student_id: student.id,
-        status: 'assigned',
-        assigned_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-      }));
-
-      const { error: assignmentError } = await supabase
+      // Check for existing active assignments to prevent duplicates
+      const studentIds = targetStudents.map(student => student.id);
+      const { data: existingAssignments, error: existingError } = await supabase
         .from('assessment_assignments')
-        .insert(assignments);
+        .select('student_id')
+        .in('student_id', studentIds)
+        .in('status', ['assigned', 'in_progress'])
+        .gte('expires_at', new Date().toISOString());
 
-      if (assignmentError) {
-        console.error('Error creating assignments:', assignmentError);
-        // Don't fail the whole operation, just log the error
+      if (existingError) {
+        console.error('Error checking existing assignments:', existingError);
       }
+
+      // Filter out students who already have active assignments
+      const existingStudentIds = new Set(existingAssignments?.map(a => a.student_id) || []);
+      const studentsToAssign = targetStudents.filter(student => !existingStudentIds.has(student.id));
+
+      if (studentsToAssign.length > 0) {
+        const assignments = studentsToAssign.map(student => ({
+          bulk_assessment_id: bulkAssessment.id,
+          student_id: student.id,
+          status: 'assigned',
+          assigned_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+        }));
+
+        const { error: assignmentError } = await supabase
+          .from('assessment_assignments')
+          .insert(assignments);
+
+        if (assignmentError) {
+          console.error('Error creating assignments:', assignmentError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
+
+      // Update response message to reflect actual assignments created
+      const skippedCount = targetStudents.length - studentsToAssign.length;
+      let responseMessage = `Bulk assessment created successfully. Assigned to ${studentsToAssign.length} students.`;
+      if (skippedCount > 0) {
+        responseMessage += ` ${skippedCount} students were skipped as they already have active assignments.`;
+      }
+
+      res.json({
+        success: true,
+        message: responseMessage,
+        data: {
+          bulkAssessment,
+          assignedStudents: studentsToAssign.length,
+          skippedStudents: skippedCount,
+          totalTargetStudents: targetStudents.length
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        message: 'Bulk assessment created successfully, but no students matched the criteria.',
+        data: {
+          bulkAssessment,
+          assignedStudents: 0,
+          skippedStudents: 0,
+          totalTargetStudents: 0
+        }
+      });
     }
-
-    res.json({
-      success: true,
-      message: `Bulk assessment created successfully. Assigned to ${targetStudents.length} students.`,
-      data: {
-        bulkAssessment,
-        assignedStudents: targetStudents.length
-      }
-    });
 
   } catch (error) {
     console.error('Error in bulk assessment creation:', error);

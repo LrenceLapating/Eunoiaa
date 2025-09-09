@@ -273,7 +273,11 @@
         </div>
         <div class="modal-footer">
           <button class="secondary-button" @click="showPreview = false">Close</button>
-          <button class="primary-button" @click="confirmSend">Confirm & Send</button>
+          <button class="primary-button" @click="confirmSend" :disabled="isSending">
+            <i class="fas fa-spinner fa-spin" v-if="isSending"></i>
+            <i class="fas fa-paper-plane" v-else></i>
+            {{ isSending ? 'Sending...' : 'Confirm & Send' }}
+          </button>
         </div>
       </div>
     </div>
@@ -699,6 +703,11 @@ export default {
       }
     },
     async confirmSend() {
+      // Prevent duplicate submissions
+      if (this.isSending) {
+        return;
+      }
+      
       this.isSending = true;
       this.error = null;
       
@@ -764,7 +773,13 @@ export default {
           this.isSending = false;
           this.showPreview = false;
           this.showToast = true;
-          this.toastMessage = `Assessment "${this.fullAssessmentName}" has been successfully created and sent to ${this.selectedCollegesText}`;
+          
+          // Show detailed success message with assignment info
+          let successMessage = `Assessment "${this.fullAssessmentName}" has been successfully created and sent to ${data.data.assignedStudents} students`;
+          if (data.data.skippedStudents > 0) {
+            successMessage += `. ${data.data.skippedStudents} students were skipped as they already have active assignments`;
+          }
+          this.toastMessage = successMessage;
           
           // Reset form after successful submission
           this.resetForm();
@@ -774,7 +789,12 @@ export default {
             this.showToast = false;
           }, 5000);
         } else {
-          throw new Error(data.message || 'Failed to create assessment');
+          // Handle specific error cases
+          if (response.status === 409) {
+            throw new Error(data.message || 'Duplicate assessment detected');
+          } else {
+            throw new Error(data.message || 'Failed to create assessment');
+          }
         }
       } catch (error) {
         console.error('Error creating bulk assessment:', error);
@@ -1253,6 +1273,17 @@ textarea.form-control {
   font-size: 14px;
   transition: all 0.2s;
   font-weight: 500;
+}
+
+.primary-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.primary-button:disabled:hover {
+  background-color: #ccc;
+  transform: none;
 }
 
 .primary-button:hover {

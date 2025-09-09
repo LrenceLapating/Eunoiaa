@@ -13,6 +13,11 @@
           <span>Guidance Feedback</span>
         </div>
       </div>
+      <button class="history-button" @click="openHistoryPanel" :disabled="loadingHistory">
+        <i class="fas fa-history" v-if="!loadingHistory"></i>
+        <i class="fas fa-spinner fa-spin" v-if="loadingHistory"></i>
+        <span>{{ loadingHistory ? 'Loading...' : 'History' }}</span>
+      </button>
       <div class="header-controls">
         <div class="assessment-selector">
             <label for="assessmentName">Select Assessment Name:</label>
@@ -23,10 +28,6 @@
               </option>
             </select>
           </div>
-        <button class="history-button" @click="showHistoryPanel = true" v-if="selectedAssessmentName">
-          <i class="fas fa-history"></i>
-          <span>History</span>
-        </button>
       </div>
     </div>
 
@@ -163,8 +164,9 @@
     </div>
 
     </div>
+    </div> <!-- End of main content when assessment is selected -->
 
-    <!-- History Panel Overlay -->
+    <!-- History Panel Overlay - Moved outside conditional section -->
     <div class="history-overlay" v-if="showHistoryPanel" @click="closeHistoryPanel">
       <div class="history-panel" @click.stop>
         <div class="history-header">
@@ -175,7 +177,16 @@
         </div>
         
         <div class="history-content">
-          <div class="history-table-container">
+          <div v-if="loadingHistory" class="loading-history">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading history data...</p>
+          </div>
+          <div v-else-if="assessmentHistory.length === 0" class="no-history">
+            <i class="fas fa-clock"></i>
+            <p>No assessment history available</p>
+            <small>History will appear after students are deactivated</small>
+          </div>
+          <div v-else class="history-table-container">
             <table class="history-table">
               <thead>
                 <tr>
@@ -207,7 +218,6 @@
         </div>
       </div>
     </div>
-    </div> <!-- End of main content when assessment is selected -->
   </div>
   
   <!-- Loading state when college data is not available -->
@@ -217,6 +227,8 @@
       <p>Please wait while we fetch the data.</p>
     </div>
   </div>
+
+
 </template>
 
 <script>
@@ -256,128 +268,8 @@ export default {
         healthy: 0
       },
       loadingRiskDistribution: false,
-      assessmentHistory: [
-        {
-          id: 1,
-          date: '2024-06-15',
-          period: 'June 2024',
-          assessmentName: 'Mid-Year Wellness Assessment',
-          yearData: {
-            '1st': {
-              completionRate: '92%',
-              overallScore: 165,
-              atRiskCount: 1,
-              dimensions: {
-                autonomy: { score: 32 },
-                environmentalMastery: { score: 30 },
-                personalGrowth: { score: 28 },
-                positiveRelations: { score: 34 },
-                purposeInLife: { score: 31 },
-                selfAcceptance: { score: 25 }
-              }
-            },
-            '2nd': {
-              completionRate: '85%',
-              overallScore: 150,
-              atRiskCount: 2,
-              dimensions: {
-                autonomy: { score: 28 },
-                environmentalMastery: { score: 25 },
-                personalGrowth: { score: 22 },
-                positiveRelations: { score: 30 },
-                purposeInLife: { score: 26 },
-                selfAcceptance: { score: 19 }
-              }
-            },
-            '3rd': {
-              completionRate: '78%',
-              overallScore: 135,
-              atRiskCount: 3,
-              dimensions: {
-                autonomy: { score: 25 },
-                environmentalMastery: { score: 22 },
-                personalGrowth: { score: 19 },
-                positiveRelations: { score: 27 },
-                purposeInLife: { score: 23 },
-                selfAcceptance: { score: 16 }
-              }
-            },
-            '4th': {
-              completionRate: '73%',
-              overallScore: 128,
-              atRiskCount: 4,
-              dimensions: {
-                autonomy: { score: 22 },
-                environmentalMastery: { score: 20 },
-                personalGrowth: { score: 17 },
-                positiveRelations: { score: 24 },
-                purposeInLife: { score: 21 },
-                selfAcceptance: { score: 14 }
-              }
-            }
-          }
-        },
-        {
-          id: 2,
-          date: '2024-05-15',
-          period: 'May 2024',
-          assessmentName: 'Spring Semester Check-in',
-          yearData: {
-            '1st': {
-              completionRate: '88%',
-              overallScore: 158,
-              atRiskCount: 2,
-              dimensions: {
-                autonomy: { score: 30 },
-                environmentalMastery: { score: 28 },
-                personalGrowth: { score: 26 },
-                positiveRelations: { score: 32 },
-                purposeInLife: { score: 29 },
-                selfAcceptance: { score: 23 }
-              }
-            },
-            '2nd': {
-              completionRate: '78%',
-              overallScore: 142,
-              atRiskCount: 3,
-              dimensions: {
-                autonomy: { score: 26 },
-                environmentalMastery: { score: 24 },
-                personalGrowth: { score: 20 },
-                positiveRelations: { score: 28 },
-                purposeInLife: { score: 25 },
-                selfAcceptance: { score: 19 }
-              }
-            },
-            '3rd': {
-              completionRate: '72%',
-              overallScore: 130,
-              atRiskCount: 4,
-              dimensions: {
-                autonomy: { score: 23 },
-                environmentalMastery: { score: 21 },
-                personalGrowth: { score: 18 },
-                positiveRelations: { score: 25 },
-                purposeInLife: { score: 22 },
-                selfAcceptance: { score: 15 }
-              }
-            },
-            '4th': {
-              completionRate: '68%',
-              overallScore: 122,
-              atRiskCount: 5,
-              dimensions: {
-                autonomy: { score: 20 },
-                environmentalMastery: { score: 18 },
-                personalGrowth: { score: 16 },
-                positiveRelations: { score: 22 },
-                purposeInLife: { score: 19 },
-                selfAcceptance: { score: 13 }
-              }
-            }
-          }
-        }
-      ]
+      assessmentHistory: [],
+      loadingHistory: false
     };
   },
   watch: {
@@ -807,13 +699,178 @@ export default {
       }
       return '#6c757d'; // Gray for no data
     },
+    async openHistoryPanel() {
+      console.log('🔍 openHistoryPanel called');
+      console.log('🔍 selectedCollege:', this.selectedCollege);
+      console.log('🔍 assessmentType:', this.assessmentType);
+      this.showHistoryPanel = true;
+      console.log('🔍 showHistoryPanel set to:', this.showHistoryPanel);
+      await this.fetchCollegeHistory();
+    },
     closeHistoryPanel() {
       this.showHistoryPanel = false;
     },
+    async fetchCollegeHistory(filters = {}) {
+      console.log('🔍 fetchCollegeHistory called with filters:', filters);
+      if (!this.selectedCollege) {
+        console.log('❌ No selectedCollege, returning early');
+        return;
+      }
+      
+      this.loadingHistory = true;
+      console.log('🔍 loadingHistory set to true');
+      try {
+        // Convert assessment type to backend format
+        const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+        
+        // Build query parameters
+        const params = new URLSearchParams({
+          college: this.selectedCollege.name,
+          assessmentType: dbAssessmentType
+        });
+        
+        // Add filter parameters if provided
+        if (filters.yearLevel) {
+          params.append('yearLevel', filters.yearLevel);
+        }
+        if (filters.section) {
+          params.append('section', filters.section);
+        }
+        if (this.selectedAssessmentName) {
+          params.append('assessmentName', this.selectedAssessmentName);
+        }
+        
+        const url = `http://localhost:3000/api/accounts/colleges/history?${params.toString()}`;
+        console.log('🔍 Fetching college history for:', {
+          college: this.selectedCollege.name,
+          assessmentType: dbAssessmentType,
+          url: url
+        });
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('🔍 Response status:', response.status);
+        console.log('🔍 Response ok:', response.ok);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📊 College history response:', data);
+          
+          if (data.success && data.history) {
+            console.log('✅ History data found, transforming...');
+            // Transform the history data to match the expected format
+            this.assessmentHistory = data.history.map((historyItem, index) => ({
+              id: index + 1,
+              date: historyItem.archivedAt,
+              period: this.formatDate(historyItem.archivedAt),
+              assessmentName: historyItem.assessmentName,
+              dimensions: historyItem.dimensions,
+              totalStudents: historyItem.totalStudents,
+              // Calculate completion rate and overall score from dimensions
+              completionRate: '100%', // Default since archived data represents completed assessments
+              overallScore: this.calculateOverallScoreFromDimensions(historyItem.dimensions),
+              atRiskCount: this.calculateAtRiskFromDimensions(historyItem.dimensions),
+              // Add filtering metadata for year level and section filtering
+              filteringMetadata: data.filteringMetadata || {}
+            }));
+            console.log('✅ assessmentHistory set to:', this.assessmentHistory);
+            console.log('🔍 First history item filteringMetadata:', this.assessmentHistory[0]?.filteringMetadata);
+          } else {
+            console.log('ℹ️ No history data available in response');
+            this.assessmentHistory = [];
+          }
+        } else {
+          console.error('❌ Failed to fetch college history:', response.status);
+          const errorText = await response.text();
+          console.error('❌ Error response:', errorText);
+          this.assessmentHistory = [];
+        }
+      } catch (error) {
+        console.error('❌ Error fetching college history:', error);
+        this.assessmentHistory = [];
+      } finally {
+        this.loadingHistory = false;
+        console.log('🔍 loadingHistory set to false');
+        console.log('🔍 Final assessmentHistory length:', this.assessmentHistory.length);
+        console.log('🔍 Final showHistoryPanel:', this.showHistoryPanel);
+      }
+    },
+    calculateOverallScoreFromDimensions(dimensions) {
+      if (!dimensions || Object.keys(dimensions).length === 0) {
+        return 0;
+      }
+      
+      let totalScore = 0;
+      Object.values(dimensions).forEach(dimension => {
+        totalScore += dimension.score || 0;
+      });
+      
+      return Math.round(totalScore);
+    },
+    calculateAtRiskFromDimensions(dimensions) {
+      if (!dimensions || Object.keys(dimensions).length === 0) {
+        return 0;
+      }
+      
+      let atRiskCount = 0;
+      Object.values(dimensions).forEach(dimension => {
+        if (dimension.riskLevel === 'at_risk') {
+          atRiskCount++;
+        }
+      });
+      
+      return atRiskCount;
+     },
+     async applyHistoryFilters(filters) {
+       console.log('🔍 applyHistoryFilters called with:', filters);
+       
+       // Refetch college history with the applied filters
+       await this.fetchCollegeHistory(filters);
+       
+
+     },
+     formatDate(dateString) {
+       if (!dateString) return 'N/A';
+       
+       try {
+         const date = new Date(dateString);
+         return date.toLocaleDateString('en-US', {
+           year: 'numeric',
+           month: 'short',
+           day: 'numeric',
+           hour: '2-digit',
+           minute: '2-digit'
+         });
+       } catch (error) {
+         console.error('Error formatting date:', error);
+         return 'Invalid Date';
+       }
+     },
     viewHistoryDetails(historyData) {
-      this.selectedHistoryData = historyData;
+      // Navigate to the dedicated history detail page
+      const collegeId = encodeURIComponent(this.selectedCollege.name);
+      const assessmentName = encodeURIComponent(historyData.assessmentName);
+      
+      this.$router.push({
+        name: 'CollegeHistoryDetail',
+        params: { 
+          collegeId,
+          assessmentName
+        },
+        query: { 
+          assessmentType: this.assessmentType 
+        }
+      });
+      
       this.showHistoryPanel = false;
     },
+
     formatDate(dateString) {
       const date = new Date(dateString);
       return date.toLocaleDateString('en-US', {
@@ -990,46 +1047,17 @@ export default {
        }
      },
      getAggregatedCompletionRate(history) {
-       if (!history.yearData) return 'N/A';
-       const years = Object.keys(history.yearData);
-       let totalCompletion = 0;
-       years.forEach(year => {
-         totalCompletion += parseInt(history.yearData[year].completionRate);
-       });
-       return Math.round(totalCompletion / years.length) + '%';
+       // Return the completion rate directly from the history item
+       // Since archived data represents completed assessments, it should be 100%
+       return history.completionRate || '100%';
      },
      getAggregatedOverallScore(history) {
-      if (!history.yearData) return 'N/A';
-      const years = Object.keys(history.yearData);
-      let totalScore = 0;
-      let validYears = 0;
-      
-      years.forEach(year => {
-        const yearData = history.yearData[year];
-        if (yearData && yearData.dimensions) {
-          // Calculate dynamic score by summing all dimension scores for this year
-          let yearScore = 0;
-          Object.entries(yearData.dimensions).forEach(([key, dimData]) => {
-            const score = dimData.score || dimData.averageScore || dimData || 0;
-            if (score > 0) {
-              yearScore += score;
-            }
-          });
-          totalScore += yearScore;
-          validYears++;
-        }
-      });
-      
-      return validYears > 0 ? Math.round(totalScore / validYears) : 'N/A';
-    },
+       // Return the overall score directly from the history item
+       return history.overallScore || 'N/A';
+     },
      getAggregatedAtRiskCount(history) {
-       if (!history.yearData) return 'N/A';
-       const years = Object.keys(history.yearData);
-       let totalAtRisk = 0;
-       years.forEach(year => {
-         totalAtRisk += history.yearData[year].atRiskCount;
-       });
-       return totalAtRisk;
+       // Return the at-risk count directly from the history item
+       return history.atRiskCount || 0;
      },
      async fetchAssessmentNames() {
         this.loadingAssessmentNames = true;
@@ -1246,16 +1274,18 @@ export default {
       }
     },
     
-    // Watch for year and section changes to update risk distribution
+    // Watch for year and section changes to update both risk distribution and dimension scores
     selectedYear() {
       if (this.selectedAssessmentName) {
-        this.fetchRiskDistribution();
+        this.fetchCollegeScores(); // Update dimension analysis scores
+        this.fetchRiskDistribution(); // Update risk distribution
       }
     },
     
     selectedSection() {
       if (this.selectedAssessmentName) {
-        this.fetchRiskDistribution();
+        this.fetchCollegeScores(); // Update dimension analysis scores
+        this.fetchRiskDistribution(); // Update risk distribution
       }
     }
   },
@@ -1288,7 +1318,6 @@ export default {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-left: auto;
 }
 
 .assessment-selector {
@@ -1965,6 +1994,68 @@ export default {
   font-weight: 600;
   color: #1a2e35;
   margin: 0 0 12px 0;
+}
+
+/* History Panel Loading and Empty States */
+.loading-history {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.loading-history i {
+  font-size: 32px;
+  color: var(--primary);
+  margin-bottom: 16px;
+}
+
+.loading-history p {
+  margin: 0;
+  font-size: 16px;
+  color: #546e7a;
+  font-weight: 500;
+}
+
+.no-history {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.no-history i {
+  font-size: 48px;
+  color: #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.no-history p {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a2e35;
+}
+
+.no-history small {
+  font-size: 14px;
+  color: #546e7a;
+  margin: 0;
+}
+
+/* History Button Loading State */
+.history-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.history-button:disabled:hover {
+  background: var(--primary);
+  transform: none;
 }
 
 .empty-state-content p {

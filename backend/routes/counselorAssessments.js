@@ -1,15 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../config/database');
-const { createClient } = require('@supabase/supabase-js');
+const { supabase, supabaseAdmin } = require('../config/database');
 const { verifyCounselorSession } = require('../middleware/sessionManager');
 const { formatDimensionName, getDimensionColor, getAtRiskDimensions } = require('../utils/ryffScoring');
-
-// Create admin client to bypass RLS for reading assessment data
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 // Get all assessment results for counselor's bulk assessments
 router.get('/results', verifyCounselorSession, async (req, res) => {
@@ -634,24 +627,30 @@ router.get('/statistics', verifyCounselorSession, async (req, res) => {
 router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, assessmentType } = req.query;
     
     const offset = (page - 1) * parseInt(limit);
     const limitNum = parseInt(limit);
 
-    // Fetch at-risk students from both assessment tables
-    const [result42, result84] = await Promise.all([
-      supabase
+    // Fetch at-risk students based on assessment type filter
+    let result42 = { data: [], error: null };
+    let result84 = { data: [], error: null };
+    
+    if (!assessmentType || assessmentType === 'ryff_42') {
+      result42 = await supabase
         .from('assessments_42items')
         .select('*')
         .eq('risk_level', 'high')
-        .order('created_at', { ascending: false }),
-      supabaseAdmin
+        .order('created_at', { ascending: false });
+    }
+    
+    if (!assessmentType || assessmentType === 'ryff_84') {
+      result84 = await supabaseAdmin
         .from('assessments_84items')
         .select('*')
         .eq('risk_level', 'high')
-        .order('created_at', { ascending: false })
-    ]);
+        .order('created_at', { ascending: false });
+    }
 
     if (result42.error) {
       console.error('Error fetching 42-item at-risk students:', result42.error);
@@ -754,24 +753,30 @@ router.get('/students/at-risk', verifyCounselorSession, async (req, res) => {
 router.get('/students/moderate', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, assessmentType } = req.query;
     
     const offset = (page - 1) * parseInt(limit);
     const limitNum = parseInt(limit);
 
-    // Fetch moderate students from both assessment tables
-    const [result42, result84] = await Promise.all([
-      supabase
+    // Fetch moderate students based on assessment type filter
+    let result42 = { data: [], error: null };
+    let result84 = { data: [], error: null };
+    
+    if (!assessmentType || assessmentType === 'ryff_42') {
+      result42 = await supabase
         .from('assessments_42items')
         .select('*')
         .eq('risk_level', 'moderate')
-        .order('created_at', { ascending: false }),
-      supabaseAdmin
+        .order('created_at', { ascending: false });
+    }
+    
+    if (!assessmentType || assessmentType === 'ryff_84') {
+      result84 = await supabaseAdmin
         .from('assessments_84items')
         .select('*')
         .eq('risk_level', 'moderate')
-        .order('created_at', { ascending: false })
-    ]);
+        .order('created_at', { ascending: false });
+    }
 
     if (result42.error) {
       console.error('Error fetching 42-item moderate students:', result42.error);
@@ -874,24 +879,30 @@ router.get('/students/moderate', verifyCounselorSession, async (req, res) => {
 router.get('/students/healthy', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, assessmentType } = req.query;
     
     const offset = (page - 1) * parseInt(limit);
     const limitNum = parseInt(limit);
 
-    // Fetch healthy students from both assessment tables
-    const [result42, result84] = await Promise.all([
-      supabase
+    // Fetch healthy students based on assessment type filter
+    let result42 = { data: [], error: null };
+    let result84 = { data: [], error: null };
+    
+    if (!assessmentType || assessmentType === 'ryff_42') {
+      result42 = await supabase
         .from('assessments_42items')
         .select('*')
         .eq('risk_level', 'low')
-        .order('created_at', { ascending: false }),
-      supabaseAdmin
+        .order('created_at', { ascending: false });
+    }
+    
+    if (!assessmentType || assessmentType === 'ryff_84') {
+      result84 = await supabaseAdmin
         .from('assessments_84items')
         .select('*')
         .eq('risk_level', 'low')
-        .order('created_at', { ascending: false })
-    ]);
+        .order('created_at', { ascending: false });
+    }
 
     if (result42.error) {
       console.error('Error fetching 42-item healthy students:', result42.error);

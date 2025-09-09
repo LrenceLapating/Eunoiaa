@@ -11,14 +11,15 @@
           <p>Generate personalized interventions using AI for student mental wellness</p>
         </div>
         <div class="header-actions">
-          <button 
-            class="test-connection-btn" 
-            @click="testAIConnection" 
-            :disabled="isTestingConnection"
-          >
-            <i class="fas" :class="isTestingConnection ? 'fa-spinner fa-spin' : 'fa-plug'"></i>
-            {{ isTestingConnection ? 'Testing...' : 'Test AI Connection' }}
-          </button>
+          <div class="assessment-filter">
+            <label for="assessmentTypeFilter">Assessment Type:</label>
+            <select id="assessmentTypeFilter" v-model="assessmentTypeFilter" @change="onAssessmentTypeChange">
+              <option value="">Please select an assessment type</option>
+              <option value="ryff_42">42-Item Assessment</option>
+              <option value="ryff_84">84-Item Assessment</option>
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
         </div>
       </div>
 
@@ -33,6 +34,29 @@
           </div>
         </div>
         <p>Loading student data...</p>
+      </div>
+      
+      <!-- Assessment Selection Prompt -->
+      <div v-else-if="!assessmentTypeFilter" class="assessment-prompt">
+        <div class="prompt-content">
+          <div class="prompt-icon">
+            <i class="fas fa-clipboard-list"></i>
+          </div>
+          <h3>Select Assessment Type for AI Intervention</h3>
+          <p>Please choose either 42-Item or 84-Item assessment type from the dropdown above to view student data and generate personalized interventions.</p>
+          <div class="assessment-options">
+            <div class="option-card" @click="selectAssessmentType('ryff_42')">
+              <i class="fas fa-list"></i>
+              <h4>42-Item Assessment</h4>
+              <p>Shorter assessment format</p>
+            </div>
+            <div class="option-card" @click="selectAssessmentType('ryff_84')">
+              <i class="fas fa-list-ul"></i>
+              <h4>84-Item Assessment</h4>
+              <p>Comprehensive assessment format</p>
+            </div>
+          </div>
+        </div>
       </div>
       
       <!-- Statistics Cards -->
@@ -348,6 +372,7 @@ export default {
       currentView: 'dashboard', // 'dashboard', 'at-risk', 'moderate', 'healthy'
       searchQuery: '',
       collegeFilter: 'all',
+      assessmentTypeFilter: '', // '', 'ryff_42', 'ryff_84'
       showDetailsModal: false,
       selectedStudent: null,
       filteredCurrentStudents: [],
@@ -357,7 +382,6 @@ export default {
       isLoading: false,
       isSendingIntervention: false, // Loading state for sending intervention
       isBulkGenerating: false, // Loading state for bulk intervention generation
-      isTestingConnection: false, // Loading state for AI connection test
 
       aiGeneratedInterventions: new Map(), // Store AI-generated interventions by student ID
       // Real student data from backend
@@ -373,58 +397,64 @@ export default {
         { key: 'selfAcceptance', name: 'Self-Acceptance' }
       ],
       riskThresholds: {
-        '42-item': {
-          q1: 18, // Below or equal to this is "At Risk" (Q1)
-          q4: 30  // Above this is "Healthy" (Q4)
+        'ryff_42': {
+          atRisk: 111,    // ≤111: At-Risk (42-111)
+          moderate: 181,  // 112-181: Moderate, ≥182: Healthy (182-252)
+          // Dimension-level thresholds
+          q1: 18, // Below or equal to this is "At Risk" (7-18)
+          q4: 31  // Above or equal to this is "Healthy" (31-42)
         },
-        '84-item': {
-          q1: 36, // Below or equal to this is "At Risk" (Q1)
-          q4: 59  // Above or equal to this is "Healthy" (Q4)
+        'ryff_84': {
+          atRisk: 223,    // ≤223: At-Risk (84-223)
+          moderate: 363,  // 224-363: Moderate, ≥364: Healthy (364-504)
+          // Dimension-level thresholds
+          q1: 36, // Below or equal to this is "At Risk" (14-36)
+          q4: 59  // Above or equal to this is "Healthy" (60-84)
         }
       }
     };
   },
   async mounted() {
-    await this.fetchStudentsByRiskLevel();
+    // Don't fetch student data initially - wait for user to select assessment type
     await this.fetchSentInterventions();
   },
   computed: {
     // These are now data properties fetched from backend
   },
   methods: {
-    // Test AI connection to Ollama
-    async testAIConnection() {
-      this.isTestingConnection = true;
-      try {
-        const response = await fetch('http://localhost:3000/api/ai-interventions/test-connection', {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
 
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
-          alert(`✅ AI Connection Successful!\n\nConnected to ${result.data.model} - Ready to generate interventions`);
-        } else {
-          throw new Error(result.message || 'Connection failed');
-        }
-      } catch (error) {
-        console.error('AI connection test failed:', error);
-        alert(`❌ AI Connection Failed\n\nPlease ensure Ollama is running and Qwen model is available.\n\nError: ${error.message}`);
-      } finally {
-        this.isTestingConnection = false;
+
+    // Handle assessment type filter change
+    async onAssessmentTypeChange() {
+      if (this.assessmentTypeFilter) {
+        await this.fetchStudentsByRiskLevel();
+      } else {
+        // Clear data when no assessment type is selected
+        this.atRiskStudents = [];
+        this.moderateStudents = [];
+        this.healthyStudents = [];
       }
+    },
+
+    // Select assessment type from prompt cards
+    async selectAssessmentType(type) {
+      this.assessmentTypeFilter = type;
+      await this.fetchStudentsByRiskLevel();
     },
 
     // Fetch students by risk level from backend API
     async fetchStudentsByRiskLevel() {
+      if (!this.assessmentTypeFilter) {
+        return; // Don't fetch if no assessment type is selected
+      }
+      
       this.isLoading = true;
       try {
+        // Build query parameters
+        const assessmentTypeParam = `&assessmentType=${this.assessmentTypeFilter}`;
+        
         // Fetch at-risk students
-        const atRiskResponse = await fetch('http://localhost:3000/api/counselor-assessments/students/at-risk', {
+        const atRiskResponse = await fetch(`http://localhost:3000/api/counselor-assessments/students/at-risk?${assessmentTypeParam}`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -438,7 +468,7 @@ export default {
         }
         
         // Fetch moderate students
-        const moderateResponse = await fetch('http://localhost:3000/api/counselor-assessments/students/moderate', {
+        const moderateResponse = await fetch(`http://localhost:3000/api/counselor-assessments/students/moderate?${assessmentTypeParam}`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -452,7 +482,7 @@ export default {
         }
         
         // Fetch healthy students
-        const healthyResponse = await fetch('http://localhost:3000/api/counselor-assessments/students/healthy', {
+        const healthyResponse = await fetch(`http://localhost:3000/api/counselor-assessments/students/healthy?${assessmentTypeParam}`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -495,7 +525,7 @@ export default {
           riskLevel: assessment.risk_level,
           subscales: assessment.scores || {},
           completedAt: assessment.completed_at,
-          assessmentType: assessment.assessment_type,
+          assessment_type: assessment.assessment_type,
           atRiskDimensions: assessment.at_risk_dimensions || []
         };
       });
@@ -596,19 +626,19 @@ export default {
     // Risk assessment methods
     getThresholdsForStudent(student) {
       // Determine assessment type from student data
-      const assessmentType = student?.assessment_type === 'ryff_84' ? '84-item' : '42-item';
+      const assessmentType = student?.assessment_type === 'ryff_84' ? 'ryff_84' : 'ryff_42';
       return this.riskThresholds[assessmentType];
     },
     isAtRisk(score, student = null) {
-      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       return score <= thresholds.q1;
     },
     isHealthy(score, student = null) {
-      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       return score >= thresholds.q4;
     },
     isModerate(score, student = null) {
-      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       return score > thresholds.q1 && score < thresholds.q4;
     },
     hasAnyRiskDimension(student) {
@@ -692,19 +722,19 @@ export default {
       }
     },
     getDimensionScoreColor(score, student = null) {
-      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       if (score <= thresholds.q1) return '#f44336';  // Red for at risk
       if (score < thresholds.q4) return '#ff9800';  // Orange for moderate
       return '#4caf50';  // Green for healthy
     },
     getDimensionRiskClass(score, student = null) {
-      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       if (score <= thresholds.q1) return 'high-risk';
       if (score < thresholds.q4) return 'medium-risk';
       return 'low-risk';
     },
     getDimensionRiskLabel(score, student = null) {
-      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['42-item'];
+      const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       if (score <= thresholds.q1) return 'At Risk';
       if (score < thresholds.q4) return 'Moderate';
       return 'Healthy';
@@ -1108,6 +1138,85 @@ export default {
 .header-actions {
   display: flex;
   gap: 15px;
+  align-items: center;
+}
+
+/* Assessment Filter Styles */
+.assessment-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.assessment-filter label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.assessment-filter select {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 12px 45px 12px 16px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  min-width: 220px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.assessment-filter select:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.assessment-filter select:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+.assessment-filter select option {
+  background: #667eea;
+  color: white;
+  padding: 12px 16px;
+  border: none;
+  font-weight: 500;
+}
+
+.assessment-filter select option:hover {
+  background: #5a6fd8;
+}
+
+.assessment-filter select option:first-child {
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+}
+
+.assessment-filter i {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.assessment-filter:hover i {
+  color: white;
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .test-connection-btn,
@@ -1158,6 +1267,23 @@ export default {
   
   .header-content p {
     font-size: 1rem;
+  }
+  
+  .header-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .assessment-filter {
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .assessment-filter select {
+    min-width: 280px;
+    width: 100%;
+    max-width: 320px;
   }
 }
 
@@ -2061,6 +2187,88 @@ export default {
   100% { opacity: 1; }
 }
 
+/* Assessment Prompt Styles */
+.assessment-prompt {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  padding: 40px 20px;
+}
+
+.prompt-content {
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+}
+
+.prompt-icon {
+  margin-bottom: 24px;
+}
+
+.prompt-icon i {
+  font-size: 4rem;
+  color: #6c5ce7;
+  opacity: 0.8;
+}
+
+.prompt-content h3 {
+  font-size: 1.8rem;
+  color: #2d3436;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.prompt-content p {
+  font-size: 1.1rem;
+  color: #636e72;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.assessment-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 32px;
+}
+
+.option-card {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 24px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.option-card:hover {
+  border-color: #6c5ce7;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(108, 92, 231, 0.15);
+}
+
+.option-card i {
+  font-size: 2.5rem;
+  color: #6c5ce7;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.option-card h4 {
+  font-size: 1.2rem;
+  color: #2d3436;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.option-card p {
+  font-size: 0.95rem;
+  color: #636e72;
+  margin: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .stats-cards {
@@ -2086,6 +2294,19 @@ export default {
   
   .subscale-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .assessment-options {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .prompt-content h3 {
+    font-size: 1.5rem;
+  }
+  
+  .prompt-content p {
+    font-size: 1rem;
   }
 }
 

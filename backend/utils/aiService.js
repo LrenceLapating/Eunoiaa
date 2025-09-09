@@ -1,8 +1,9 @@
 const axios = require('axios');
 
-// Ollama API configuration
-const OLLAMA_BASE_URL = 'http://localhost:11434';
-const MODEL_NAME = 'qwen:4b';
+// OpenRouter API configuration
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const MODEL_NAME = 'mistralai/mistral-7b-instruct';
+const API_KEY = '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';
 
 class AIService {
   /**
@@ -15,19 +16,24 @@ class AIService {
     try {
       const prompt = this.createInterventionPrompt(studentData, riskLevel);
       
-      const response = await axios.post(`${OLLAMA_BASE_URL}/api/generate`, {
+      const response = await axios.post(`${OPENROUTER_BASE_URL}/chat/completions`, {
         model: MODEL_NAME,
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          top_p: 0.9,
-          max_tokens: 1500
+        messages: [{
+          role: 'user',
+          content: prompt
+        }],
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 1500
+      }, {
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      if (response.data && response.data.response) {
-        return this.parseInterventionResponse(response.data.response);
+      if (response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
+        return this.parseInterventionResponse(response.data.choices[0].message.content);
       } else {
         throw new Error('Invalid response from AI model');
       }
@@ -192,20 +198,25 @@ IMPORTANT: Make this intervention UNIQUE by varying your language, examples, and
       // Generate a simple intervention text first
       const simplePrompt = this.createSimpleInterventionPrompt(studentData, riskLevel);
       
-      const response = await axios.post(`${OLLAMA_BASE_URL}/api/generate`, {
+      const response = await axios.post(`${OPENROUTER_BASE_URL}/chat/completions`, {
         model: MODEL_NAME,
-        prompt: simplePrompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          top_p: 0.9,
-          num_predict: 500
+        messages: [{
+          role: 'user',
+          content: simplePrompt
+        }],
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 500
+      }, {
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
         }
       });
       
-      if (response.data && response.data.response) {
+      if (response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
         // Structure the response programmatically
-        return this.createStructuredResponse(response.data.response, studentData, riskLevel);
+        return this.createStructuredResponse(response.data.choices[0].message.content, studentData, riskLevel);
       } else {
         throw new Error('Invalid response from AI service');
       }
@@ -586,31 +597,33 @@ IMPORTANT: Make this intervention UNIQUE by varying your language, examples, and
    */
   async testConnection() {
     try {
-      // First, test if Ollama is running
-      const response = await axios.get(`${OLLAMA_BASE_URL}/api/tags`);
-      
-      if (response.status === 200) {
-        // Check if our specific model is available
-        const models = response.data.models || [];
-        const modelExists = models.some(model => 
-          model.name === MODEL_NAME || 
-          model.name.startsWith('qwen') ||
-          model.name.includes('qwen')
-        );
-        
-        if (modelExists) {
-          return { success: true, model: MODEL_NAME };
-        } else {
-          console.warn(`Model ${MODEL_NAME} not found. Available models:`, models.map(m => m.name));
-          return { success: false, error: `Model ${MODEL_NAME} not available. Please run: ollama pull ${MODEL_NAME}` };
+      // Test OpenRouter API with a simple request
+      const response = await axios.post(`${OPENROUTER_BASE_URL}/chat/completions`, {
+        model: MODEL_NAME,
+        messages: [{
+          role: 'user',
+          content: 'Hello, this is a test message.'
+        }],
+        max_tokens: 10
+      }, {
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
         }
+      });
+      
+      if (response.status === 200 && response.data && response.data.choices) {
+        return { success: true, model: MODEL_NAME };
       }
       
-      return { success: false, error: 'Ollama service not responding' };
+      return { success: false, error: 'OpenRouter service not responding properly' };
     } catch (error) {
-      console.error('Ollama connection test failed:', error.message);
-      if (error.code === 'ECONNREFUSED') {
-        return { success: false, error: 'Ollama is not running. Please start Ollama service.' };
+      console.error('OpenRouter connection test failed:', error.message);
+      if (error.response && error.response.status === 401) {
+        return { success: false, error: 'Invalid API key for OpenRouter.' };
+      }
+      if (error.response && error.response.status === 429) {
+        return { success: false, error: 'Rate limit exceeded for OpenRouter API.' };
       }
       return { success: false, error: `Connection failed: ${error.message}` };
     }

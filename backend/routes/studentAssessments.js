@@ -1,17 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../config/database');
-const { createClient } = require('@supabase/supabase-js');
+const { supabase, supabaseAdmin } = require('../config/database');
 const { verifyStudentSession } = require('../middleware/sessionManager');
 const { calculateRyffScores, determineRiskLevel } = require('../utils/ryffScoring');
 const { computeAndStoreCollegeScores } = require('../utils/collegeScoring');
 const riskLevelSyncService = require('../services/riskLevelSyncService');
-
-// Create service role client for bypassing RLS
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 // Get assigned assessments for student
 router.get('/assigned', verifyStudentSession, async (req, res) => {
