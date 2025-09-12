@@ -404,8 +404,6 @@
 </template>
 
 <script>
-import apiConfig from '@/config/api';
-
 export default {
   name: 'AccountManagement',
   async mounted() {
@@ -448,8 +446,7 @@ export default {
         year_level: '',
         semester: '1st Semester',
         customCollege: ''
-      },
-      $apiConfig: apiConfig
+      }
     }
   },
   computed: {
@@ -602,7 +599,7 @@ export default {
     downloadTemplate() {
       // Download Excel template from backend API
       const link = document.createElement('a');
-      link.href = this.$apiConfig.endpoint('accounts/csv-template');
+      link.href = 'http://localhost:3000/api/accounts/csv-template';
       link.download = 'student_template.xlsx';
       link.style.display = 'none';
       document.body.appendChild(link);
@@ -673,7 +670,7 @@ export default {
         formData.append('deactivatePrevious', this.deactivatePrevious);
         
         // Send to backend API
-        const response = await fetch(this.$apiConfig.endpoint('accounts/upload-csv'), {
+        const response = await fetch('http://localhost:3000/api/accounts/upload-csv', {
           method: 'POST',
           body: formData
         });
@@ -744,7 +741,7 @@ export default {
     // Load colleges data from backend
     async loadCollegesFromBackend() {
       try {
-        const response = await fetch(this.$apiConfig.endpoint('accounts/colleges'));
+        const response = await fetch('http://localhost:3000/api/accounts/colleges');
         if (response.ok) {
           const data = await response.json();
           this.colleges = data.colleges.map(college => ({
@@ -769,7 +766,7 @@ export default {
           limit: 100
         });
         
-        const response = await fetch(this.$apiConfig.endpoint(`accounts/students?${params}`));
+        const response = await fetch(`http://localhost:3000/api/accounts/students?${params}`);
         if (response.ok) {
           const data = await response.json();
           this.users = data.students.map(student => ({
@@ -906,7 +903,7 @@ export default {
         let response;
         if (this.editingStudentId) {
           // Update existing student
-          response = await fetch(this.$apiConfig.endpoint(`accounts/students/${this.editingStudentId}`), {
+          response = await fetch(`http://localhost:3000/api/accounts/students/${this.editingStudentId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json'
@@ -915,7 +912,7 @@ export default {
           });
         } else {
           // Add new student
-          response = await fetch(this.$apiConfig.endpoint('accounts/students'), {
+          response = await fetch('http://localhost:3000/api/accounts/students', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -951,7 +948,7 @@ export default {
 
     async confirmDeleteStudent() {
       try {
-        const response = await fetch(this.$apiConfig.endpoint(`accounts/students/${this.studentToDelete.id}`), {
+        const response = await fetch(`http://localhost:3000/api/accounts/students/${this.studentToDelete.id}`, {
           method: 'DELETE'
         });
 

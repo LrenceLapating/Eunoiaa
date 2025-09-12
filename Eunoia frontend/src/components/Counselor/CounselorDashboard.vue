@@ -273,7 +273,6 @@
 
 <script>
 import authService from '@/services/authService'
-import apiConfig from '@/config/api'
 import YearlyTrendAnalysis from './YearlyTrendAnalysis.vue'
 import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
@@ -304,8 +303,6 @@ export default {
   },
   data() {
     return {
-      // API configuration for making requests
-      $apiConfig: apiConfig,
       showSubmenu: null,
       selectedCollege: 'all',
       showModal: false,
@@ -545,7 +542,7 @@ export default {
     async loadRiskAlertsData() {
       this.riskAlertsLoading = true;
       try {
-        const response = await fetch(this.$apiConfig.endpoint('risk-alerts'), {
+        const response = await fetch('http://localhost:3000/api/risk-alerts', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -659,7 +656,7 @@ export default {
     async initializeStudentData() {
       try {
         // Load students from backend API
-        const response = await fetch(this.$apiConfig.endpoint('accounts/students?page=1&limit=100'));
+        const response = await fetch('http://localhost:3000/api/accounts/students?page=1&limit=100');
         if (response.ok) {
           const data = await response.json();
           this.students = data.students.map(student => ({
@@ -694,7 +691,7 @@ export default {
     // Load college overview data from backend
     async loadCollegeOverviewData() {
       try {
-        const response = await fetch(this.$apiConfig.endpoint('accounts/colleges'));
+        const response = await fetch('http://localhost:3000/api/accounts/colleges');
         if (response.ok) {
           const data = await response.json();
           this.collegeOverviewData = data.colleges.map(college => ({

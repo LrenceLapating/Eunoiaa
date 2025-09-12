@@ -163,7 +163,6 @@
 
 <script>
 import { getCollegeDimensionColor } from '../Shared/RyffScoringUtils';
-import apiConfig from '@/config/api';
 
 export default {
   name: 'CollegeHistoryDetail',
@@ -183,7 +182,6 @@ export default {
   },
   data() {
     return {
-      $apiConfig: apiConfig,
       selectedYear: '',
       selectedSection: '',
       availableYears: [],
@@ -339,7 +337,7 @@ export default {
           section
         });
         
-        const url = this.$apiConfig.endpoint(`accounts/colleges/history?${params.toString()}`);
+        const url = `http://localhost:3000/api/accounts/colleges/history?${params.toString()}`;
         const response = await fetch(url, {
           method: 'GET',
           credentials: 'include',

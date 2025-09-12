@@ -669,7 +669,6 @@ import {
   hasAnyRiskDimension,
   formatDimensionName
 } from '../Shared/RyffScoringUtils';
-import apiConfig from '@/config/api';
 
 export default {
   name: 'RyffScoring',
@@ -693,7 +692,8 @@ export default {
   },
   data() {
     return {
-      $apiConfig: apiConfig,
+      // API configuration - uses environment variable for production
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
       currentTab: 'student',
       currentView: 'student',
       searchQuery: '',
@@ -858,7 +858,7 @@ export default {
         }
         
         // Request historical data from the new history endpoint
-        const response = await fetch(`${this.$apiConfig.endpoint('counselor-assessments/history')}?${params.toString()}`, {
+        const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/history?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -948,7 +948,7 @@ export default {
         }
         
         // Request all results by setting a high limit
-        const response = await fetch(`${this.$apiConfig.endpoint('counselor-assessments/results')}?${params.toString()}`, {
+        const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/results?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -1898,7 +1898,7 @@ export default {
         
         // Fetch dimension-specific data from backend
         // Add assessmentId parameter if available to ensure we get the correct assessment data
-        let apiUrl = `${this.$apiConfig.endpoint(`counselor-assessments/student/${student.id}/dimension/${backendDimension}`)}`;
+        let apiUrl = `${this.apiBaseUrl}/counselor-assessments/student/${student.id}/dimension/${backendDimension}`;
         if (student.assessmentId) {
           apiUrl += `?assessmentId=${student.assessmentId}`;
         }
