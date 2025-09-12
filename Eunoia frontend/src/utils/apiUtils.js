@@ -12,8 +12,8 @@
 export function buildApiUrl(endpoint, baseUrl = null) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   
-  // In development, use the proxy setup (just /api prefix)
-  // The vue.config.js proxy will handle forwarding /api/* to the backend
+  // In development, always use relative URLs with /api prefix
+  // This ensures the Vue proxy handles the routing correctly
   if (process.env.NODE_ENV === 'development') {
     return `/api/${cleanEndpoint}`;
   }
