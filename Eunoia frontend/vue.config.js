@@ -15,11 +15,8 @@ module.exports = defineConfig({
     themeColor: '#4DBA87',
     msTileColor: '#000000',
     appleMobileWebAppCapable: 'yes',
-    appleMobileWebAppStatusBarStyle: 'black',
-    workboxPluginMode: 'InjectManifest',
-    workboxOptions: {
-      swSrc: 'src/sw.js'
-    }
+    appleMobileWebAppStatusBarStyle: 'black'
+    // Removed workbox configuration to fix build issues
   },
   
   // Configure webpack for optimization
@@ -148,11 +145,7 @@ module.exports = defineConfig({
   // CSS optimization
   css: {
     extract: process.env.NODE_ENV === 'production',
-    sourceMap: false,
-    loaderOptions: {
-      sass: {
-        additionalData: `@import "@/styles/variables.scss";`
-      }
-    }
+    sourceMap: false
+    // Removed SCSS variables import to fix build issues
   }
 })
