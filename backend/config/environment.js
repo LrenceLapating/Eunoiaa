@@ -98,7 +98,7 @@ class EnvironmentConfig {
         db: parseInt(process.env.REDIS_DB) || 0,
         maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES) || 3,
         retryDelayOnFailover: parseInt(process.env.REDIS_RETRY_DELAY) || 1000,
-        enabled: this.env === 'production' || process.env.REDIS_ENABLED === 'true'
+        enabled: process.env.REDIS_ENABLED === 'true' || (this.env === 'production' && process.env.REDIS_HOST)
       },
       
       // Security

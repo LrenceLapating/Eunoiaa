@@ -1,68 +1,77 @@
 const Redis = require('ioredis');
 const { config } = require('./environment');
 
-// Enhanced Redis configuration for maximum resilience
-const redisConfig = {
-  host: config.redis.host,
-  port: config.redis.port,
-  password: config.redis.password,
-  db: config.redis.db,
-  maxRetriesPerRequest: null, // Unlimited retries to prevent connection drops
-  retryDelayOnFailover: config.redis.retryDelayOnFailover,
-  enableReadyCheck: true,
-  lazyConnect: true,
-  connectTimeout: 10000,
-  commandTimeout: 5000,
-  retryDelayOnClusterDown: 300,
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: null,
-  keepAlive: 30000,
-  family: 4, // Force IPv4
-  // Reconnection strategy
-  reconnectOnError: (err) => {
-    console.log('Redis reconnectOnError:', err.message);
-    return err.message.includes('READONLY') || err.message.includes('ECONNRESET');
-  }
-};
+let redis = null;
 
-// Create Redis client
-const redis = new Redis(redisConfig);
+// Only create Redis client if enabled
+if (config.redis.enabled) {
+  // Enhanced Redis configuration for maximum resilience
+  const redisConfig = {
+    host: config.redis.host,
+    port: config.redis.port,
+    password: config.redis.password,
+    db: config.redis.db,
+    maxRetriesPerRequest: null, // Unlimited retries to prevent connection drops
+    retryDelayOnFailover: config.redis.retryDelayOnFailover,
+    enableReadyCheck: true,
+    lazyConnect: true,
+    connectTimeout: 10000,
+    commandTimeout: 5000,
+    retryDelayOnClusterDown: 300,
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: null,
+    keepAlive: 30000,
+    family: 4, // Force IPv4
+    // Reconnection strategy
+    reconnectOnError: (err) => {
+      console.log('Redis reconnectOnError:', err.message);
+      return err.message.includes('READONLY') || err.message.includes('ECONNRESET');
+    }
+  };
 
-// Redis connection event handlers
-redis.on('connect', () => {
-  console.log('✅ Redis connected successfully');
-});
+  // Create Redis client
+  redis = new Redis(redisConfig);
+} else {
+  console.log('⚠️ Redis disabled - running in database-only mode');
+}
 
-redis.on('ready', () => {
-  console.log('✅ Redis ready for operations');
-});
+// Redis connection event handlers (only if Redis is enabled)
+if (redis) {
+  redis.on('connect', () => {
+    console.log('✅ Redis connected successfully');
+  });
 
-redis.on('error', (error) => {
-  console.error('❌ Redis connection error:', error.message);
-  // Enhanced error logging with context
-  if (error.code === 'ECONNREFUSED') {
-    console.warn('⚠️ Redis server unavailable - operating in fallback mode');
-  } else if (error.code === 'ENOTFOUND') {
-    console.warn('⚠️ Redis host not found - check configuration');
-  } else {
-    console.error('❌ Redis error details:', {
-      code: error.code,
-      errno: error.errno,
+  redis.on('ready', () => {
+    console.log('✅ Redis ready for operations');
+  });
+
+  redis.on('error', (error) => {
+    console.error('❌ Redis connection error:', error.message);
+    // Enhanced error logging with context
+    if (error.code === 'ECONNREFUSED') {
+      console.warn('⚠️ Redis server unavailable - operating in fallback mode');
+    } else if (error.code === 'ENOTFOUND') {
+      console.warn('⚠️ Redis host not found - check configuration');
+    } else {
+      console.error('❌ Redis error details:', {
+        code: error.code,
+        errno: error.errno,
       syscall: error.syscall,
       address: error.address,
       port: error.port
     });
   }
-  // Don't exit process - allow app to continue without Redis
-});
+    // Don't exit process - allow app to continue without Redis
+  });
 
-redis.on('close', () => {
-  console.log('⚠️ Redis connection closed');
-});
+  redis.on('close', () => {
+    console.log('⚠️ Redis connection closed');
+  });
 
-redis.on('reconnecting', () => {
-  console.log('🔄 Redis reconnecting...');
-});
+  redis.on('reconnecting', () => {
+    console.log('🔄 Redis reconnecting...');
+  });
+}
 
 // Cache helper functions
 class CacheManager {
@@ -73,12 +82,12 @@ class CacheManager {
 
   // Enhanced Redis availability check
   isAvailable() {
-    return this.redis.status === 'ready' || this.redis.status === 'connecting';
+    return this.redis && (this.redis.status === 'ready' || this.redis.status === 'connecting');
   }
   
   // Check if Redis is truly ready for operations
   isReady() {
-    return this.redis.status === 'ready';
+    return this.redis && this.redis.status === 'ready';
   }
 
   // Get cached data with enhanced error handling
@@ -101,7 +110,7 @@ class CacheManager {
       console.error('Redis GET error:', {
         key,
         error: error.message,
-        redisStatus: this.redis.status
+        redisStatus: this.redis ? this.redis.status : 'disabled'
       });
       return null; // Fail gracefully
     }
@@ -127,7 +136,7 @@ class CacheManager {
       console.error('Redis SET error:', {
         key,
         error: error.message,
-        redisStatus: this.redis.status
+        redisStatus: this.redis ? this.redis.status : 'disabled'
       });
       return false; // Fail gracefully
     }
@@ -201,6 +210,10 @@ class CacheManager {
 // Test Redis connection
 const testRedisConnection = async () => {
   try {
+    if (!redis) {
+      console.log('⚠️ Redis disabled - skipping connection test');
+      return false;
+    }
     await redis.ping();
     console.log('✅ Redis connection test successful');
     return true;
