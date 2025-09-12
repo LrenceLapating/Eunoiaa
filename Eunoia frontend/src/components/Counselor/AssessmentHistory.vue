@@ -133,12 +133,14 @@
 </template>
 
 <script>
+import { apiUrl } from '../../utils/apiUtils.js';
+
 export default {
   name: 'AssessmentHistory',
   data() {
     return {
       // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
+      
       searchQuery: '',
       showDetailsModal: false,
       selectedAssessment: {},
@@ -189,7 +191,7 @@ export default {
     // Load assessment data from backend
     async loadAssessments() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/api/bulk-assessments/history`, {
+        const response = await fetch(apiUrl('bulk-assessments/history'), {
           method: 'GET',
           credentials: 'include' // Include session cookies
         });

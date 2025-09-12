@@ -404,6 +404,8 @@
 </template>
 
 <script>
+import { apiUrl } from '../../utils/apiUtils.js';
+
 export default {
   name: 'AccountManagement',
   async mounted() {
@@ -413,7 +415,7 @@ export default {
   data() {
     return {
       // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
+
       selectedCollege: null,
       searchQuery: '',
       notification: {
@@ -601,7 +603,7 @@ export default {
     downloadTemplate() {
       // Download Excel template from backend API
       const link = document.createElement('a');
-      link.href = `${this.apiBaseUrl}/accounts/csv-template`;
+      link.href = apiUrl('accounts/csv-template');
       link.download = 'student_template.xlsx';
       link.style.display = 'none';
       document.body.appendChild(link);
@@ -672,7 +674,7 @@ export default {
         formData.append('deactivatePrevious', this.deactivatePrevious);
         
         // Send to backend API
-        const response = await fetch(`${this.apiBaseUrl}/api/accounts/upload-csv`, {
+        const response = await fetch(apiUrl('accounts/upload-csv'), {
           method: 'POST',
           body: formData
         });
@@ -743,7 +745,7 @@ export default {
     // Load colleges data from backend
     async loadCollegesFromBackend() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/api/accounts/colleges`);
+        const response = await fetch(apiUrl('accounts/colleges'));
         if (response.ok) {
           const data = await response.json();
           this.colleges = data.colleges.map(college => ({
@@ -768,7 +770,7 @@ export default {
           limit: 100
         });
         
-        const response = await fetch(`${this.apiBaseUrl}/api/accounts/students?${params}`);
+        const response = await fetch(apiUrl(`accounts/students?${params}`));
         if (response.ok) {
           const data = await response.json();
           this.users = data.students.map(student => ({
@@ -905,7 +907,7 @@ export default {
         let response;
         if (this.editingStudentId) {
           // Update existing student
-          response = await fetch(`${this.apiBaseUrl}/api/accounts/students/${this.editingStudentId}`, {
+          response = await fetch(apiUrl(`accounts/students/${this.editingStudentId}`), {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json'
@@ -914,7 +916,7 @@ export default {
           });
         } else {
           // Add new student
-          response = await fetch(`${this.apiBaseUrl}/api/accounts/students`, {
+          response = await fetch(apiUrl('accounts/students'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -950,7 +952,7 @@ export default {
 
     async confirmDeleteStudent() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/api/accounts/students/${this.studentToDelete.id}`, {
+        const response = await fetch(apiUrl(`accounts/students/${this.studentToDelete.id}`), {
           method: 'DELETE'
         });
 

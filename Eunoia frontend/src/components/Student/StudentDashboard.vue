@@ -589,6 +589,7 @@
 import authService from '@/services/authService'
 import AssessmentTaking from './AssessmentTaking.vue'
 import AssessmentComplete from './AssessmentComplete.vue'
+import { apiUrl } from '../../utils/apiUtils.js'
 
 export default {
   name: 'StudentDashboard',
@@ -630,7 +631,7 @@ export default {
         reminders: true
       },
       originalSettings: {},
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
+      
     };
   },
   computed: {
@@ -740,7 +741,7 @@ export default {
     
     async checkStudentStatus() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/accounts/student-status`, {
+        const response = await fetch(apiUrl('accounts/student-status'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -812,7 +813,7 @@ export default {
         console.log('Fetching assigned assessments...');
         
         // First check if student is still active
-        const statusResponse = await fetch(`${this.apiBaseUrl}/accounts/student-status`, {
+        const statusResponse = await fetch(apiUrl('accounts/student-status'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -830,7 +831,7 @@ export default {
           return;
         }
         
-        const response = await fetch(`${this.apiBaseUrl}/student-assessments/assigned`, {
+        const response = await fetch(apiUrl('student-assessments/assigned'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -969,7 +970,7 @@ export default {
         this.loadingInterventions = true;
         console.log('Fetching AI interventions...');
         
-        const response = await fetch(`${this.apiBaseUrl}/student-interventions`, {
+        const response = await fetch(apiUrl('student-interventions'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -996,7 +997,7 @@ export default {
 
     async markAsRead(interventionId) {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/student-interventions/${interventionId}/read`, {
+        const response = await fetch(apiUrl(`student-interventions/${interventionId}/read`), {
           method: 'PUT',
           credentials: 'include',
           headers: {

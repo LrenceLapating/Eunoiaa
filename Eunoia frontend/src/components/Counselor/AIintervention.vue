@@ -365,11 +365,13 @@
 </template>
 
 <script>
+import { apiUrl } from '../../utils/apiUtils';
+
 export default {
   name: 'AIintervention',
   data() {
     return {
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000',
+      
       currentView: 'dashboard', // 'dashboard', 'at-risk', 'moderate', 'healthy'
       searchQuery: '',
       collegeFilter: 'all',
@@ -455,7 +457,7 @@ export default {
         const assessmentTypeParam = `&assessmentType=${this.assessmentTypeFilter}`;
         
         // Fetch at-risk students
-        const atRiskResponse = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/students/at-risk?${assessmentTypeParam}`, {
+        const atRiskResponse = await fetch(apiUrl(`/counselor-assessments/students/at-risk?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -469,7 +471,7 @@ export default {
         }
         
         // Fetch moderate students
-        const moderateResponse = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/students/moderate?${assessmentTypeParam}`, {
+        const moderateResponse = await fetch(apiUrl(`/counselor-assessments/students/moderate?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -483,7 +485,7 @@ export default {
         }
         
         // Fetch healthy students
-        const healthyResponse = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/students/healthy?${assessmentTypeParam}`, {
+        const healthyResponse = await fetch(apiUrl(`/counselor-assessments/students/healthy?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -538,7 +540,7 @@ export default {
     // Fetch previously sent interventions to maintain status across page refreshes
     async fetchSentInterventions() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/api/counselor-interventions/sent`, {
+        const response = await fetch(apiUrl('/counselor-interventions/sent'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -786,7 +788,7 @@ export default {
         this.isSendingIntervention = true;
         
         // Send existing AI intervention to student
-        const response = await fetch(`${this.apiBaseUrl}/api/counselor-interventions/send-existing`, {
+        const response = await fetch(apiUrl('/counselor-interventions/send-existing'), {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -851,7 +853,7 @@ export default {
         const studentIds = this.filteredCurrentStudents.map(student => student.id);
         
         // Generate AI interventions for all students
-        const response = await fetch(`${this.apiBaseUrl}/api/ai-interventions/bulk-generate`, {
+        const response = await fetch(apiUrl('/ai-interventions/bulk-generate'), {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -1014,7 +1016,7 @@ export default {
     // Fetch AI-generated intervention for a specific student
     async fetchAIInterventionForStudent(studentId) {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/api/counselor-interventions/student/${studentId}/latest`, {
+        const response = await fetch(apiUrl(`/counselor-interventions/student/${studentId}/latest`), {
           method: 'GET',
           credentials: 'include',
           headers: {

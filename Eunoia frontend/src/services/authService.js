@@ -2,10 +2,10 @@
  * Authentication Service for EUNOIA System
  * Handles session-based authentication replacing localStorage
  */
+import { apiUrl } from '../utils/apiUtils.js';
 
 class AuthService {
   constructor() {
-    this.baseURL = process.env.VUE_APP_API_URL || 'http://localhost:3000/api';
     this.currentUser = null;
     this.userType = null;
     this.isAuthenticated = false;
@@ -16,7 +16,7 @@ class AuthService {
    */
   async loginStudent(username, password) {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/student/login`, {
+      const response = await fetch(apiUrl('auth/student/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ class AuthService {
    */
   async loginCounselor(email, password) {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/counselor/login`, {
+      const response = await fetch(apiUrl('auth/counselor/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ class AuthService {
    */
   async logout() {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/logout`, {
+      const response = await fetch(apiUrl('auth/logout'), {
         method: 'POST',
         credentials: 'include'
       });
@@ -145,7 +145,7 @@ class AuthService {
     try {
       const endpoint = this.userType === 'student' ? 'student/profile' : 'counselor/profile';
       
-      const response = await fetch(`${this.baseURL}/api/auth/${endpoint}`, {
+      const response = await fetch(apiUrl(`auth/${endpoint}`), {
         method: 'GET',
         credentials: 'include'
       });
@@ -188,7 +188,7 @@ class AuthService {
     try {
       // If userType is not set, try to determine it first (similar to initialize)
       if (!this.userType) {
-        const studentResult = await fetch(`${this.baseURL}/api/auth/student/profile`, {
+        const studentResult = await fetch(apiUrl('auth/student/profile'), {
           method: 'GET',
           credentials: 'include'
         });
@@ -205,7 +205,7 @@ class AuthService {
           };
         }
 
-        const counselorResult = await fetch(`${this.baseURL}/api/auth/counselor/profile`, {
+        const counselorResult = await fetch(apiUrl('auth/counselor/profile'), {
           method: 'GET',
           credentials: 'include'
         });
@@ -297,7 +297,7 @@ class AuthService {
    */
   async changeStudentPassword(username, currentPassword, newPassword) {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/student/change-password`, {
+      const response = await fetch(apiUrl('auth/student/change-password'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -354,7 +354,7 @@ class AuthService {
   async initialize() {
     try {
       // Try to determine user type from a session validation endpoint
-      const studentResult = await fetch(`${this.baseURL}/api/auth/student/profile`, {
+      const studentResult = await fetch(apiUrl('auth/student/profile'), {
         method: 'GET',
         credentials: 'include'
       });
@@ -367,7 +367,7 @@ class AuthService {
         return { userType: 'student', user: data.student };
       }
 
-      const counselorResult = await fetch(`${this.baseURL}/api/auth/counselor/profile`, {
+      const counselorResult = await fetch(apiUrl('auth/counselor/profile'), {
         method: 'GET',
         credentials: 'include'
       });

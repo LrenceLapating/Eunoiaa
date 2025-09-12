@@ -669,6 +669,7 @@ import {
   hasAnyRiskDimension,
   formatDimensionName
 } from '../Shared/RyffScoringUtils';
+import { apiUrl } from '../../utils/apiUtils.js';
 
 export default {
   name: 'RyffScoring',
@@ -693,7 +694,7 @@ export default {
   data() {
     return {
       // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
+      
       currentTab: 'student',
       currentView: 'student',
       searchQuery: '',
@@ -858,7 +859,7 @@ export default {
         }
         
         // Request historical data from the new history endpoint
-        const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/history?${params.toString()}`, {
+        const response = await fetch(apiUrl(`counselor-assessments/history?${params.toString()}`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -948,7 +949,7 @@ export default {
         }
         
         // Request all results by setting a high limit
-        const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/results?${params.toString()}`, {
+        const response = await fetch(apiUrl(`counselor-assessments/results?${params.toString()}`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -1898,15 +1899,16 @@ export default {
         
         // Fetch dimension-specific data from backend
         // Add assessmentId parameter if available to ensure we get the correct assessment data
-        let apiUrl = `${this.apiBaseUrl}/counselor-assessments/student/${student.id}/dimension/${backendDimension}`;
+        let endpoint = `counselor-assessments/student/${student.id}/dimension/${backendDimension}`;
         if (student.assessmentId) {
-          apiUrl += `?assessmentId=${student.assessmentId}`;
+          endpoint += `?assessmentId=${student.assessmentId}`;
         }
         
-        console.log('Fetching dimension data from:', apiUrl);
+        const fetchUrl = apiUrl(endpoint);
+        console.log('Fetching dimension data from:', fetchUrl);
         console.log('Student data:', student);
         
-        const response = await fetch(apiUrl, {
+        const response = await fetch(fetchUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'

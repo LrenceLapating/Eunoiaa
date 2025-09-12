@@ -233,6 +233,7 @@
 
 <script>
 import { getDimensionColor, getCollegeDimensionColor, formatDimensionName, getCollegeDimensionRiskLevel } from '../Shared/RyffScoringUtils';
+import { apiUrl } from '../../utils/apiUtils';
 
 export default {
   name: 'CollegeDetail',
@@ -270,7 +271,7 @@ export default {
       loadingRiskDistribution: false,
       assessmentHistory: [],
       loadingHistory: false,
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
+      
     };
   },
   watch: {
@@ -741,7 +742,7 @@ export default {
           params.append('assessmentName', this.selectedAssessmentName);
         }
         
-        const url = `${this.apiBaseUrl}/accounts/colleges/history?${params.toString()}`;
+        const url = apiUrl(`accounts/colleges/history?${params.toString()}`);
         console.log('🔍 Fetching college history for:', {
           college: this.selectedCollege.name,
           assessmentType: dbAssessmentType,
@@ -959,7 +960,7 @@ export default {
            section: this.selectedSection
          });
          
-         const response = await fetch(`${this.apiBaseUrl}/api/accounts/colleges/scores?${params.toString()}`, {
+         const response = await fetch(apiUrl(`/accounts/colleges/scores?${params.toString()}`), {
            method: 'GET',
            credentials: 'include',
            headers: {
@@ -1078,7 +1079,7 @@ export default {
           }
           
           // Use the new endpoint that fetches from college_scores table
-          const url = `${this.apiBaseUrl}/accounts/colleges/assessment-names${params.toString() ? '?' + params.toString() : ''}`;
+          const url = apiUrl(`accounts/colleges/assessment-names${params.toString() ? '?' + params.toString() : ''}`);
           
           console.log('🔍 Fetching assessment names with assessmentType filter:', this.assessmentType);
           
@@ -1138,7 +1139,7 @@ export default {
             params.append('assessmentName', this.selectedAssessmentName);
           }
 
-          const url = `${this.apiBaseUrl}/accounts/colleges/${encodeURIComponent(this.selectedCollege.name)}/assessment-filters?${params.toString()}`;
+          const url = apiUrl(`accounts/colleges/${encodeURIComponent(this.selectedCollege.name)}/assessment-filters?${params.toString()}`);
           
           const response = await fetch(url, {
              method: 'GET',
@@ -1217,7 +1218,7 @@ export default {
             section: this.selectedSection
           });
           
-          const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/risk-distribution?${params.toString()}`, {
+          const response = await fetch(apiUrl(`/counselor-assessments/risk-distribution?${params.toString()}`), {
             method: 'GET',
             credentials: 'include',
             headers: {

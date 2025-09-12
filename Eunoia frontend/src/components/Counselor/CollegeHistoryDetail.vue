@@ -163,6 +163,7 @@
 
 <script>
 import { getCollegeDimensionColor } from '../Shared/RyffScoringUtils';
+import { apiUrl } from '../../utils/apiUtils.js';
 
 export default {
   name: 'CollegeHistoryDetail',
@@ -190,7 +191,7 @@ export default {
       historyData: null,
       loading: true,
       error: null,
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
+      
     };
   },
   watch: {
@@ -338,7 +339,7 @@ export default {
           section
         });
         
-        const url = `${this.apiBaseUrl}/accounts/colleges/history?${params.toString()}`;
+        const url = apiUrl(`accounts/colleges/history?${params.toString()}`);
         const response = await fetch(url, {
           method: 'GET',
           credentials: 'include',

@@ -205,6 +205,8 @@
 </template>
 
 <script>
+import { apiUrl } from '../../utils/apiUtils.js';
+
 export default {
   name: 'CollegeFilter',
   props: {
@@ -228,7 +230,7 @@ export default {
   data() {
     return {
       // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
+      
       firstYearOpen: true,
       secondYearOpen: false,
       thirdYearOpen: false,
@@ -308,7 +310,7 @@ export default {
       this.loading = true;
       try {
         // Fetch sections and year levels for the specific college
-        const response = await fetch(`${this.apiBaseUrl}/api/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
+        const response = await fetch(apiUrl(`accounts/colleges/${encodeURIComponent(collegeName)}/sections`));
         if (!response.ok) {
           throw new Error('Failed to fetch college sections');
         }

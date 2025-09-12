@@ -150,6 +150,7 @@
 import { ryff42ItemQuestionnaire } from '@/assets/ryff42ItemQuestionnaire'
 import { ryff84ItemQuestionnaire } from '@/assets/ryff84ItemQuestionnaire'
 import authService from '@/services/authService'
+import { apiUrl } from '@/utils/apiUtils.js'
 
 export default {
   name: 'AssessmentTaking',
@@ -172,7 +173,7 @@ export default {
       showCompletionSummary: false,
       startTime: null,
       questionStartTimes: {},
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
+
     }
   },
   computed: {
@@ -310,7 +311,7 @@ export default {
           totalQuestions: Object.keys(this.responses).length
         })
         
-        const response = await fetch(`${this.apiBaseUrl}/student-assessments/submit/${this.assignedAssessmentId}`, {
+        const response = await fetch(apiUrl(`student-assessments/submit/${this.assignedAssessmentId}`), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -322,7 +323,7 @@ export default {
         if (response.ok) {
           // Clear saved progress from database
           try {
-            await fetch(`${this.apiBaseUrl}/student-assessments/progress/${this.assignedAssessmentId}`, {
+            await fetch(apiUrl(`student-assessments/progress/${this.assignedAssessmentId}`), {
               method: 'DELETE',
               credentials: 'include'
             })
@@ -375,7 +376,7 @@ export default {
         console.log('Saving progress for assignment ID:', this.assignedAssessmentId)
         console.log('Progress data:', progressData)
         
-        const response = await fetch(`${this.apiBaseUrl}/student-assessments/progress/${this.assignedAssessmentId}`, {
+        const response = await fetch(apiUrl(`student-assessments/progress/${this.assignedAssessmentId}`), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -405,7 +406,7 @@ export default {
       try {
         console.log('Loading progress for assignment ID:', this.assignedAssessmentId)
         
-        const response = await fetch(`${this.apiBaseUrl}/student-assessments/progress/${this.assignedAssessmentId}`, {
+        const response = await fetch(apiUrl(`student-assessments/progress/${this.assignedAssessmentId}`), {
           method: 'GET',
           credentials: 'include'
         })
