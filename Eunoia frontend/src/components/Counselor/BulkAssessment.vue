@@ -441,6 +441,8 @@ export default {
   },
   data() {
     return {
+      // API configuration - uses environment variable for production
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
       currentView: 'form', // Start with create form view
       showCollegeFilter: false,
       currentCollege: null,
@@ -618,7 +620,7 @@ export default {
     // Load colleges data from backend
     async loadCurrentAcademicPeriod() {
       try {
-        const response = await fetch('http://localhost:3000/api/academic-settings/current');
+        const response = await fetch(`${this.apiBaseUrl}/academic-settings/current`);
         
         if (response.ok) {
           const data = await response.json();
@@ -648,7 +650,7 @@ export default {
     },
     async loadCollegesFromBackend() {
       try {
-        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        const response = await fetch(`${this.apiBaseUrl}/accounts/colleges`);
         if (response.ok) {
           const data = await response.json();
           this.colleges = data.colleges.map(college => ({
@@ -794,7 +796,7 @@ export default {
         console.log('Payload with target data:', payload); // Debug log
 
         // Call the backend API
-        const response = await fetch('http://localhost:3000/api/bulk-assessments/create', {
+        const response = await fetch(`${this.apiBaseUrl}/bulk-assessments/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -980,7 +982,7 @@ export default {
     // Load real college data from backend
     async loadCollegeRealData(collegeName) {
       try {
-        const response = await fetch(`http://localhost:3000/api/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
+        const response = await fetch(`${this.apiBaseUrl}/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
         if (response.ok) {
           const data = await response.json();
           

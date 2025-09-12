@@ -598,6 +598,8 @@ export default {
   },
   data() {
     return {
+      // API configuration - uses environment variable for production
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000',
       currentView: 'assessment', // 'assessment', 'ai-interventions', 'settings', 'taking-assessment', 'assessment-complete'
       isLoading: false,
       hasAssignedAssessments: false,
@@ -739,7 +741,7 @@ export default {
     
     async checkStudentStatus() {
       try {
-        const response = await fetch('http://localhost:3000/api/accounts/student-status', {
+        const response = await fetch(`${this.apiBaseUrl}/api/accounts/student-status`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -811,7 +813,7 @@ export default {
         console.log('Fetching assigned assessments...');
         
         // First check if student is still active
-        const statusResponse = await fetch('http://localhost:3000/api/accounts/student-status', {
+        const statusResponse = await fetch(`${this.apiBaseUrl}/api/accounts/student-status`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -829,7 +831,7 @@ export default {
           return;
         }
         
-        const response = await fetch('http://localhost:3000/api/student-assessments/assigned', {
+        const response = await fetch(`${this.apiBaseUrl}/api/student-assessments/assigned`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -968,7 +970,7 @@ export default {
         this.loadingInterventions = true;
         console.log('Fetching AI interventions...');
         
-        const response = await fetch('http://localhost:3000/api/student-interventions', {
+        const response = await fetch(`${this.apiBaseUrl}/api/student-interventions`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -995,7 +997,7 @@ export default {
 
     async markAsRead(interventionId) {
       try {
-        const response = await fetch(`http://localhost:3000/api/student-interventions/${interventionId}/read`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/student-interventions/${interventionId}/read`, {
           method: 'PUT',
           credentials: 'include',
           headers: {

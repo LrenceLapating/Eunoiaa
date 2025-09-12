@@ -166,6 +166,8 @@ export default {
   },
   data() {
     return {
+      // API configuration - uses environment variable for production
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000',
       currentQuestionIndex: 0,
       responses: {},
       isSubmitting: false,
@@ -309,7 +311,7 @@ export default {
           totalQuestions: Object.keys(this.responses).length
         })
         
-        const response = await fetch(`http://localhost:3000/api/student-assessments/submit/${this.assignedAssessmentId}`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/student-assessments/submit/${this.assignedAssessmentId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -321,7 +323,7 @@ export default {
         if (response.ok) {
           // Clear saved progress from database
           try {
-            await fetch(`http://localhost:3000/api/student-assessments/progress/${this.assignedAssessmentId}`, {
+            await fetch(`${this.apiBaseUrl}/api/student-assessments/progress/${this.assignedAssessmentId}`, {
               method: 'DELETE',
               credentials: 'include'
             })
@@ -374,7 +376,7 @@ export default {
         console.log('Saving progress for assignment ID:', this.assignedAssessmentId)
         console.log('Progress data:', progressData)
         
-        const response = await fetch(`http://localhost:3000/api/student-assessments/progress/${this.assignedAssessmentId}`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/student-assessments/progress/${this.assignedAssessmentId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -404,7 +406,7 @@ export default {
       try {
         console.log('Loading progress for assignment ID:', this.assignedAssessmentId)
         
-        const response = await fetch(`http://localhost:3000/api/student-assessments/progress/${this.assignedAssessmentId}`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/student-assessments/progress/${this.assignedAssessmentId}`, {
           method: 'GET',
           credentials: 'include'
         })

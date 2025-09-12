@@ -248,6 +248,8 @@ export default {
   },
   data() {
     return {
+      // API configuration - uses environment variable for production
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
       showHistoryPanel: false,
       selectedHistoryData: null,
       selectedAssessmentName: '',
@@ -740,7 +742,7 @@ export default {
           params.append('assessmentName', this.selectedAssessmentName);
         }
         
-        const url = `http://localhost:3000/api/accounts/colleges/history?${params.toString()}`;
+        const url = `${this.apiBaseUrl}/accounts/colleges/history?${params.toString()}`;
         console.log('🔍 Fetching college history for:', {
           college: this.selectedCollege.name,
           assessmentType: dbAssessmentType,
@@ -958,7 +960,7 @@ export default {
            section: this.selectedSection
          });
          
-         const response = await fetch(`http://localhost:3000/api/accounts/colleges/scores?${params.toString()}`, {
+         const response = await fetch(`${this.apiBaseUrl}/accounts/colleges/scores?${params.toString()}`, {
            method: 'GET',
            credentials: 'include',
            headers: {
@@ -1077,7 +1079,7 @@ export default {
           }
           
           // Use the new endpoint that fetches from college_scores table
-          const url = `http://localhost:3000/api/accounts/colleges/assessment-names${params.toString() ? '?' + params.toString() : ''}`;
+          const url = `${this.apiBaseUrl}/accounts/colleges/assessment-names${params.toString() ? '?' + params.toString() : ''}`;
           
           console.log('🔍 Fetching assessment names with assessmentType filter:', this.assessmentType);
           
@@ -1137,7 +1139,7 @@ export default {
             params.append('assessmentName', this.selectedAssessmentName);
           }
 
-          const url = `http://localhost:3000/api/accounts/colleges/${encodeURIComponent(this.selectedCollege.name)}/assessment-filters?${params.toString()}`;
+          const url = `${this.apiBaseUrl}/accounts/colleges/${encodeURIComponent(this.selectedCollege.name)}/assessment-filters?${params.toString()}`;
           
           const response = await fetch(url, {
              method: 'GET',
@@ -1216,7 +1218,7 @@ export default {
             section: this.selectedSection
           });
           
-          const response = await fetch(`http://localhost:3000/api/counselor-assessments/risk-distribution?${params.toString()}`, {
+          const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/risk-distribution?${params.toString()}`, {
             method: 'GET',
             credentials: 'include',
             headers: {
