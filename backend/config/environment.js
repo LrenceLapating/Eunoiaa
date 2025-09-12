@@ -41,7 +41,8 @@ class EnvironmentConfig {
       development: [
         'SUPABASE_URL',
         'SUPABASE_ANON_KEY',
-        'JWT_SECRET'
+        'JWT_SECRET',
+        'OPENROUTER_API_KEY'
       ],
       production: [
         'SUPABASE_URL',
@@ -49,7 +50,8 @@ class EnvironmentConfig {
         'SUPABASE_SERVICE_ROLE_KEY',
         'JWT_SECRET',
         'REDIS_HOST',
-        'CORS_ORIGIN'
+        'CORS_ORIGIN',
+        'OPENROUTER_API_KEY'
       ],
       test: [
         'SUPABASE_URL',
@@ -143,6 +145,15 @@ class EnvironmentConfig {
       api: {
         timeout: parseInt(process.env.API_TIMEOUT) || 30000,
         retryAttempts: parseInt(process.env.API_RETRY_ATTEMPTS) || 3
+      },
+      
+      // AI Service
+      ai: {
+        openrouterApiKey: process.env.OPENROUTER_API_KEY,
+        openrouterBaseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+        modelName: process.env.AI_MODEL_NAME || 'mistralai/mistral-7b-instruct',
+        temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
+        maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 1500
       }
     };
   }

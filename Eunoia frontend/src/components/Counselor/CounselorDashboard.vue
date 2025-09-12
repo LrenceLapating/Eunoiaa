@@ -135,34 +135,7 @@
         <div v-if="currentView === 'dashboard'">
 
 
-          <!-- Metrics Cards -->
-          <div class="metrics-row">
-            <div class="metrics-grid">
-              <div class="metric-card">
-                <div class="metric-content">
-                  <div class="metric-header">
-                    <h3>Total Assessments</h3>
-                    <div class="metric-icon">
-                      <i class="fas fa-clipboard-list"></i>
-                    </div>
-                  </div>
-                  <div class="metric-value">12</div>
-                </div>
-              </div>
 
-              <div class="metric-card">
-                <div class="metric-content">
-                  <div class="metric-header">
-                    <h3>Completion Rate</h3>
-                    <div class="metric-icon">
-                      <i class="fas fa-check-circle"></i>
-                    </div>
-                  </div>
-                  <div class="metric-value">100%</div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <!-- Two Column Layout Container -->
           <div class="two-column-layout">
@@ -178,12 +151,7 @@
                     <p>Dimensions requiring immediate attention</p>
                   </div>
                 </div>
-                <div class="section-actions">
-                  <button class="action-btn">
-                    <i class="fas fa-bell-slash"></i>
-                    <span>Mute Alerts</span>
-                  </button>
-                </div>
+
               </div>
 
               <div class="alerts-container">
@@ -224,10 +192,7 @@
                     <p>Assessment participation and low scores by college</p>
                   </div>
                 </div>
-                <button class="export-btn">
-                  <i class="fas fa-download"></i>
-                  Export
-                </button>
+
               </div>
 
               <div class="table-container">
@@ -236,17 +201,15 @@
                     <tr>
                       <th>College</th>
                       <th>Total Test Takers</th>
-                      <th>Low Scores</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="college in collegeOverviewData" :key="college.name">
                       <td :data-college="college.name">{{ college.name }}</td>
                       <td>{{ college.totalTestTakers }}</td>
-                      <td>{{ college.lowScores }}</td>
                     </tr>
                     <tr v-if="collegeOverviewData.length === 0">
-                      <td colspan="3" style="text-align: center; color: #999;">No college data available</td>
+                      <td colspan="2" style="text-align: center; color: #999;">No college data available</td>
                     </tr>
                   </tbody>
                 </table>
@@ -261,17 +224,18 @@
         <!-- Router View for Nested Components -->
         <router-view 
           :students="students"
-          :selected-dimension="selectedRiskDimension" 
-          :selected-college="selectedCollegeDetail"
-          :assessment-type="$route.query.assessmentType || '42-item'"
-          :pre-selected-student="preSelectedStudent"
-          :pre-selected-report-type="preSelectedReportType"
-          @clear-risk-filters="clearRiskFilters"
-          @navigate-to-reports="handleNavigateToReports"
-          @students-updated="updateStudentData"
-          @students-deactivated="handleStudentsDeactivated"
-          @navigate-to-college="showCollegeDetail"
-          @go-back="hideCollegeDetail"
+          :selectedDimension="selectedRiskDimension" 
+          :selectedCollege="selectedCollegeDetail"
+          :assessmentType="$route.query.assessmentType || '42-item'"
+          :preSelectedStudent="preSelectedStudent"
+          :preSelectedReportType="preSelectedReportType"
+          :riskFilterData="riskFilterData"
+          @clearRiskFilters="clearRiskFilters"
+          @navigateToReports="handleNavigateToReports"
+          @studentsUpdated="updateStudentData"
+          @studentsDeactivated="handleStudentsDeactivated"
+          @navigateToCollege="showCollegeDetail"
+          @goBack="hideCollegeDetail"
         />
       </div>
 
@@ -348,6 +312,7 @@ export default {
       selectedCollegeDetail: null,
       preSelectedStudent: null,
       preSelectedReportType: null,
+      riskFilterData: null,
       sidebarExpanded: false,
       viewChangeTimeout: null,
       // Student data - will be populated by initializeStudentData()
@@ -453,24 +418,28 @@ export default {
   },
   methods: {
     setView(view) {
+      // Clear any existing timeout to prevent conflicts
       if (this.viewChangeTimeout) clearTimeout(this.viewChangeTimeout);
-      this.viewChangeTimeout = setTimeout(() => {
-        // Map view names to router paths
-        const routeMap = {
-          'dashboard': '/counselor',
-          'bulkAssessment': '/counselor/bulk-assessment',
-          'autoReminders': '/counselor/auto-reminders',
-          'ryffScoring': '/counselor/ryff-scoring',
-          'guidance': '/counselor/college-summary',
-          'intervention': '/counselor/ai-intervention',
-          'status': '/counselor/account-management',
-          'reports': '/counselor/reports',
-          'settings': '/counselor/settings'
-        };
-        
-        const routePath = routeMap[view] || '/counselor';
+      
+      // Map view names to router paths
+      const routeMap = {
+        'dashboard': '/counselor',
+        'bulkAssessment': '/counselor/bulk-assessment',
+        'autoReminders': '/counselor/auto-reminders',
+        'ryffScoring': '/counselor/ryff-scoring',
+        'guidance': '/counselor/college-summary',
+        'intervention': '/counselor/ai-intervention',
+        'status': '/counselor/account-management',
+        'reports': '/counselor/reports',
+        'settings': '/counselor/settings'
+      };
+      
+      const routePath = routeMap[view] || '/counselor';
+      
+      // Only navigate if we're not already on the target route
+      if (this.$route.path !== routePath) {
         this.$router.push(routePath);
-      }, 300);
+      }
     },
     async logout() {
       await authService.logout();
@@ -488,13 +457,63 @@ export default {
     },
     // New method to navigate to RyffScoring with filters
     viewStudentsAtRisk(dimensionName, collegeName) {
+      // Find the specific dimension data from riskAlertsData
+      const dimensionData = this.riskAlertsData.find(alert => alert.dimension === dimensionName);
+      if (!dimensionData) {
+        console.error('Dimension data not found:', dimensionName);
+        return;
+      }
+      
+      // Find the specific college data within the dimension
+      const collegeData = dimensionData.colleges.find(college => college.name === collegeName);
+      if (!collegeData) {
+        console.error('College data not found:', collegeName);
+        return;
+      }
+      
+      // Extract detailed student information
+      const studentsAtRisk = collegeData.students || [];
+      
+      // Group students by assessment type to detect multiple assessment types
+      const assessmentTypes = [...new Set(studentsAtRisk.map(student => student.assessmentType))];
+      const hasMultipleAssessmentTypes = assessmentTypes.length > 1;
+      
+      // Prepare detailed filter data
+      const riskFilterData = {
+        dimension: dimensionName,
+        college: collegeName,
+        students: studentsAtRisk,
+        assessmentTypes: assessmentTypes,
+        hasMultipleAssessmentTypes: hasMultipleAssessmentTypes,
+        sections: [...new Set(studentsAtRisk.map(student => student.section))],
+        // Determine primary assessment type (most common)
+        primaryAssessmentType: assessmentTypes.length > 0 ? 
+          assessmentTypes.reduce((a, b) => 
+            studentsAtRisk.filter(s => s.assessmentType === a).length >= 
+            studentsAtRisk.filter(s => s.assessmentType === b).length ? a : b
+          ) : 'ryff_42'
+      };
+      
+      // Set the risk filter data for RyffScoring component
       this.selectedRiskDimension = dimensionName;
       this.selectedRiskCollege = collegeName;
-      this.$router.push('/counselor/ryff-scoring');
+      this.riskFilterData = riskFilterData;
+      
+      // Navigate to RyffScoring with query parameters for additional context
+      this.$router.push({
+        path: '/counselor/ryff-scoring',
+        query: {
+          riskFilter: 'true',
+          dimension: dimensionName,
+          college: collegeName,
+          assessmentTypes: assessmentTypes.join(','),
+          hasMultiple: hasMultipleAssessmentTypes.toString()
+        }
+      });
+      
       this.closeModal();
       
-      // Log the navigation for debugging
-      // Navigate to at-risk students view
+      console.log('Navigating to RyffScoring with risk filter data:', riskFilterData);
     },
     // Handle navigation to Reports from RyffScoring
     handleNavigateToReports(data) {
@@ -515,7 +534,8 @@ export default {
     // Add method to clear risk filters
     clearRiskFilters() {
       this.selectedRiskDimension = null;
-      this.selectedRiskCollege = 'all';
+      this.selectedRiskCollege = null;
+      this.riskFilterData = null;
     },
     
     // Load risk alerts data from API
@@ -1450,7 +1470,7 @@ export default {
 }
 
 .section-header {
-  padding: 15px;
+  padding: 20px;
   border-bottom: 1px solid #f0f0f0;
   position: relative;
   display: flex;
@@ -1517,7 +1537,7 @@ export default {
 }
 
 .alerts-container {
-  padding: 10px 15px;
+  padding: 20px;
   max-height: 300px;
   overflow-y: auto;
 }
@@ -1664,7 +1684,7 @@ export default {
 
 /* College Table */
 .table-container {
-  padding: 0 15px 15px;
+  padding: 0 20px 20px;
   overflow: auto;
   max-height: 300px;
 }
@@ -1984,6 +2004,7 @@ export default {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
+  margin-top: 32px;
   margin-bottom: 24px;
   width: 100%;
 }

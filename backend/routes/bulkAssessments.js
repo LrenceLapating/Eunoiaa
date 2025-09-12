@@ -3,9 +3,136 @@ const router = express.Router();
 const { supabase } = require('../config/database');
 const { verifyCounselorSession } = require('../middleware/sessionManager');
 
+// Function to cleanup expired assessments based on semester end dates
+async function cleanupExpiredAssessments() {
+  try {
+    console.log('Starting cleanup of expired assessments...');
+    
+    // Get current date
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    // Find all bulk assessments where the semester has ended
+    const { data: expiredAssessments, error: fetchError } = await supabase
+      .from('bulk_assessments')
+      .select(`
+        id,
+        school_year,
+        semester,
+        assessment_name,
+        created_at
+      `)
+      .eq('status', 'sent')
+      .not('school_year', 'is', null)
+      .not('semester', 'is', null);
+    
+    if (fetchError) {
+      console.error('Error fetching bulk assessments for cleanup:', fetchError);
+      return { success: false, error: fetchError };
+    }
+    
+    if (!expiredAssessments || expiredAssessments.length === 0) {
+      console.log('No assessments found for cleanup check.');
+      return { success: true, cleanedCount: 0 };
+    }
+    
+    let cleanedCount = 0;
+    
+    // Check each assessment against academic settings
+    for (const assessment of expiredAssessments) {
+      // Find the corresponding semester end date
+      const { data: semesterData, error: semesterError } = await supabase
+        .from('academic_settings')
+        .select('end_date')
+        .eq('school_year', assessment.school_year)
+        .eq('semester_name', `${assessment.semester} Semester`)
+        .single();
+      
+      if (semesterError) {
+        console.log(`No semester data found for ${assessment.school_year} ${assessment.semester} Semester`);
+        continue;
+      }
+      
+      // Check if current date is past the semester end date
+      if (currentDate > semesterData.end_date) {
+        console.log(`Cleaning up expired assessment: ${assessment.assessment_name} (ended: ${semesterData.end_date})`);
+        
+        // Get all assignment IDs for this bulk assessment
+        const { data: assignments, error: assignmentError } = await supabase
+          .from('assessment_assignments')
+          .select('id')
+          .eq('bulk_assessment_id', assessment.id);
+        
+        if (assignmentError) {
+          console.error(`Error fetching assignments for bulk assessment ${assessment.id}:`, assignmentError);
+          continue;
+        }
+        
+        // Delete related assessment responses (42-item and 84-item)
+        if (assignments && assignments.length > 0) {
+          const assignmentIds = assignments.map(a => a.id);
+          
+          // Delete from assessments_42items
+          const { error: delete42Error } = await supabase
+            .from('assessments_42items')
+            .delete()
+            .in('assignment_id', assignmentIds);
+          
+          if (delete42Error) {
+            console.error(`Error deleting 42-item assessments for bulk ${assessment.id}:`, delete42Error);
+          }
+          
+          // Delete from assessments_84items
+          const { error: delete84Error } = await supabase
+            .from('assessments_84items')
+            .delete()
+            .in('assignment_id', assignmentIds);
+          
+          if (delete84Error) {
+            console.error(`Error deleting 84-item assessments for bulk ${assessment.id}:`, delete84Error);
+          }
+        }
+        
+        // Delete assessment assignments (this will cascade to analytics)
+        const { error: deleteAssignmentsError } = await supabase
+          .from('assessment_assignments')
+          .delete()
+          .eq('bulk_assessment_id', assessment.id);
+        
+        if (deleteAssignmentsError) {
+          console.error(`Error deleting assignments for bulk assessment ${assessment.id}:`, deleteAssignmentsError);
+          continue;
+        }
+        
+        // Finally, delete the bulk assessment itself
+        const { error: deleteBulkError } = await supabase
+          .from('bulk_assessments')
+          .delete()
+          .eq('id', assessment.id);
+        
+        if (deleteBulkError) {
+          console.error(`Error deleting bulk assessment ${assessment.id}:`, deleteBulkError);
+          continue;
+        }
+        
+        cleanedCount++;
+      }
+    }
+    
+    console.log(`Cleanup completed. Removed ${cleanedCount} expired assessments.`);
+    return { success: true, cleanedCount };
+    
+  } catch (error) {
+    console.error('Error during assessment cleanup:', error);
+    return { success: false, error };
+  }
+}
+
 // Create a new bulk assessment
 router.post('/create', verifyCounselorSession, async (req, res) => {
   try {
+    // Run automatic cleanup of expired assessments
+    await cleanupExpiredAssessments();
+    
     const {
       assessmentName,
       assessmentType, // 'ryff_42' or 'ryff_84'
@@ -29,32 +156,95 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
       });
     }
 
-    // Check for duplicate bulk assessments (prevent rapid clicking duplicates)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { data: recentAssessments, error: duplicateCheckError } = await supabase
+    // Determine current academic year and semester
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+    
+    // Academic year logic: June-May cycle
+    // June-December = 1st semester, January-May = 2nd semester
+    let academicYear, semester;
+    if (currentMonth >= 6) {
+      // June-December: 1st semester of current academic year
+      academicYear = `${currentYear}-${currentYear + 1}`;
+      semester = '1st';
+    } else {
+      // January-May: 2nd semester of previous academic year
+      academicYear = `${currentYear - 1}-${currentYear}`;
+      semester = '2nd';
+    }
+    
+    // Check for semester-based duplicates
+    const { data: existingAssessments, error: duplicateCheckError } = await supabase
       .from('bulk_assessments')
-      .select('id, assessment_name, target_colleges, target_year_levels, target_sections')
+      .select('id, assessment_name, target_colleges, target_year_levels, target_sections, created_at, school_year, semester')
       .eq('counselor_id', counselorId)
-      .eq('assessment_name', assessmentName)
       .eq('assessment_type', assessmentType)
-      .gte('created_at', fiveMinutesAgo)
       .neq('status', 'cancelled');
 
     if (duplicateCheckError) {
       console.error('Error checking for duplicates:', duplicateCheckError);
-    } else if (recentAssessments && recentAssessments.length > 0) {
-      // Check if any recent assessment has the same target parameters
-      const isDuplicate = recentAssessments.some(assessment => {
-        const sameColleges = JSON.stringify(assessment.target_colleges?.sort()) === JSON.stringify(targetColleges?.sort());
-        const sameYearLevels = JSON.stringify(assessment.target_year_levels?.sort()) === JSON.stringify(targetYearLevels?.sort());
-        const sameSections = JSON.stringify(assessment.target_sections?.sort()) === JSON.stringify(targetSections?.sort());
-        return sameColleges && sameYearLevels && sameSections;
+    } else if (existingAssessments && existingAssessments.length > 0) {
+      // Check for duplicates in the current semester
+      const semesterDuplicates = existingAssessments.filter(assessment => {
+        // Check if assessment is from current semester
+        const assessmentYear = assessment.school_year || academicYear;
+        const assessmentSemester = assessment.semester || semester;
+        const isSameSemester = assessmentYear === academicYear && assessmentSemester === semester;
+        
+        if (!isSameSemester) return false;
+        
+        // Enhanced duplicate detection: Check for overlapping college-section combinations
+        const currentColleges = targetColleges || [];
+        const currentYearLevels = targetYearLevels || [];
+        const currentSections = targetSections || [];
+        
+        const existingColleges = assessment.target_colleges || [];
+        const existingYearLevels = assessment.target_year_levels || [];
+        const existingSections = assessment.target_sections || [];
+        
+        // Check if there's any overlap in colleges
+        const hasCollegeOverlap = currentColleges.some(college => existingColleges.includes(college));
+        
+        // Check if there's any overlap in year levels
+        const hasYearLevelOverlap = currentYearLevels.some(yearLevel => existingYearLevels.includes(yearLevel));
+        
+        // Check if there's any overlap in sections
+        const hasSectionOverlap = currentSections.some(section => existingSections.includes(section));
+        
+        // If all three have overlaps, it's a duplicate
+        return hasCollegeOverlap && hasYearLevelOverlap && hasSectionOverlap;
       });
 
-      if (isDuplicate) {
+      if (semesterDuplicates.length > 0) {
+        const duplicateAssessment = semesterDuplicates[0];
+        
+        // Find the specific overlapping colleges and sections
+        const currentColleges = targetColleges || [];
+        const currentSections = targetSections || [];
+        const existingColleges = duplicateAssessment.target_colleges || [];
+        const existingSections = duplicateAssessment.target_sections || [];
+        
+        const overlappingColleges = currentColleges.filter(college => existingColleges.includes(college));
+        const overlappingSections = currentSections.filter(section => existingSections.includes(section));
+        
+        // Create detailed error message with specific overlaps
+        const collegeNames = overlappingColleges.join(', ') || 'selected colleges';
+        const sectionNames = overlappingSections.join(', ') || 'selected sections';
+        const currentSemesterDisplay = `${academicYear} ${semester} Semester`;
+        
         return res.status(409).json({
           success: false,
-          message: 'A similar assessment was recently created. Please wait a few minutes before creating another identical assessment.'
+          message: `Assessment for ${collegeNames} (${sectionNames}) has already been sent in ${currentSemesterDisplay}. Duplicate assessments are not allowed within the same semester.`,
+          duplicateInfo: {
+            colleges: overlappingColleges,
+            sections: overlappingSections,
+            semester: currentSemesterDisplay,
+            assessmentName: duplicateAssessment.assessment_name,
+            createdAt: duplicateAssessment.created_at,
+            originalColleges: targetColleges,
+            originalSections: targetSections
+          }
         });
       }
     }
@@ -80,7 +270,9 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
         target_sections: targetSections || [],
         custom_message: customMessage,
         scheduled_date: finalScheduledDate,
-        status: scheduleOption === 'now' ? 'sent' : 'pending'
+        status: scheduleOption === 'now' ? 'sent' : 'pending',
+        school_year: academicYear,
+        semester: semester
       })
       .select()
       .single();
@@ -227,16 +419,11 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
     
     const offset = (page - 1) * limit;
 
-    // Get bulk assessments with assignment counts (exclude archived)
+    // Get bulk assessments
     const { data: assessments, error } = await supabase
       .from('bulk_assessments')
-      .select(`
-        *,
-        assignment_count:assessment_assignments(count),
-        completed_count:assessment_assignments(count).eq(status, 'completed')
-      `)
+      .select('*')
       .eq('counselor_id', counselorId)
-      .neq('status', 'archived')  // Exclude archived assessments
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -248,19 +435,30 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
       });
     }
 
-    // Calculate completion percentages
-    const enrichedAssessments = assessments.map(assessment => {
-      const totalAssigned = assessment.assignment_count?.[0]?.count || 0;
-      const totalCompleted = assessment.completed_count?.[0]?.count || 0;
+    // Get assignment counts for each assessment
+    const enrichedAssessments = await Promise.all(assessments.map(async (assessment) => {
+      // Get total assigned count
+      const { count: totalAssigned } = await supabase
+        .from('assessment_assignments')
+        .select('*', { count: 'exact', head: true })
+        .eq('bulk_assessment_id', assessment.id);
+      
+      // Get completed count
+      const { count: totalCompleted } = await supabase
+        .from('assessment_assignments')
+        .select('*', { count: 'exact', head: true })
+        .eq('bulk_assessment_id', assessment.id)
+        .eq('status', 'completed');
+      
       const completionPercentage = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
       
       return {
         ...assessment,
-        total_assigned: totalAssigned,
-        total_completed: totalCompleted,
+        total_assigned: totalAssigned || 0,
+        total_completed: totalCompleted || 0,
         completion_percentage: completionPercentage
       };
-    });
+    }));
 
     res.json({
       success: true,
@@ -382,12 +580,11 @@ router.get('/stats', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
 
-    // Get total assessments created (exclude archived)
+    // Get total assessments created
     const { count: totalAssessments, error: totalError } = await supabase
       .from('bulk_assessments')
       .select('*', { count: 'exact', head: true })
-      .eq('counselor_id', counselorId)
-      .neq('status', 'archived');  // Exclude archived assessments
+      .eq('counselor_id', counselorId);
 
     // Get pending assessments
     const { count: pendingAssessments, error: pendingError } = await supabase
@@ -639,6 +836,34 @@ router.get('/sections', verifyCounselorSession, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+});
+
+// Manual cleanup endpoint for expired assessments
+router.post('/cleanup-expired', verifyCounselorSession, async (req, res) => {
+  try {
+    const result = await cleanupExpiredAssessments();
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: `Cleanup completed successfully. Removed ${result.cleanedCount} expired assessments.`,
+        cleanedCount: result.cleanedCount
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Error during cleanup process',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('Error in cleanup endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during cleanup',
+      error: error.message
     });
   }
 });

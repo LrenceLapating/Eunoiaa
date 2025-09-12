@@ -1206,7 +1206,8 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
         completed_at,
         created_at,
         updated_at,
-        archived_at
+        archived_at,
+        completion_time
       `)
       .order('archived_at', { ascending: false })
       .order('completed_at', { ascending: false });
@@ -1272,6 +1273,9 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
       });
     }
 
+    // completion_time is now directly available from ryff_history table
+    // No need to fetch from original assessment tables
+
     // Create combined assessment data with student information
     const combinedData = historyData.map(assessment => {
       const student = studentMap.get(assessment.student_id) || {
@@ -1284,8 +1288,10 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
         status: 'inactive'
       };
 
+      // completion_time is now directly available from ryff_history
       return {
         ...assessment,
+        completion_time: assessment.completion_time,
         student: student,
         assignment: {
           id: assessment.assignment_id || 'N/A',

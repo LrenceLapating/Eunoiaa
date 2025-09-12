@@ -445,9 +445,9 @@ export default {
     // Fetch students by risk level from backend API
     async fetchStudentsByRiskLevel() {
       if (!this.assessmentTypeFilter) {
+        console.log('No assessment type selected, returning');
         return; // Don't fetch if no assessment type is selected
       }
-      
       this.isLoading = true;
       try {
         // Build query parameters
@@ -501,6 +501,9 @@ export default {
           healthy: this.healthyStudents.length
         });
         
+        // Fetch sent interventions after student data is loaded to ensure proper status display
+        await this.fetchSentInterventions();
+        
       } catch (error) {
         console.error('Error fetching student data:', error);
       } finally {
@@ -544,19 +547,21 @@ export default {
         
         if (response.ok) {
           const result = await response.json();
+          
           if (result.success && result.data) {
             // Clear existing sent interventions and populate with backend data
-            // Only include interventions with status 'sent'
             this.sentInterventions.clear();
+            
             result.data.forEach(intervention => {
               if (intervention.status === 'sent') {
                 this.sentInterventions.add(intervention.student_id);
               }
             });
+            
             console.log('Sent interventions loaded:', this.sentInterventions.size, 'students');
           }
         } else {
-          console.error('Failed to fetch sent interventions');
+          console.error('Failed to fetch sent interventions - status:', response.status);
         }
       } catch (error) {
         console.error('Error fetching sent interventions:', error);

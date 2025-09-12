@@ -22,11 +22,23 @@ Backend API for the EUNOIA psychological well-being assessment system built with
    cp .env.example .env
    ```
    
-   Edit `.env` file with your Supabase credentials:
+   **⚠️ IMPORTANT: Get your OpenRouter API key first!**
+   1. Go to [OpenRouter Keys](https://openrouter.ai/keys)
+   2. Create a new API key
+   3. Copy the key to your .env file
+   
+   Edit `.env` file with your credentials:
    ```env
    SUPABASE_URL=your_supabase_project_url
    SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+   OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
+   JWT_SECRET=your_jwt_secret_key
+   ```
+   
+   **Validate your environment:**
+   ```bash
+   npm run validate-env
    ```
 
 3. **Start the server:**
@@ -185,6 +197,7 @@ backend/
 | `SUPABASE_URL` | Supabase project URL | Yes |
 | `SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Yes |
+| `OPENROUTER_API_KEY` | OpenRouter API key for AI services | Yes |
 | `JWT_SECRET` | JWT signing secret | Yes |
 
 ## 🚦 Testing
@@ -211,9 +224,20 @@ curl http://localhost:3001/api/accounts/csv-template
 - File upload restrictions
 - SQL injection prevention via Supabase
 
+## 🔐 Security
+
+**IMPORTANT:** Never commit API keys to version control!
+
+- See [SECURITY.md](../SECURITY.md) for security guidelines
+- See [ENV_SETUP.md](../ENV_SETUP.md) for environment setup
+- Use `npm run validate-env` to check your configuration
+- Rotate API keys regularly
+- Monitor for exposed secrets in commits
+
 ## 📝 Notes
 
 - File uploads are temporarily stored in `./uploads` and cleaned up after processing
 - CSV validation includes email format, year level range, and required fields
 - College assignment is automatically determined from college/section data
 - All timestamps are stored in UTC with timezone information
+- AI interventions require a valid OpenRouter API key

@@ -731,10 +731,10 @@ export default {
     
     // Student Status Monitoring Methods
     startStatusMonitoring() {
-      // Check student status every 2 seconds
+      // Check student status every 30 seconds to prevent rate limiting
       this.statusCheckInterval = setInterval(() => {
         this.checkStudentStatus();
-      }, 2000);
+      }, 30000); // Changed from 2000ms (2s) to 30000ms (30s)
     },
     
     async checkStudentStatus() {

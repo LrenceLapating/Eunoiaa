@@ -148,18 +148,8 @@ class LoadTestRunner {
 
       if (updateError) throw new Error(`Assignment update failed: ${updateError.message}`);
 
-      // Insert into ryffscoring table for analytics
-      const { error: analyticsError } = await supabaseAdmin
-        .from('ryffscoring')
-        .insert({
-          student_id: studentId,
-          assessment_id: assessmentData.id,
-          scores: ryffScores,
-          at_risk_dimensions: Object.keys(ryffScores).filter(dim => ryffScores[dim] < 30),
-          completed_at: new Date().toISOString()
-        });
-
-      if (analyticsError) console.warn(`Analytics insert warning: ${analyticsError.message}`);
+      // Assessment data is stored directly in assessments_42items/assessments_84items tables
+      // No additional ryffscoring table insert needed for testing
 
       const responseTime = Date.now() - startTime;
       this.results.responseTimes.push(responseTime);
@@ -262,29 +252,8 @@ class LoadTestRunner {
     console.log('\n🧹 Cleaning up test data...');
     
     try {
-      // Get assessment IDs for ryffscoring cleanup
-      const { data: assessments42 } = await supabaseAdmin
-        .from('assessments_42items')
-        .select('id')
-        .eq('bulk_assessment_id', bulkAssessmentId);
-      
-      const { data: assessments84 } = await supabaseAdmin
-        .from('assessments_84items')
-        .select('id')
-        .eq('bulk_assessment_id', bulkAssessmentId);
-
-      const allAssessmentIds = [
-        ...(assessments42 || []).map(a => a.id),
-        ...(assessments84 || []).map(a => a.id)
-      ];
-
-      // Delete ryffscoring entries
-      if (allAssessmentIds.length > 0) {
-        await supabaseAdmin
-          .from('ryffscoring')
-          .delete()
-          .in('assessment_id', allAssessmentIds);
-      }
+      // Assessment data cleanup is handled by the assessments_42items/assessments_84items table deletions
+      // No separate ryffscoring cleanup needed
 
       // Delete assessment results from both tables
       await supabaseAdmin

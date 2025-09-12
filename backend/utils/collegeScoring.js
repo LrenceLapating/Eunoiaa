@@ -184,18 +184,30 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
       // When filtering by assessment name, we need to join with assignment and bulk_assessments tables
       console.log(`Filtering assessments by assessment name: ${assessmentName}`);
       
+      // First get bulk assessments that match our criteria
+      const { data: bulkAssessments, error: bulkError } = await supabaseAdmin
+        .from('bulk_assessments')
+        .select('id, assessment_name, assessment_type')
+        .eq('assessment_name', assessmentName)
+        .eq('assessment_type', assessmentType);
+      
+      if (bulkError) {
+        console.error('Error fetching bulk assessments:', bulkError);
+        throw bulkError;
+      }
+      
+      if (!bulkAssessments || bulkAssessments.length === 0) {
+        console.log(`No bulk assessments found for: ${assessmentName}`);
+        return { success: true, message: 'No assessment data to process', scores: [] };
+      }
+      
+      const bulkAssessmentIds = bulkAssessments.map(ba => ba.id);
+      
+      // Then get completed assignments for these bulk assessments
       const { data: assignmentData, error: assignmentError } = await supabaseAdmin
         .from('assessment_assignments')
-        .select(`
-          id,
-          student_id,
-          bulk_assessment:bulk_assessments!inner(
-            assessment_name,
-            assessment_type
-          )
-        `)
-        .eq('bulk_assessment.assessment_name', assessmentName)
-        .eq('bulk_assessment.assessment_type', assessmentType)
+        .select('id, student_id, bulk_assessment_id')
+        .in('bulk_assessment_id', bulkAssessmentIds)
         .eq('status', 'completed');
       
       if (assignmentError) {

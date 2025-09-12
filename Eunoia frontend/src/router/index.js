@@ -154,19 +154,32 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(),
   routes
 });
 
 router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth) {
-    const authStatus = await authService.checkAuthStatus();
-    if (!authStatus.isAuthenticated) {
-      next('/login');
-    } else if (to.meta.role && authStatus.userType !== to.meta.role) {
-      next('/');
+    // Check if we already have auth state to avoid unnecessary API calls
+    const currentAuthState = authService.getAuthState();
+    
+    if (currentAuthState.isAuthenticated) {
+      // User is already authenticated, just check role
+      if (to.meta.role && currentAuthState.userType !== to.meta.role) {
+        next('/');
+      } else {
+        next();
+      }
     } else {
-      next();
+      // Need to check auth status from server
+      const authStatus = await authService.checkAuthStatus();
+      if (!authStatus.isAuthenticated) {
+        next('/login');
+      } else if (to.meta.role && authStatus.userType !== to.meta.role) {
+        next('/');
+      } else {
+        next();
+      }
     }
   } else {
     next();

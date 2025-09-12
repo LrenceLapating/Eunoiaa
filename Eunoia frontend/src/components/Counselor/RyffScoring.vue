@@ -2,18 +2,43 @@
   <div class="ryff-scoring-container">
 
 
-    <!-- Risk Filter Indicator - Hidden as requested -->
-    <!-- <div class="risk-filter-indicator" v-if="selectedDimension">
+    <!-- Risk Filter Indicator -->
+    <div class="risk-filter-indicator" v-if="riskFilterData">
       <div class="indicator-content">
         <i class="fas fa-exclamation-triangle"></i>
-        <span>Showing <strong>only</strong> students at risk for <strong>{{ selectedDimension }}</strong> 
-          <span v-if="selectedCollege !== 'all'">in <strong>{{ selectedCollege }}</strong></span>
+        <span>Showing <strong>{{ riskFilterData.students.length }}</strong> students at risk for <strong>{{ riskFilterData.dimension }}</strong> 
+          in <strong>{{ riskFilterData.college }}</strong>
         </span>
         <button class="clear-filter-btn" @click="clearRiskFilters">
           <i class="fas fa-times"></i> Clear Filter
         </button>
       </div>
-    </div> -->
+    </div>
+    
+    <!-- Multiple Assessment Type Indicator -->
+    <div class="assessment-type-indicator" v-if="riskFilterData && riskFilterData.hasMultipleAssessmentTypes">
+      <div class="indicator-content">
+        <i class="fas fa-info-circle"></i>
+        <span>Students at risk include both 
+          <strong>42-item</strong> and <strong>84-item</strong> assessments. 
+          Currently showing: <strong>{{ assessmentTypeFilter }}</strong>
+        </span>
+        <div class="assessment-toggle-buttons">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: assessmentTypeFilter === '42-item' }"
+            @click="switchToAssessmentType('42-item')">
+            42-item ({{ getStudentCountByAssessmentType('ryff_42') }})
+          </button>
+          <button 
+            class="toggle-btn" 
+            :class="{ active: assessmentTypeFilter === '84-item' }"
+            @click="switchToAssessmentType('84-item')">
+            84-item ({{ getStudentCountByAssessmentType('ryff_84') }})
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- View Selection Tabs -->
     <div class="view-tabs">
@@ -351,9 +376,9 @@
                 <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
                   <td>{{ formatDateShort(assessment.submissionDate) }}</td>
                   <td>
-                    <span class="assessment-name">{{ assessment.assessment_name || 'Assessment' }}</span>
+                    <span class="assessment-name">{{ assessment.assessment_name }}</span>
                   </td>
-                  <td>{{ assessment.assessmentType || 'Ryff PWB (42-item)' }}</td>
+                  <td>{{ assessment.assessmentType }}</td>
                   <td>{{ calculateAssessmentOverallScore(assessment) }}</td>
                   <td>{{ formatCompletionTime(assessment.completion_time) }}</td>
                   <td>
@@ -439,7 +464,7 @@
               <tbody>
                 <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
                   <td>{{ formatDateShort(assessment.submissionDate) }}</td>
-                  <td>{{ assessment.assessmentType || 'Ryff PWB (42-item)' }}</td>
+                  <td>{{ assessment.assessmentType }}</td>
                   <td class="score-cell">{{ calculateAssessmentOverallScore(assessment) }}</td>
                   <td>{{ formatCompletionTime(assessment.completion_time) }}</td>
                   <td>
@@ -659,6 +684,10 @@ export default {
     students: {
       type: Array,
       default: () => []
+    },
+    riskFilterData: {
+      type: Object,
+      default: null
     }
   },
   data() {
@@ -871,7 +900,7 @@ export default {
                 },
                 overallScore: assessment.overall_score,
                 atRiskDimensions: assessment.at_risk_dimensions || [],
-                assessmentType: assessmentTypeMapping[assessment.assessment_type] || '42-item',
+                assessmentType: assessmentTypeMapping[assessment.assessment_type] || assessment.assessment_type || 'Unknown',
                 assignmentId: assessment.assignment?.id,
                 riskLevel: assessment.risk_level,
                 id_number: assessment.student?.id_number || `HIST-${assessment.student_id?.slice(-8)}`,
@@ -964,7 +993,7 @@ export default {
                  },
                 overallScore: assessment.overall_score,
                 atRiskDimensions: assessment.at_risk_dimensions || [],
-                assessmentType: assessmentTypeMapping[assessment.assessment_type] || '42-item',
+                assessmentType: assessmentTypeMapping[assessment.assessment_type] || assessment.assessment_type || 'Unknown',
                 assignmentId: assessment.assignment?.id,
                 riskLevel: assessment.risk_level,
                 id_number: assessment.student?.id_number || assessment.student_id
@@ -1146,6 +1175,12 @@ export default {
     },
     
     filterStudents() {
+      // If risk filter data is present, use risk-based filtering
+      if (this.riskFilterData) {
+        this.filterByRiskData();
+        return;
+      }
+      
       // Always use allStudents as base data source to avoid circular reference issues
       const baseStudents = this.allStudents.length > 0 ? this.allStudents : this.students;
       let result = [...baseStudents];
@@ -1404,10 +1439,12 @@ export default {
       if (student.allAssessments && Array.isArray(student.allAssessments)) {
         return student.allAssessments.map(assessment => ({
           submissionDate: assessment.submissionDate || 'N/A',
-          assessmentType: assessment.assessment_type === 'ryff_84' ? 'Ryff PWB (84-item)' : 'Ryff PWB (42-item)',
+          assessmentType: assessment.assessment_type === 'ryff_84' ? '84-item' : '42-item',
           subscales: assessment.subscales || {},
           overallScore: assessment.overallScore || 0,
-          assessment_name: assessment.assessment_name || 'Assessment'
+          completion_time: assessment.completion_time,
+          assessment_name: assessment.assignment?.bulk_assessment?.assessment_name || 
+                          (assessment.assessment_type === 'ryff_84' ? '84-Item Ryff Assessment' : '42-Item Ryff Assessment')
         }));
       }
       
@@ -1419,10 +1456,12 @@ export default {
       // Single assessment fallback
       return [{
         submissionDate: student.submissionDate || 'N/A',
-        assessmentType: student.assessment_type === 'ryff_84' ? 'Ryff PWB (84-item)' : 'Ryff PWB (42-item)',
+        assessmentType: student.assessment_type === 'ryff_84' ? '84-item' : '42-item',
         subscales: student.subscales || {},
         overallScore: student.overallScore || 0,
-        assessment_name: student.assessment_name || 'Assessment'
+        completion_time: student.completion_time,
+        assessment_name: student.assignment?.bulk_assessment?.assessment_name || 
+                        (student.assessment_type === 'ryff_84' ? '84-Item Ryff Assessment' : '42-Item Ryff Assessment')
       }];
     },
     
@@ -1743,7 +1782,105 @@ export default {
     clearRiskFilters() {
       this.$emit('clear-risk-filters');
       this.collegeFilter = 'all';
+      this.selectedDimension = null;
       this.filterStudents();
+    },
+    
+    // Switch to specific assessment type
+    switchToAssessmentType(assessmentType) {
+      this.assessmentTypeFilter = assessmentType;
+      if (this.riskFilterData) {
+        this.filterByRiskData();
+      } else {
+        this.filterStudents();
+      }
+    },
+    
+    // Get student count by assessment type from risk filter data
+    getStudentCountByAssessmentType(assessmentType) {
+      if (!this.riskFilterData || !this.riskFilterData.students) return 0;
+      return this.riskFilterData.students.filter(student => student.assessmentType === assessmentType).length;
+    },
+    
+    // Apply automatic filtering when risk filter data is provided
+    applyRiskFiltering() {
+      if (!this.riskFilterData) return;
+      
+      console.log('Applying risk filtering with data:', this.riskFilterData);
+      
+      // Set filters based on risk filter data
+      this.collegeFilter = this.riskFilterData.college;
+      
+      // Set assessment type to primary type (most common)
+      const primaryType = this.riskFilterData.primaryAssessmentType;
+      this.assessmentTypeFilter = primaryType === 'ryff_42' ? '42-item' : '84-item';
+      
+      // Apply dimension-based filtering
+      this.selectedDimension = this.riskFilterData.dimension;
+      
+      // Filter students to show only those at risk
+      this.filterByRiskData();
+    },
+    
+    // Filter students based on risk filter data
+    filterByRiskData() {
+      if (!this.riskFilterData) {
+        this.filterStudents();
+        return;
+      }
+      
+      // Get the base students data
+      const baseStudents = this.allStudents.length > 0 ? this.allStudents : this.students;
+      
+      // Get student IDs from risk filter data for current assessment type
+      const currentAssessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
+      const riskStudentIds = this.riskFilterData.students
+        .filter(student => student.assessmentType === currentAssessmentType)
+        .map(student => student.id);
+      
+      // Filter students to show only those at risk
+      let result = baseStudents.filter(student => {
+        // Check if student is in the risk list
+        const isAtRisk = riskStudentIds.includes(student.id);
+        
+        // Check college filter
+        const collegeMatch = this.collegeFilter === 'all' || student.college === this.collegeFilter;
+        
+        // Check assessment type filter
+        const studentAssessmentType = student.assessment_type === 'ryff_84' ? '84-item' : '42-item';
+        const assessmentMatch = studentAssessmentType === this.assessmentTypeFilter;
+        
+        return isAtRisk && collegeMatch && assessmentMatch;
+      });
+      
+      // Apply search filter if present
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        result = result.filter(student => {
+          if (!student) return false;
+          const name = student.name?.toLowerCase() || '';
+          const id = student.id?.toLowerCase() || '';
+          const section = student.section?.toLowerCase() || '';
+          return name.includes(query) || id.includes(query) || section.includes(query);
+        });
+      }
+      
+      // Apply sorting
+      result.sort((a, b) => {
+        let comparison = 0;
+        
+        if (this.sortField === 'overallScore') {
+          comparison = this.calculateOverallScore(a) - this.calculateOverallScore(b);
+        } else if (this.sortField === 'submissionDate') {
+          comparison = new Date(a.submissionDate) - new Date(b.submissionDate);
+        }
+        
+        return this.sortDirection === 'desc' ? -comparison : comparison;
+      });
+      
+      this.filteredStudents = result;
+      
+      console.log(`Filtered ${result.length} students at risk for ${this.riskFilterData.dimension} in ${this.riskFilterData.college}`);
     },
     
     // Open dimension modal to show filtered questions and answers
@@ -1905,6 +2042,19 @@ export default {
     },
     selectedDimension() {
       this.filterByDimensionAndCollege();
+    },
+    riskFilterData: {
+      handler(newData) {
+        if (newData) {
+          this.applyRiskFiltering();
+        } else {
+          // Reset filters when risk filter data is cleared
+          this.selectedDimension = null;
+          this.collegeFilter = 'all';
+          this.filterStudents();
+        }
+      },
+      immediate: true
     },
     selectedCollege() {
       // Keep college filter as 'all' - don't change it based on selectedCollege prop
@@ -2843,6 +2993,65 @@ export default {
 .clear-filter-btn:hover {
   background-color: #856404;
   color: white;
+}
+
+/* Assessment Type Indicator */
+.assessment-type-indicator {
+  background-color: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.assessment-type-indicator .indicator-content {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.assessment-type-indicator .indicator-content i {
+  color: #1976d2;
+}
+
+.assessment-type-indicator .indicator-content span {
+  color: #1976d2;
+  margin-bottom: 8px;
+}
+
+.assessment-toggle-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toggle-btn {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #666;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.toggle-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+}
+
+.toggle-btn.active {
+  background-color: #1976d2;
+  border-color: #1976d2;
+  color: white;
+}
+
+.toggle-btn.active:hover {
+  background-color: #1565c0;
+  border-color: #1565c0;
 }
 
 @media (max-width: 768px) {

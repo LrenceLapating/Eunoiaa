@@ -1,16 +1,28 @@
 const Redis = require('ioredis');
 const { config } = require('./environment');
 
-// Redis configuration from environment
+// Enhanced Redis configuration for maximum resilience
 const redisConfig = {
   host: config.redis.host,
   port: config.redis.port,
   password: config.redis.password,
   db: config.redis.db,
-  maxRetriesPerRequest: config.redis.maxRetriesPerRequest,
+  maxRetriesPerRequest: null, // Unlimited retries to prevent connection drops
   retryDelayOnFailover: config.redis.retryDelayOnFailover,
   enableReadyCheck: true,
-  lazyConnect: true
+  lazyConnect: true,
+  connectTimeout: 10000,
+  commandTimeout: 5000,
+  retryDelayOnClusterDown: 300,
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: null,
+  keepAlive: 30000,
+  family: 4, // Force IPv4
+  // Reconnection strategy
+  reconnectOnError: (err) => {
+    console.log('Redis reconnectOnError:', err.message);
+    return err.message.includes('READONLY') || err.message.includes('ECONNRESET');
+  }
 };
 
 // Create Redis client
@@ -27,6 +39,20 @@ redis.on('ready', () => {
 
 redis.on('error', (error) => {
   console.error('❌ Redis connection error:', error.message);
+  // Enhanced error logging with context
+  if (error.code === 'ECONNREFUSED') {
+    console.warn('⚠️ Redis server unavailable - operating in fallback mode');
+  } else if (error.code === 'ENOTFOUND') {
+    console.warn('⚠️ Redis host not found - check configuration');
+  } else {
+    console.error('❌ Redis error details:', {
+      code: error.code,
+      errno: error.errno,
+      syscall: error.syscall,
+      address: error.address,
+      port: error.port
+    });
+  }
   // Don't exit process - allow app to continue without Redis
 });
 
@@ -45,33 +71,64 @@ class CacheManager {
     this.defaultTTL = 3600; // 1 hour default TTL
   }
 
-  // Check if Redis is available
+  // Enhanced Redis availability check
   isAvailable() {
+    return this.redis.status === 'ready' || this.redis.status === 'connecting';
+  }
+  
+  // Check if Redis is truly ready for operations
+  isReady() {
     return this.redis.status === 'ready';
   }
 
-  // Get cached data
+  // Get cached data with enhanced error handling
   async get(key) {
     try {
-      if (!this.isAvailable()) return null;
+      if (!this.isReady()) {
+        console.warn(`Redis not ready for GET ${key} - returning null`);
+        return null;
+      }
       
-      const data = await this.redis.get(key);
+      const data = await Promise.race([
+        this.redis.get(key),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Redis GET timeout')), 3000)
+        )
+      ]);
+      
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      console.error('Redis GET error:', error.message);
+      console.error('Redis GET error:', {
+        key,
+        error: error.message,
+        redisStatus: this.redis.status
+      });
       return null; // Fail gracefully
     }
   }
 
-  // Set cached data
+  // Set cached data with enhanced error handling
   async set(key, value, ttl = this.defaultTTL) {
     try {
-      if (!this.isAvailable()) return false;
+      if (!this.isReady()) {
+        console.warn(`Redis not ready for SET ${key} - skipping cache`);
+        return false;
+      }
       
-      await this.redis.setex(key, ttl, JSON.stringify(value));
+      await Promise.race([
+        this.redis.setex(key, ttl, JSON.stringify(value)),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Redis SET timeout')), 3000)
+        )
+      ]);
+      
       return true;
     } catch (error) {
-      console.error('Redis SET error:', error.message);
+      console.error('Redis SET error:', {
+        key,
+        error: error.message,
+        redisStatus: this.redis.status
+      });
       return false; // Fail gracefully
     }
   }

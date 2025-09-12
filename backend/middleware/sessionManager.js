@@ -262,6 +262,13 @@ class SessionManager {
    */
   async logActivity(userId, userType, action, details = null, ipAddress = null, userAgent = null) {
     try {
+      // Only log important actions to prevent database overload
+      const importantActions = ['login', 'logout', 'password_change', 'assessment_submit'];
+      
+      if (!importantActions.includes(action)) {
+        return; // Skip logging for frequent API access calls
+      }
+
       const { error } = await supabase
         .from('activity_logs')
         .insert({
@@ -298,15 +305,21 @@ const verifySession = async (req, res, next) => {
     }
 
     if (!sessionToken) {
+      console.log('❌ No session token found in cookies or headers for:', req.path);
       return res.status(401).json({ error: 'No session token provided' });
     }
+
+    console.log('🔍 Validating session token for:', req.path, 'Token:', sessionToken.substring(0, 10) + '...');
 
     // Validate session
     const session = await sessionManager.validateSession(sessionToken);
     
     if (!session) {
+      console.log('❌ Session validation failed for token:', sessionToken.substring(0, 10) + '...');
       return res.status(401).json({ error: 'Invalid or expired session' });
     }
+
+    console.log('✅ Session valid for user:', session.user_id, 'type:', session.user_type);
 
     // Refresh session if needed
     const refreshedSession = await sessionManager.refreshSessionIfNeeded(session);
@@ -322,15 +335,23 @@ const verifySession = async (req, res, next) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
 
-    // Log activity
-    await sessionManager.logActivity(
-      session.user_id,
-      session.user_type,
-      'api_access',
-      { endpoint: req.path, method: req.method },
-      ipAddress,
-      userAgent
-    );
+    // Log activity (only for important actions to prevent spam)
+    const importantActions = ['login', 'logout', 'password_change', 'assessment_submit'];
+    const action = req.path.includes('login') ? 'login' : 
+                  req.path.includes('logout') ? 'logout' :
+                  req.path.includes('password') ? 'password_change' :
+                  req.path.includes('submit') ? 'assessment_submit' : 'api_access';
+    
+    if (importantActions.includes(action)) {
+      await sessionManager.logActivity(
+        session.user_id,
+        session.user_type,
+        action,
+        { endpoint: req.path, method: req.method },
+        ipAddress,
+        userAgent
+      );
+    }
 
     next();
   } catch (error) {
@@ -342,9 +363,12 @@ const verifySession = async (req, res, next) => {
 // Middleware specifically for student routes
 const verifyStudentSession = async (req, res, next) => {
   await verifySession(req, res, () => {
+    console.log('🎓 Checking student access for user:', req.user.id, 'type:', req.user.type);
     if (req.user.type !== 'student') {
+      console.log('❌ Access denied - user type is:', req.user.type, 'but student required');
       return res.status(403).json({ error: 'Student access required' });
     }
+    console.log('✅ Student access granted for user:', req.user.id);
     next();
   });
 };

@@ -34,48 +34,7 @@
         {{ error }}
       </div>
 
-      <!-- School Year and Semester Selection -->
-      <div class="form-group">
-        <label for="school-year">School Year</label>
-        <select 
-          id="school-year" 
-          v-model="selectedSchoolYear"
-          class="form-control"
-        >
-          <option value="">Select School Year</option>
-          <option v-for="year in schoolYears" :key="year" :value="year">{{ year }}</option>
-        </select>
-        <small v-if="validationErrors.schoolYear" class="error-text">{{ validationErrors.schoolYear }}</small>
-      </div>
-
-      <div class="form-group">
-        <label for="semester">Semester</label>
-        <select 
-          id="semester" 
-          v-model="selectedSemester"
-          class="form-control"
-        >
-          <option value="">Select Semester</option>
-          <option value="1st Semester">1st Semester</option>
-          <option value="2nd Semester">2nd Semester</option>
-          <option value="Summer">Summer</option>
-        </select>
-        <small v-if="validationErrors.semester" class="error-text">{{ validationErrors.semester }}</small>
-      </div>
-
-      <div class="form-group">
-        <label for="assessment-name">Assessment Name</label>
-        <input 
-          type="text" 
-          id="assessment-name" 
-          placeholder="Enter a name for this assessment" 
-          v-model="assessmentName"
-          class="form-control"
-          :disabled="!canTypeAssessmentName"
-        >
-        <small v-if="validationErrors.assessmentName" class="error-text">{{ validationErrors.assessmentName }}</small>
-        <small v-if="!canTypeAssessmentName" class="info-text">Please select school year and semester first</small>
-      </div>
+      <!-- Assessment Name is now automatically generated based on selected colleges and current academic period -->
 
       <div class="form-group">
         <div class="section-header">
@@ -233,14 +192,7 @@
           </button>
         </div>
         <div class="modal-body">
-          <div class="preview-item">
-            <span class="preview-label">School Year:</span>
-            <span class="preview-value">{{ selectedSchoolYear || 'Not specified' }}</span>
-          </div>
-          <div class="preview-item">
-            <span class="preview-label">Semester:</span>
-            <span class="preview-value">{{ selectedSemester || 'Not specified' }}</span>
-          </div>
+          <!-- School year and semester are now automatically detected and included in assessment name -->
           <div class="preview-item">
             <span class="preview-label">Assessment Name:</span>
             <span class="preview-value">{{ fullAssessmentName || 'Not specified' }}</span>
@@ -409,6 +361,53 @@
       </div>
     </div>
 
+    <!-- Duplicate Error Modal -->
+    <div class="modal" v-if="showDuplicateModal" @click.self="showDuplicateModal = false">
+      <div class="modal-content duplicate-error-modal">
+        <div class="modal-header">
+          <h3><i class="fas fa-exclamation-triangle"></i> Duplicate Assessment Detected</h3>
+          <button class="close-button" @click="showDuplicateModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="error-message">
+            <p><strong>{{ duplicateErrorData.message }}</strong></p>
+          </div>
+          <div v-if="duplicateErrorData.duplicateInfo" class="duplicate-details">
+            <h4>Duplicate Assessment Details:</h4>
+            <div class="detail-item">
+              <span class="label">Assessment Name:</span>
+              <span class="value">{{ duplicateAssessmentDisplayName }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">College:</span>
+              <span class="value">{{ Array.isArray(duplicateErrorData.duplicateInfo.colleges) ? duplicateErrorData.duplicateInfo.colleges.join(', ') : duplicateErrorData.duplicateInfo.colleges }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Section:</span>
+              <span class="value">{{ Array.isArray(duplicateErrorData.duplicateInfo.sections) ? duplicateErrorData.duplicateInfo.sections.join(', ') : duplicateErrorData.duplicateInfo.sections }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Semester:</span>
+              <span class="value">{{ duplicateErrorData.duplicateInfo.semester }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Created:</span>
+              <span class="value">{{ new Date(duplicateErrorData.duplicateInfo.createdAt).toLocaleString() }}</span>
+            </div>
+          </div>
+          <div class="help-text">
+            <p><i class="fas fa-info-circle"></i> Please modify your selection or wait before creating a similar assessment.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+           <button class="secondary-button" @click="showDuplicateModal = false">OK, Got It</button>
+           <button class="primary-button" @click="removeDuplicateAndProceed">Remove Overlapping & Proceed</button>
+         </div>
+      </div>
+    </div>
+
     <!-- Success Toast -->
     <div class="toast" v-if="showToast" :class="{ 'show': showToast }">
       <div class="toast-content">
@@ -436,8 +435,9 @@ export default {
     AutoReminders
   },
   async mounted() {
-    // Load colleges from backend when component mounts
+    // Load colleges and current academic period from backend when component mounts
     await this.loadCollegesFromBackend();
+    await this.loadCurrentAcademicPeriod();
   },
   data() {
     return {
@@ -446,9 +446,7 @@ export default {
       currentCollege: null,
       collegeFilters: {}, // Stores customization info for each college
       filteredSections: {},
-      selectedSchoolYear: '',
-      selectedSemester: '',
-      assessmentName: '',
+      currentAcademicPeriod: null, // Will store current school year and semester from API
       selectAllColleges: false,
       error: null,
       colleges: [], // Will be populated from backend API
@@ -467,36 +465,62 @@ export default {
       toastMessage: '',
       isSending: false,
       validationErrors: {
-        schoolYear: '',
-        semester: '',
         assessmentName: '',
         colleges: ''
+      },
+      showDuplicateModal: false,
+      duplicateErrorData: {
+        message: '',
+        duplicateInfo: null
       }
     }
   },
   computed: {
-    schoolYears() {
-      const currentYear = new Date().getFullYear();
-      const years = [];
-      // Generate school years (e.g., "2024-2025", "2025-2026")
-      for (let i = 0; i < 3; i++) {
-        const startYear = currentYear + i;
-        const endYear = startYear + 1;
-        years.push(`${startYear}-${endYear}`);
-      }
-      return years;
-    },
-    canTypeAssessmentName() {
-      return this.selectedSchoolYear && this.selectedSemester;
-    },
     fullAssessmentName() {
-      if (this.selectedSchoolYear && this.selectedSemester && this.assessmentName.trim()) {
-        return `${this.selectedSchoolYear} ${this.selectedSemester} - ${this.assessmentName.trim()}`;
+      const selectedColleges = this.colleges.filter(c => c.selected).map(c => c.name);
+      const collegeNames = selectedColleges.length > 0 ? selectedColleges.join(', ') : 'No Colleges Selected';
+      
+      // Include selected Ryff Scale items count at the beginning
+      const itemsCount = `${this.selectedVersion} Items`;
+      
+      if (this.currentAcademicPeriod) {
+        // If we have semester info, include it; otherwise just school year
+        if (this.currentAcademicPeriod.semester) {
+          return `${itemsCount}, ${this.currentAcademicPeriod.schoolYear} ${this.currentAcademicPeriod.semester} - ${collegeNames}`;
+        } else {
+          return `${itemsCount}, ${this.currentAcademicPeriod.schoolYear} - ${collegeNames}`;
+        }
       }
-      return this.assessmentName;
+      return `${itemsCount}, ${collegeNames}`;
     },
     questionnaire() {
       return this.selectedVersion === '84' ? ryff84ItemQuestionnaire : ryff42ItemQuestionnaire;
+    },
+    // Custom assessment name for duplicate modal showing only overlapping college
+    duplicateAssessmentDisplayName() {
+      if (!this.duplicateErrorData.duplicateInfo) {
+        return this.duplicateErrorData.duplicateInfo?.assessmentName || '';
+      }
+      
+      const overlappingColleges = this.duplicateErrorData.duplicateInfo.colleges || [];
+      const semester = this.duplicateErrorData.duplicateInfo.semester || '';
+      
+      // Extract the assessment type (42 Items or 84 Items) from the original name
+      const originalName = this.duplicateErrorData.duplicateInfo.assessmentName || '';
+      const itemsMatch = originalName.match(/(\d+)\s*Items/);
+      const itemsCount = itemsMatch ? `${itemsMatch[1]} Items` : '42 Items';
+      
+      // Create a clean name with only the overlapping college
+      const collegeNames = Array.isArray(overlappingColleges) ? overlappingColleges.join(', ') : overlappingColleges;
+      
+      if (semester && collegeNames) {
+        return `${itemsCount}, ${semester} - ${collegeNames}`;
+      } else if (collegeNames) {
+        return `${itemsCount} - ${collegeNames}`;
+      }
+      
+      // Fallback to original name if we can't parse it properly
+      return originalName;
     },
     selectedCollegesText() {
       const selected = this.colleges.filter(c => c.selected).map(c => c.name);
@@ -592,6 +616,36 @@ export default {
       return yearMap[year];
     },
     // Load colleges data from backend
+    async loadCurrentAcademicPeriod() {
+      try {
+        const response = await fetch('http://localhost:3000/api/academic-settings/current');
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Map backend property names to frontend expected names
+          this.currentAcademicPeriod = {
+            schoolYear: data.data.school_year,
+            semester: data.data.semester_name
+          };
+        } else {
+          console.error('Failed to load current academic period');
+          // Fallback to current year if API fails
+          const currentYear = new Date().getFullYear();
+          this.currentAcademicPeriod = {
+            schoolYear: `${currentYear}-${currentYear + 1}`,
+            semester: null
+          };
+        }
+      } catch (error) {
+        console.error('Error loading current academic period:', error);
+        // Fallback to current year if API fails
+        const currentYear = new Date().getFullYear();
+        this.currentAcademicPeriod = {
+          schoolYear: `${currentYear}-${currentYear + 1}`,
+          semester: null
+        };
+      }
+    },
     async loadCollegesFromBackend() {
       try {
         const response = await fetch('http://localhost:3000/api/accounts/colleges');
@@ -669,26 +723,8 @@ export default {
     validate() {
       let isValid = true;
       this.validationErrors = {
-        schoolYear: '',
-        semester: '',
-        assessmentName: '',
         colleges: ''
       };
-
-      if (!this.selectedSchoolYear) {
-        this.validationErrors.schoolYear = 'School year is required';
-        isValid = false;
-      }
-
-      if (!this.selectedSemester) {
-        this.validationErrors.semester = 'Semester is required';
-        isValid = false;
-      }
-
-      if (!this.assessmentName.trim()) {
-        this.validationErrors.assessmentName = 'Assessment name is required';
-        isValid = false;
-      }
 
       if (!this.hasSelectedColleges) {
         this.validationErrors.colleges = 'Please select at least one college';
@@ -791,7 +827,15 @@ export default {
         } else {
           // Handle specific error cases
           if (response.status === 409) {
-            throw new Error(data.message || 'Duplicate assessment detected');
+            // Close Assessment Preview modal and show duplicate error modal
+            this.showPreview = false;
+            this.showDuplicateModal = true;
+            this.duplicateErrorData = {
+              message: data.message || 'Duplicate assessment detected',
+              duplicateInfo: data.duplicateInfo || null
+            };
+            this.isSending = false;
+            return; // Don't throw error, just show modal
           } else {
             throw new Error(data.message || 'Failed to create assessment');
           }
@@ -805,6 +849,91 @@ export default {
         this.showToast = true;
         this.toastMessage = 'Error: ' + (error.message || 'Failed to create assessment');
         
+        setTimeout(() => {
+          this.showToast = false;
+        }, 5000);
+      }
+    },
+    async removeDuplicateAndProceed() {
+      try {
+        // Close the duplicate modal
+        this.showDuplicateModal = false;
+        
+        // Get the overlapping colleges and sections from the error data structure
+        const overlappingColleges = this.duplicateErrorData.duplicateInfo?.colleges || [];
+        const overlappingSections = this.duplicateErrorData.duplicateInfo?.sections || [];
+        
+        // Remove the overlapping selections from current form
+        this.colleges.forEach(college => {
+          if (overlappingColleges.includes(college.name)) {
+            // If this college has overlaps, we need to remove the overlapping sections
+            const filters = this.collegeFilters[college.name];
+            if (filters && filters.programs && overlappingSections.length > 0) {
+              // Remove overlapping sections from selectedSections
+              const updatedSelectedSections = filters.selectedSections.filter(sectionId => {
+                // Find the section name for this ID
+                let sectionName = '';
+                filters.programs.forEach(program => {
+                  program.yearLevels.forEach(yearLevel => {
+                    yearLevel.sections.forEach(section => {
+                      if (section.id === sectionId) {
+                        sectionName = section.name;
+                      }
+                    });
+                  });
+                });
+                // Keep sections that are NOT in the overlapping list
+                return !overlappingSections.includes(sectionName);
+              });
+              
+              // Update the filters
+              filters.selectedSections = updatedSelectedSections;
+              
+              // If no sections left for this college, unselect the college
+              if (updatedSelectedSections.length === 0) {
+                college.selected = false;
+              }
+            } else {
+              // If no specific sections are mentioned or no filters exist, 
+              // remove the entire college to be safe
+              college.selected = false;
+            }
+          }
+        });
+        
+        // Validate that we still have valid selections
+        const hasValidSelections = this.colleges.some(college => {
+          if (!college.selected) return false;
+          const filters = this.collegeFilters[college.name];
+          return filters && filters.selectedSections && filters.selectedSections.length > 0;
+        });
+        
+        if (!hasValidSelections) {
+          // Show error if no valid selections remain
+          this.showToast = true;
+          this.toastMessage = 'No valid selections remain after removing overlapping assessments. Please select different colleges or sections.';
+          setTimeout(() => {
+            this.showToast = false;
+          }, 5000);
+          return;
+        }
+        
+        // Show success message about overlapping removal
+        this.showToast = true;
+        this.toastMessage = 'Overlapping assessments removed. Proceeding with remaining selections...';
+        setTimeout(() => {
+          this.showToast = false;
+        }, 3000);
+        
+        // Wait a moment then proceed with the assessment
+        setTimeout(() => {
+          this.confirmSend();
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Error removing overlapping assessments:', error);
+        this.showToast = true;
+        this.toastMessage = 'Error removing overlapping assessments. Please try again.';
         setTimeout(() => {
           this.showToast = false;
         }, 5000);
@@ -835,7 +964,6 @@ export default {
     selectVersion(version) {
       // Set the selected version from the saved template
       this.selectedVersion = version.items;
-      this.assessmentName = `${version.title} - ${new Date().toLocaleDateString()}`;
       
       // Switch to form view
       this.currentView = 'form';
@@ -921,9 +1049,6 @@ export default {
     },
     resetForm() {
       // Reset form to default values
-      this.selectedSchoolYear = '';
-      this.selectedSemester = '';
-      this.assessmentName = '';
       this.selectAllColleges = false;
       this.colleges.forEach(college => college.selected = false);
       this.scheduleOption = 'now';
@@ -932,9 +1057,6 @@ export default {
       this.customMessage = 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.';
       this.error = null;
       this.validationErrors = {
-        schoolYear: '',
-        semester: '',
-        assessmentName: '',
         colleges: ''
       };
     },
@@ -2003,5 +2125,146 @@ textarea.form-control {
   .completion-info {
     padding: 12px;
   }
+}
+
+/* Duplicate Error Modal Styles */
+.duplicate-error-modal {
+  max-width: 500px;
+}
+
+.duplicate-error-modal .modal-header {
+  background-color: #fff3cd;
+  border-bottom: 1px solid #ffeaa7;
+}
+
+.duplicate-error-modal .modal-header h3 {
+  color: #856404;
+  margin: 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.duplicate-error-modal .modal-header i {
+  color: #f39c12;
+}
+
+.duplicate-error-modal .modal-body {
+  padding: 20px 25px;
+}
+
+.duplicate-error-modal .error-message {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 20px;
+}
+
+.duplicate-error-modal .error-message p {
+  margin: 0;
+  color: #721c24;
+}
+
+.duplicate-error-modal .duplicate-details {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.duplicate-error-modal .duplicate-details h4 {
+  margin: 0 0 12px 0;
+  color: var(--dark);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.duplicate-error-modal .detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.duplicate-error-modal .detail-item:last-child {
+  border-bottom: none;
+}
+
+.duplicate-error-modal .detail-item .label {
+  font-weight: 500;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.duplicate-error-modal .detail-item .value {
+  font-weight: 400;
+  color: var(--text-light);
+  font-size: 13px;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+}
+
+.duplicate-error-modal .help-text {
+  background-color: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 15px;
+}
+
+.duplicate-error-modal .help-text p {
+  margin: 0;
+  color: #0c5460;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.duplicate-error-modal .help-text i {
+  color: #17a2b8;
+}
+
+.duplicate-error-modal .modal-footer {
+  padding: 15px 25px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.duplicate-error-modal .primary-button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.duplicate-error-modal .primary-button:hover {
+  background-color: var(--primary-dark);
+}
+
+.duplicate-error-modal .secondary-button {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.duplicate-error-modal .secondary-button:hover {
+  background-color: #5a6268;
 }
 </style>

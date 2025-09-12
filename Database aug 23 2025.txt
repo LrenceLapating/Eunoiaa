@@ -218,19 +218,21 @@ create table public.bulk_assessments (
   status character varying(50) null default 'pending'::character varying,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
+  target_year_levels integer[] null,
+  target_sections text[] null,
+  school_year character varying(20) null,
+  semester character varying(50) null,
   constraint bulk_assessments_pkey primary key (id),
   constraint bulk_assessments_counselor_id_fkey foreign KEY (counselor_id) references counselors (id) on delete CASCADE,
   constraint bulk_assessments_status_check check (
     (
       (status)::text = any (
-        (
-          array[
-            'pending'::character varying,
-            'sent'::character varying,
-            'completed'::character varying,
-            'cancelled'::character varying
-          ]
-        )::text[]
+        array[
+          ('pending'::character varying)::text,
+          ('sent'::character varying)::text,
+          ('completed'::character varying)::text,
+          ('cancelled'::character varying)::text
+        ]
       )
     )
   )
@@ -241,6 +243,14 @@ create index IF not exists idx_bulk_assessments_counselor_id on public.bulk_asse
 create index IF not exists idx_bulk_assessments_status on public.bulk_assessments using btree (status) TABLESPACE pg_default;
 
 create index IF not exists idx_bulk_assessments_scheduled_date on public.bulk_assessments using btree (scheduled_date) TABLESPACE pg_default;
+
+create index IF not exists idx_bulk_assessments_target_year_levels on public.bulk_assessments using gin (target_year_levels) TABLESPACE pg_default;
+
+create index IF not exists idx_bulk_assessments_target_sections on public.bulk_assessments using gin (target_sections) TABLESPACE pg_default;
+
+create index IF not exists idx_bulk_assessments_school_year on public.bulk_assessments using btree (school_year) TABLESPACE pg_default;
+
+create index IF not exists idx_bulk_assessments_semester on public.bulk_assessments using btree (semester) TABLESPACE pg_default;
 
 create trigger update_bulk_assessments_updated_at BEFORE
 update on bulk_assessments for EACH row
@@ -623,3 +633,51 @@ create index IF not exists idx_college_scores_history_college_archived on public
 create trigger update_college_scores_history_updated_at BEFORE
 update on college_scores_history for EACH row
 execute FUNCTION update_updated_at_column ();
+
+
+
+
+
+
+
+
+
+
+
+create table public.academic_settings (
+  id uuid not null default gen_random_uuid (),
+  school_year character varying(20) not null,
+  semester_name character varying(50) not null,
+  start_date date not null,
+  end_date date not null,
+  is_active boolean null default true,
+  created_at timestamp with time zone null default CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone null default CURRENT_TIMESTAMP,
+  created_by uuid null,
+  constraint academic_settings_pkey primary key (id),
+  constraint academic_settings_unique_semester unique (school_year, semester_name),
+  constraint academic_settings_created_by_fkey foreign KEY (created_by) references counselors (id),
+  constraint academic_settings_valid_dates check ((end_date > start_date)),
+  constraint academic_settings_valid_school_year check (
+    ((school_year)::text ~ '^[0-9]{4}-[0-9]{4}$'::text)
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_academic_settings_school_year on public.academic_settings using btree (school_year) TABLESPACE pg_default;
+
+create index IF not exists idx_academic_settings_dates on public.academic_settings using btree (start_date, end_date) TABLESPACE pg_default;
+
+create index IF not exists idx_academic_settings_active on public.academic_settings using btree (is_active) TABLESPACE pg_default;
+
+create index IF not exists idx_academic_settings_current_date on public.academic_settings using btree (start_date, end_date) TABLESPACE pg_default
+where
+  (is_active = true);
+
+create trigger trigger_academic_settings_updated_at BEFORE
+update on academic_settings for EACH row
+execute FUNCTION update_academic_settings_updated_at ();
+
+create trigger trigger_validate_academic_settings_overlap BEFORE INSERT
+or
+update on academic_settings for EACH row
+execute FUNCTION validate_academic_settings_overlap ();

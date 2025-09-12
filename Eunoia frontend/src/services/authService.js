@@ -186,7 +186,50 @@ class AuthService {
    */
   async checkAuthStatus() {
     try {
-      // Try to get current user profile to validate session
+      // If userType is not set, try to determine it first (similar to initialize)
+      if (!this.userType) {
+        const studentResult = await fetch(`${this.baseURL}/auth/student/profile`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (studentResult.ok) {
+          const data = await studentResult.json();
+          this.currentUser = data.student;
+          this.userType = 'student';
+          this.isAuthenticated = true;
+          return {
+            isAuthenticated: true,
+            user: data.student,
+            userType: 'student'
+          };
+        }
+
+        const counselorResult = await fetch(`${this.baseURL}/auth/counselor/profile`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (counselorResult.ok) {
+          const data = await counselorResult.json();
+          this.currentUser = data.counselor;
+          this.userType = 'counselor';
+          this.isAuthenticated = true;
+          return {
+            isAuthenticated: true,
+            user: data.counselor,
+            userType: 'counselor'
+          };
+        }
+
+        // No valid session found
+        this.isAuthenticated = false;
+        return {
+          isAuthenticated: false
+        };
+      }
+      
+      // If userType is already set, use the existing method
       const result = await this.getCurrentUserProfile();
       
       if (result.success) {

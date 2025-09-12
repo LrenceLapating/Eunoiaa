@@ -15,18 +15,9 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
     // Get assigned assessments that are not completed or expired
     const { data: assignments, error } = await supabase
       .from('assessment_assignments')
-      .select(`
-        *,
-        bulk_assessment:bulk_assessments(
-          id,
-          assessment_name,
-          assessment_type,
-          custom_message,
-          scheduled_date
-        )
-      `)
+      .select('*')
       .eq('student_id', studentId)
-      .in('status', ['assigned'])
+      .in('status', ['assigned', 'in_progress'])
       .gt('expires_at', new Date().toISOString())
       .order('assigned_at', { ascending: false });
 
@@ -38,20 +29,51 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
       });
     }
 
-    console.log(`Found ${assignments?.length || 0} assigned assessments for student ${studentId}`);
+    // Fetch bulk assessment details separately
+    let enrichedAssignments = [];
     if (assignments && assignments.length > 0) {
-      console.log('Assignment details:', assignments.map(a => ({
+      const bulkAssessmentIds = assignments.map(a => a.bulk_assessment_id);
+      const { data: bulkAssessments, error: bulkError } = await supabase
+        .from('bulk_assessments')
+        .select('id, assessment_name, assessment_type, custom_message, scheduled_date')
+        .in('id', bulkAssessmentIds);
+
+      if (bulkError) {
+        console.error('Error fetching bulk assessments:', bulkError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch assessment details'
+        });
+      }
+
+      // Create a map for quick lookup
+      const bulkAssessmentMap = {};
+      bulkAssessments?.forEach(bulk => {
+        bulkAssessmentMap[bulk.id] = bulk;
+      });
+
+      // Enrich assignments with bulk assessment data
+      enrichedAssignments = assignments.map(assignment => ({
+        ...assignment,
+        bulk_assessment: bulkAssessmentMap[assignment.bulk_assessment_id] || null
+      }));
+    }
+
+    console.log(`Found ${enrichedAssignments?.length || 0} assigned assessments for student ${studentId}`);
+    if (enrichedAssignments && enrichedAssignments.length > 0) {
+      console.log('Assignment details:', enrichedAssignments.map(a => ({
         id: a.id,
         status: a.status,
         assigned_at: a.assigned_at,
         completed_at: a.completed_at,
-        expires_at: a.expires_at
+        expires_at: a.expires_at,
+        assessment_name: a.bulk_assessment?.assessment_name
       })));
     }
 
     res.json({
       success: true,
-      data: assignments || []
+      data: enrichedAssignments || []
     });
 
   } catch (error) {
@@ -72,16 +94,7 @@ router.get('/debug/all-assignments', verifyStudentSession, async (req, res) => {
     // Get ALL assignments for this student regardless of status
     const { data: allAssignments, error } = await supabase
       .from('assessment_assignments')
-      .select(`
-        *,
-        bulk_assessment:bulk_assessments(
-          id,
-          assessment_name,
-          assessment_type,
-          custom_message,
-          scheduled_date
-        )
-      `)
+      .select('*')
       .eq('student_id', studentId)
       .order('assigned_at', { ascending: false });
 
@@ -93,9 +106,39 @@ router.get('/debug/all-assignments', verifyStudentSession, async (req, res) => {
       });
     }
 
-    console.log(`Debug: Found ${allAssignments?.length || 0} total assignments for student ${studentId}`);
+    // Fetch bulk assessment details separately
+    let enrichedAllAssignments = [];
     if (allAssignments && allAssignments.length > 0) {
-      console.log('Debug: All assignment details:', allAssignments.map(a => ({
+      const bulkAssessmentIds = allAssignments.map(a => a.bulk_assessment_id);
+      const { data: bulkAssessments, error: bulkError } = await supabase
+        .from('bulk_assessments')
+        .select('id, assessment_name, assessment_type, custom_message, scheduled_date')
+        .in('id', bulkAssessmentIds);
+
+      if (bulkError) {
+        console.error('Debug: Error fetching bulk assessments:', bulkError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch assessment details'
+        });
+      }
+
+      // Create a map for quick lookup
+      const bulkAssessmentMap = {};
+      bulkAssessments?.forEach(bulk => {
+        bulkAssessmentMap[bulk.id] = bulk;
+      });
+
+      // Enrich assignments with bulk assessment data
+      enrichedAllAssignments = allAssignments.map(assignment => ({
+        ...assignment,
+        bulk_assessment: bulkAssessmentMap[assignment.bulk_assessment_id] || null
+      }));
+    }
+
+    console.log(`Debug: Found ${enrichedAllAssignments?.length || 0} total assignments for student ${studentId}`);
+    if (enrichedAllAssignments && enrichedAllAssignments.length > 0) {
+      console.log('Debug: All assignment details:', enrichedAllAssignments.map(a => ({
         id: a.id,
         status: a.status,
         assigned_at: a.assigned_at,
@@ -107,11 +150,11 @@ router.get('/debug/all-assignments', verifyStudentSession, async (req, res) => {
 
     res.json({
       success: true,
-      data: allAssignments || [],
+      data: enrichedAllAssignments || [],
       debug: {
         studentId,
-        totalCount: allAssignments?.length || 0,
-        statusBreakdown: allAssignments?.reduce((acc, a) => {
+        totalCount: enrichedAllAssignments?.length || 0,
+        statusBreakdown: enrichedAllAssignments?.reduce((acc, a) => {
           acc[a.status] = (acc[a.status] || 0) + 1;
           return acc;
         }, {}) || {}
@@ -136,15 +179,7 @@ router.get('/take/:assignmentId', verifyStudentSession, async (req, res) => {
     // Get assignment details
     const { data: assignment, error: assignmentError } = await supabase
       .from('assessment_assignments')
-      .select(`
-        *,
-        bulk_assessment:bulk_assessments(
-          id,
-          assessment_name,
-          assessment_type,
-          custom_message
-        )
-      `)
+      .select('*')
       .eq('id', assignmentId)
       .eq('student_id', studentId)
       .eq('status', 'assigned')
@@ -156,6 +191,23 @@ router.get('/take/:assignmentId', verifyStudentSession, async (req, res) => {
         message: 'Assessment assignment not found or already completed'
       });
     }
+
+    // Get bulk assessment details separately
+    const { data: bulkAssessment, error: bulkError } = await supabase
+      .from('bulk_assessments')
+      .select('id, assessment_name, assessment_type, custom_message')
+      .eq('id', assignment.bulk_assessment_id)
+      .single();
+
+    if (bulkError || !bulkAssessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment details not found'
+      });
+    }
+
+    // Attach bulk assessment to assignment
+    assignment.bulk_assessment = bulkAssessment;
 
     // Check if assignment is expired
     if (new Date(assignment.expires_at) < new Date()) {
@@ -204,18 +256,35 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
     // Get assignment details
     const { data: assignment, error: assignmentError } = await supabase
       .from('assessment_assignments')
-      .select(`
-        *,
-        bulk_assessment:bulk_assessments(
-          id,
-          assessment_type,
-          assessment_name
-        )
-      `)
+      .select('*')
       .eq('id', assignmentId)
       .eq('student_id', studentId)
       .eq('status', 'assigned')
       .single();
+
+    if (assignmentError || !assignment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment assignment not found or already completed'
+      });
+    }
+
+    // Get bulk assessment details separately
+    const { data: bulkAssessment, error: bulkError } = await supabase
+      .from('bulk_assessments')
+      .select('id, assessment_type, assessment_name')
+      .eq('id', assignment.bulk_assessment_id)
+      .single();
+
+    if (bulkError || !bulkAssessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment details not found'
+      });
+    }
+
+    // Attach bulk assessment to assignment
+    assignment.bulk_assessment = bulkAssessment;
 
     if (assignmentError || !assignment) {
       return res.status(404).json({
@@ -257,6 +326,8 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
     }
 
     // Create assessment record in the appropriate table using admin client to bypass RLS
+    console.log(`Attempting to insert assessment record into ${tableName} for student ${studentId}, assignment ${assignmentId}`);
+    
     const { data: assessmentRecord, error: assessmentInsertError } = await supabaseAdmin
       .from(tableName)
       .insert({
@@ -274,12 +345,29 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
       .single();
 
     if (assessmentInsertError) {
-      console.error('Error creating assessment record:', assessmentInsertError);
+      console.error('❌ CRITICAL ERROR: Failed to create assessment record:', {
+        error: assessmentInsertError,
+        tableName,
+        studentId,
+        assignmentId,
+        assessmentType
+      });
       return res.status(500).json({
         success: false,
         message: 'Failed to save assessment responses'
       });
     }
+    
+    console.log(`✅ Assessment record created successfully:`, {
+       assessmentId: assessmentRecord.id,
+       tableName,
+       studentId,
+       assignmentId
+     });
+
+    // Assessment data is now stored directly in assessments_42items/assessments_84items tables
+    // Counselor dashboard accesses data from these tables via counselorAssessments.js
+    // No additional ryffscoring table insert needed
 
     // Create assessment analytics record if timing data is provided
     if (timeTakenMinutes !== undefined && timeTakenMinutes !== null) {
@@ -342,22 +430,35 @@ router.post('/submit/:assignmentId', verifyStudentSession, async (req, res) => {
     // Trigger college score computation for the student's college
     if (studentData && studentData.college && !studentError) {
       const assessmentName = assignment.bulk_assessment.assessment_name;
-      console.log(`Triggering college score computation for ${studentData.college}, assessment: ${assessmentName}, type: ${assessmentType}`);
+      console.log(`🎯 Triggering college score computation for ${studentData.college}, assessment: ${assessmentName}, type: ${assessmentType}`);
       
       // Run college score computation asynchronously (don't wait for it to complete)
       computeAndStoreCollegeScores(studentData.college, assessmentType, assessmentName)
         .then(result => {
           if (result.success) {
-            console.log(`College scores updated successfully for ${studentData.college}:`, result.message);
+            console.log(`✅ College scores updated successfully for ${studentData.college}:`, result.message);
           } else {
-            console.error(`Failed to update college scores for ${studentData.college}:`, result.error);
+            console.error(`❌ Failed to update college scores for ${studentData.college}:`, result.error);
           }
         })
         .catch(error => {
-          console.error(`Error in college score computation for ${studentData.college}:`, error);
+          console.error(`💥 CRITICAL ERROR in college score computation for ${studentData.college}:`, {
+            error: error.message,
+            stack: error.stack,
+            assessmentName,
+            assessmentType,
+            studentId,
+            assignmentId,
+            assessmentRecordId: assessmentRecord.id
+          });
         });
     } else {
-      console.log('Could not determine student college for score computation:', studentError);
+      console.error(`⚠️  Could not determine student college for score computation:`, {
+        studentError,
+        studentData,
+        studentId,
+        assignmentId
+      });
     }
 
     res.json({
@@ -464,16 +565,30 @@ router.post('/progress/:assignmentId', verifyStudentSession, async (req, res) =>
     // Verify assignment belongs to student
     const { data: assignment, error: assignmentError } = await supabase
       .from('assessment_assignments')
-      .select('id')
+      .select('id, status')
       .eq('id', assignmentId)
       .eq('student_id', studentId)
-      .eq('status', 'assigned')
+      .in('status', ['assigned', 'in_progress', 'completed'])
       .single();
 
     if (assignmentError || !assignment) {
       return res.status(404).json({
         success: false,
         message: 'Assignment not found'
+      });
+    }
+
+    // If assignment is already completed, just return success (no need to save progress)
+    if (assignment.status === 'completed') {
+      return res.json({
+        success: true,
+        message: 'Assessment already completed - no progress to save',
+        data: {
+          student_id: studentId,
+          assignment_id: assignmentId,
+          status: 'completed',
+          last_saved: new Date().toISOString()
+        }
       });
     }
 
@@ -512,16 +627,25 @@ router.get('/progress/:assignmentId', verifyStudentSession, async (req, res) => 
     // Verify assignment belongs to student
     const { data: assignment, error: assignmentError } = await supabase
       .from('assessment_assignments')
-      .select('id')
+      .select('id, status')
       .eq('id', assignmentId)
       .eq('student_id', studentId)
-      .eq('status', 'assigned')
+      .in('status', ['assigned', 'in_progress', 'completed'])
       .single();
 
     if (assignmentError || !assignment) {
       return res.status(404).json({
         success: false,
         message: 'Assignment not found'
+      });
+    }
+
+    // If assignment is completed, return empty progress
+    if (assignment.status === 'completed') {
+      return res.json({
+        success: true,
+        message: 'Assessment completed - no progress data available',
+        data: null
       });
     }
 
@@ -552,9 +676,10 @@ router.delete('/progress/:assignmentId', verifyStudentSession, async (req, res) 
     // Verify assignment belongs to student
     const { data: assignment, error: assignmentError } = await supabase
       .from('assessment_assignments')
-      .select('id')
+      .select('id, status')
       .eq('id', assignmentId)
       .eq('student_id', studentId)
+      .in('status', ['assigned', 'in_progress', 'completed'])
       .single();
 
     if (assignmentError || !assignment) {

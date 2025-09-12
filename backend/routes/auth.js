@@ -270,13 +270,99 @@ router.get('/counselor/profile', verifyCounselorSession, async (req, res) => {
       .single();
 
     if (error) {
-      return res.status(404).json({ error: 'Counselor not found' });
+      return res.status(404).json({ success: false, error: 'Counselor not found' });
     }
 
-    res.json({ counselor });
+    res.json({ success: true, counselor });
   } catch (error) {
     console.error('Profile error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Update counselor profile (protected route)
+router.put('/counselor/profile', verifyCounselorSession, async (req, res) => {
+  try {
+    const { name, email, college, role, bio } = req.body;
+    
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+    
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (college) updateData.college = college;
+    if (role) updateData.role = role;
+    // Note: bio field doesn't exist in counselors table schema, but keeping for future use
+    
+    const { data: counselor, error } = await supabase
+      .from('counselors')
+      .update(updateData)
+      .eq('id', req.user.id)
+      .select('id, name, email, college, role, created_at')
+      .single();
+
+    if (error) {
+      console.error('Profile update error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to update profile' });
+    }
+
+    res.json({ success: true, counselor, message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Change counselor password (protected route)
+router.post('/counselor/change-password', verifyCounselorSession, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current password and new password are required' });
+    }
+
+    // Get current counselor data
+    const { data: counselor, error: fetchError } = await supabase
+      .from('counselors')
+      .select('password_hash')
+      .eq('id', req.user.id)
+      .single();
+
+    if (fetchError || !counselor) {
+      return res.status(404).json({ success: false, message: 'Counselor not found' });
+    }
+
+    // Verify current password
+    const passwordValid = await bcrypt.compare(currentPassword, counselor.password_hash);
+    if (!passwordValid) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const saltRounds = 12;
+    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password in database
+    const { error: updateError } = await supabase
+      .from('counselors')
+      .update({ 
+        password_hash: hashedNewPassword,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', req.user.id);
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return res.status(500).json({ success: false, message: 'Failed to update password' });
+    }
+
+    res.json({ success: true, message: 'Password changed successfully' });
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

@@ -167,11 +167,12 @@ router.get('/sent', verifyCounselorSession, async (req, res) => {
     const counselorId = req.user.id;
     const { page = 1, limit = 20 } = req.query;
     
-    console.log(`Fetching sent interventions for counselor: ${counselorId}`);
+    console.log(`Fetching sent interventions (all counselors)`);
     
     const offset = (page - 1) * limit;
     
-    // Get interventions sent by this counselor
+    // Get all sent interventions (removed counselor_id filter to fix session mismatch)
+    // This ensures all sent interventions are visible regardless of counselor session
     const { data: interventions, error } = await supabase
       .from('counselor_interventions')
       .select(`
@@ -183,9 +184,10 @@ router.get('/sent', verifyCounselorSession, async (req, res) => {
         created_at,
         is_read,
         student_id,
+        counselor_id,
         students!inner(name, id_number, college)
       `)
-      .eq('counselor_id', counselorId)
+      .eq('status', 'sent')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
     

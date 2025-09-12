@@ -18,52 +18,73 @@ export default {
   name: 'App',
   data() {
     return { 
-      isLoading: true
+      isLoading: this.$route.path === '/' || this.$route.path === '/login'
     };
   },
   async mounted() {
-    try {
-      const authState = await authService.initialize();
-      
-      if (authState.userType === 'student') {
-        this.$router.push('/student');
-      } else if (authState.userType === 'counselor') {
-        this.$router.push('/counselor');
-      } else {
-        this.$router.push('/');
-      }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      this.$router.push('/');
-    } finally {
-      this.isLoading = false;
-    }
+    const currentPath = this.$route.path;
+    
+    // Initialize authentication in background
+    this.initializeAuth();
 
     window.addEventListener('auth-event', this.handleAuthEvent);
   },
-  beforeUnmount() {
-    window.removeEventListener('auth-event', this.handleAuthEvent);
-  },
   methods: {
-    handleAuthEvent(event) {
-      const { type, data } = event.detail;
-      
-      switch (type) {
-        case 'student-login':
-          this.$router.push('/student');
-          break;
-        case 'counselor-login':
-          this.$router.push('/counselor');
-          break;
-        case 'logout':
-        case 'session-expired':
+    async initializeAuth() {
+      try {
+        const authState = await authService.initialize();
+        const currentPath = this.$route.path;
+        
+        // Only redirect if user is on landing page or login page
+        if (currentPath === '/' || currentPath === '/login') {
+          if (authState.userType === 'student') {
+            this.$router.push('/student');
+          } else if (authState.userType === 'counselor') {
+            this.$router.push('/counselor');
+          } else if (currentPath !== '/') {
+            this.$router.push('/');
+          }
+        }
+        // For users already on authenticated routes, do nothing - let them stay
+        // The navigation guard will handle any authentication issues
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        // Only redirect to home if user is on landing/login page
+        if (this.$route.path === '/' || this.$route.path === '/login') {
           this.$router.push('/');
-          break;
-        default:
-          break;
+        }
+      } finally {
+        this.isLoading = false;
       }
-    }
-  }
+    },
+     handleAuthEvent(event) {
+       const { type, data } = event.detail;
+       
+       switch (type) {
+         case 'student-login':
+           // Only redirect if not already on a student route
+           if (!this.$route.path.startsWith('/student')) {
+             this.$router.push('/student');
+           }
+           break;
+         case 'counselor-login':
+           // Only redirect if not already on a counselor route
+           if (!this.$route.path.startsWith('/counselor')) {
+             this.$router.push('/counselor');
+           }
+           break;
+         case 'logout':
+         case 'session-expired':
+           this.$router.push('/');
+           break;
+         default:
+           break;
+       }
+     }
+   },
+   beforeUnmount() {
+     window.removeEventListener('auth-event', this.handleAuthEvent);
+   }
 }
 </script>
 

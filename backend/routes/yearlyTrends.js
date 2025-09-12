@@ -50,9 +50,9 @@ router.get('/at-risk', async (req, res) => {
       .gte('completed_at', `${targetYear}-01-01`)
       .lt('completed_at', `${targetYear + 1}-01-01`);
 
-    // Query current assessments from ryffscoring table (without join to avoid FK constraint issue)
-    const currentData = await supabaseAdmin
-      .from('ryffscoring')
+    // Query current assessments from assessments_42items and assessments_84items tables
+    const current42Data = await supabaseAdmin
+      .from('assessments_42items')
       .select(`
         id,
         student_id,
@@ -62,6 +62,27 @@ router.get('/at-risk', async (req, res) => {
       `)
       .gte('completed_at', `${targetYear}-01-01`)
       .lt('completed_at', `${targetYear + 1}-01-01`);
+
+    const current84Data = await supabaseAdmin
+      .from('assessments_84items')
+      .select(`
+        id,
+        student_id,
+        scores,
+        at_risk_dimensions,
+        completed_at
+      `)
+      .gte('completed_at', `${targetYear}-01-01`)
+      .lt('completed_at', `${targetYear + 1}-01-01`);
+
+    // Combine current data from both tables
+    const currentData = {
+      data: [
+        ...(current42Data.data || []),
+        ...(current84Data.data || [])
+      ],
+      error: current42Data.error || current84Data.error
+    };
 
     if (currentData.error) {
       console.error('Error fetching current assessments:', currentData.error);
@@ -227,7 +248,7 @@ router.get('/improvement', async (req, res) => {
     const targetYear = year ? parseInt(year) : currentYear;
     const previousYear = targetYear - 1;
     
-    // Get assessments for both years from ryff_history (primary source) and ryffscoring (current)
+    // Get assessments for both years from ryff_history (primary source) and assessments tables (current)
     const [currentYearHistoryData, previousYearHistoryData, currentYearCurrentData] = await Promise.all([
       // Current year from history table
       supabaseAdmin
@@ -253,17 +274,32 @@ router.get('/improvement', async (req, res) => {
         .gte('completed_at', `${previousYear}-01-01`)
         .lt('completed_at', `${previousYear + 1}-01-01`),
         
-      // Current year from current table (without join)
-      supabaseAdmin
-        .from('ryffscoring')
-        .select(`
-          student_id,
-          scores,
-          overall_score,
-          completed_at
-        `)
-        .gte('completed_at', `${targetYear}-01-01`)
-        .lt('completed_at', `${targetYear + 1}-01-01`)
+      // Current year from current tables (without join)
+      Promise.all([
+        supabaseAdmin
+          .from('assessments_42items')
+          .select(`
+            student_id,
+            scores,
+            overall_score,
+            completed_at
+          `)
+          .gte('completed_at', `${targetYear}-01-01`)
+          .lt('completed_at', `${targetYear + 1}-01-01`),
+        supabaseAdmin
+          .from('assessments_84items')
+          .select(`
+            student_id,
+            scores,
+            overall_score,
+            completed_at
+          `)
+          .gte('completed_at', `${targetYear}-01-01`)
+          .lt('completed_at', `${targetYear + 1}-01-01`)
+      ]).then(([current42Data, current84Data]) => ({
+        data: [...(current42Data.data || []), ...(current84Data.data || [])],
+        error: current42Data.error || current84Data.error
+      }))
     ]);
 
     if (currentYearHistoryData.error || previousYearHistoryData.error || currentYearCurrentData.error) {
@@ -441,9 +477,14 @@ router.get('/available-years', async (req, res) => {
     console.log('🔍 Fetching available years for trend analysis');
 
     // Get years from both current and historical data
-    const [currentYears, historicalYears] = await Promise.all([
+    const [current42Years, current84Years, historicalYears] = await Promise.all([
       supabaseAdmin
-        .from('ryffscoring')
+        .from('assessments_42items')
+        .select('completed_at')
+        .not('completed_at', 'is', null),
+      
+      supabaseAdmin
+        .from('assessments_84items')
         .select('completed_at')
         .not('completed_at', 'is', null),
       
@@ -455,9 +496,19 @@ router.get('/available-years', async (req, res) => {
 
     const allYears = new Set();
     
-    // Extract years from current data
-    if (currentYears.data) {
-      currentYears.data.forEach(item => {
+    // Extract years from current 42-item data
+    if (current42Years.data) {
+      current42Years.data.forEach(item => {
+        if (item.completed_at) {
+          const year = new Date(item.completed_at).getFullYear();
+          allYears.add(year);
+        }
+      });
+    }
+    
+    // Extract years from current 84-item data
+    if (current84Years.data) {
+      current84Years.data.forEach(item => {
         if (item.completed_at) {
           const year = new Date(item.completed_at).getFullYear();
           allYears.add(year);

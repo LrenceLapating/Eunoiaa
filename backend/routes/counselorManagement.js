@@ -87,8 +87,8 @@ router.patch('/deactivate', verifyCounselorSession, async (req, res) => {
       bulk_assessments_archived: 0
     };
 
-    // 1. Clear RyffScoring data for this counselor's students
-    console.log('🧹 Clearing RyffScoring data...');
+    // 1. Assessment data is preserved in assessments_42items/assessments_84items tables
+      console.log('🧹 Checking student data (assessments preserved)...');
     
     // First, get all students assigned to this counselor through bulk assessments
     const { data: counselorStudents, error: studentsError } = await supabaseAdmin
@@ -106,19 +106,12 @@ router.patch('/deactivate', verifyCounselorSession, async (req, res) => {
     } else {
       const studentIds = [...new Set(counselorStudents.map(s => s.student_id))];
       
+      // Note: Assessment data is stored in assessments_42items/assessments_84items tables
+      // These tables are not cleared during counselor deactivation as they contain
+      // permanent student assessment records that may be needed for historical analysis
       if (studentIds.length > 0) {
-        const { data: ryffData, error: ryffError } = await supabaseAdmin
-          .from('ryffscoring')
-          .delete()
-          .in('student_id', studentIds)
-          .select('id');
-        
-        if (ryffError) {
-          console.error('Error clearing RyffScoring data:', ryffError);
-        } else {
-          cleanupResults.ryffscoring_cleared = ryffData?.length || 0;
-          console.log(`✅ Cleared ${cleanupResults.ryffscoring_cleared} RyffScoring records`);
-        }
+        console.log(`ℹ️  Found ${studentIds.length} student records (assessment data preserved in assessments tables)`);
+        cleanupResults.ryffscoring_cleared = 0; // No longer applicable
       }
     }
 

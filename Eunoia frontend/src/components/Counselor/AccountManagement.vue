@@ -146,6 +146,28 @@
       </div>
     </div>
 
+    <!-- Upload Loading Modal -->
+    <div v-if="showUploadLoadingModal" class="modal-overlay">
+      <div class="modal-content upload-loading-modal">
+        <div class="modal-body">
+          <div v-if="uploadLoadingState === 'loading'" class="loading-content">
+            <div class="spinner-container">
+              <i class="fas fa-spinner fa-spin loading-spinner"></i>
+            </div>
+            <h3>Uploading CSV File...</h3>
+            <p>Please wait while we process your file.</p>
+          </div>
+          <div v-else-if="uploadLoadingState === 'success'" class="success-content">
+            <div class="success-icon-container">
+              <i class="fas fa-check-circle success-icon"></i>
+            </div>
+            <h3>Upload Successful!</h3>
+            <p>{{ uploadResultMessage }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Student Modal -->
     <div v-if="showAddStudentModal" class="modal-overlay">
       <div class="modal-content">
@@ -401,6 +423,9 @@ export default {
       colleges: [], // Will be populated from backend API
       users: [], // Will be populated from backend API
       showUploadModal: false,
+      showUploadLoadingModal: false,
+      uploadLoadingState: 'loading', // 'loading' or 'success'
+      uploadResultMessage: '',
       deactivatePrevious: false,
       uploadedFile: null,
       uploadedFileName: '',
@@ -572,10 +597,10 @@ export default {
     },
     
     downloadTemplate() {
-      // Download template from backend API
+      // Download Excel template from backend API
       const link = document.createElement('a');
       link.href = 'http://localhost:3000/api/accounts/csv-template';
-      link.download = 'student_template.csv';
+      link.download = 'student_template.xlsx';
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
@@ -633,14 +658,16 @@ export default {
         return;
       }
       
+      // Close upload modal immediately and show loading modal
+      this.showUploadModal = false;
+      this.showUploadLoadingModal = true;
+      this.uploadLoadingState = 'loading';
+      
       try {
         // Create FormData for file upload
         const formData = new FormData();
         formData.append('csvFile', this.uploadedFile);
         formData.append('deactivatePrevious', this.deactivatePrevious);
-        
-        // Show loading notification
-        this.showNotification('Uploading CSV file...', 'info', 'fas fa-spinner fa-spin');
         
         // Send to backend API
         const response = await fetch('http://localhost:3000/api/accounts/upload-csv', {
@@ -659,7 +686,7 @@ export default {
             await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
           }
           
-          let message = `Successfully uploaded! ${result.studentsProcessed} students processed. ` +
+          let message = `${result.studentsProcessed} students processed. ` +
                        `${result.studentsInserted} new students added, ${result.studentsUpdated} students updated.`;
           
           // Include deactivation info if applicable
@@ -672,26 +699,43 @@ export default {
             });
           }
           
-          this.showNotification(message, 'success', 'fas fa-check-circle');
+          // Show success state in loading modal
+          this.uploadLoadingState = 'success';
+          this.uploadResultMessage = message;
+          
+          // Close loading modal after showing success for 3 seconds
+          setTimeout(() => {
+            this.showUploadLoadingModal = false;
+            this.uploadedFile = null;
+            this.uploadedFileName = '';
+          }, 3000);
         } else {
           // Handle validation errors
+          let errorMessage;
           if (result.errors && result.errors.length > 0) {
-            const errorMessage = `Upload failed: ${result.errors.slice(0, 3).join(', ')}`;
-            this.showNotification(errorMessage, 'error', 'fas fa-exclamation-circle');
+            errorMessage = `Upload failed: ${result.errors.slice(0, 3).join(', ')}`;
           } else {
-            this.showNotification(result.error || 'Upload failed', 'error', 'fas fa-exclamation-circle');
+            errorMessage = result.error || 'Upload failed';
           }
+          
+          // Close loading modal and show error notification
+          this.showUploadLoadingModal = false;
+          this.showNotification(errorMessage, 'error', 'fas fa-exclamation-circle');
+          this.uploadedFile = null;
+          this.uploadedFileName = '';
         }
       } catch (error) {
         console.error('Upload error:', error);
+        
+        // Close loading modal and show error notification
+        this.showUploadLoadingModal = false;
         this.showNotification('Network error. Please check if the backend server is running.', 'error', 'fas fa-exclamation-circle');
-      } finally {
-        // Clean up modal state
-        this.showUploadModal = false;
         this.uploadedFile = null;
         this.uploadedFileName = '';
-        this.deactivatePrevious = false;
       }
+      
+      // Reset deactivate option
+      this.deactivatePrevious = false;
     },
     
     // Load colleges data from backend
@@ -1688,4 +1732,81 @@ export default {
     padding: 25px;
   }
 }
+
+/* Upload Loading Modal Styles */
+.upload-loading-modal {
+  max-width: 400px;
+  text-align: center;
+}
+
+.upload-loading-modal .modal-body {
+  padding: 40px 30px;
+  background-color: #fff;
+}
+
+.loading-content,
+.success-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.spinner-container {
+  margin-bottom: 10px;
+}
+
+.loading-spinner {
+  font-size: 3rem;
+  color: #00b3b0;
+  animation: spin 1s linear infinite;
+}
+
+.success-icon-container {
+  margin-bottom: 10px;
+}
+
+.success-icon {
+  font-size: 3rem;
+  color: #4CAF50;
+  animation: successPulse 0.6s ease-out;
+}
+
+.upload-loading-modal h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.upload-loading-modal p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 </style>

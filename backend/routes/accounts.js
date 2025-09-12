@@ -3,9 +3,11 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
+const ExcelJS = require('exceljs');
 const { supabase } = require('../config/database');
 const { validateStudentData, sanitizeStudentData } = require('../utils/validation');
 const { computeAndStoreCollegeScores, getCollegeScores } = require('../utils/collegeScoring');
+const { verifyStudentSession } = require('../middleware/sessionManager');
 
 const router = express.Router();
 
@@ -708,18 +710,114 @@ router.delete('/students/:id', async (req, res) => {
   }
 });
 
-// GET /api/accounts/csv-template - Download CSV template
-router.get('/csv-template', (req, res) => {
-  const csvTemplate = 'Name,Section,College,ID Number,Email,Year Level,Semester\n' +
-                     'John Doe,BSIT-4A,College of Computer Studies,2020-12345,john.doe@student.edu,4,1st Semester\n' +
-                     'Jane Smith,BSCS-3B,CCS,2021-67890,jane.smith@student.edu,3,1st Semester\n' +
-                     'Mike Johnson,BSENG-2A,College of Engineering,2022-11111,mike.johnson@student.edu,2,1st Semester\n' +
-                     'Sarah Wilson,BSBA-1A,Business Administration,2023-22222,sarah.wilson@student.edu,1,1st Semester\n' +
-                     'Alex Brown,BSN-2B,Nursing College,2022-33333,alex.brown@student.edu,2,1st Semester';
-  
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="student_template.csv"');
-  res.send(csvTemplate);
+// GET /api/accounts/csv-template - Download Excel template with dropdown validation
+router.get('/csv-template', async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Student Template');
+    
+    // Define college options
+    const colleges = ['CABE', 'CAH', 'CCS', 'CEA', 'CHESFS', 'CMBS', 'CM', 'CN', 'CPC', 'CTE'];
+    
+    // Create a hidden worksheet for dropdown values
+    const dropdownSheet = workbook.addWorksheet('DropdownValues');
+    dropdownSheet.state = 'hidden';
+    
+    // Add college values to the hidden sheet
+    colleges.forEach((college, index) => {
+      dropdownSheet.getCell(`A${index + 1}`).value = college;
+    });
+    
+    // Set up headers
+    worksheet.columns = [
+      { header: 'Name', key: 'name', width: 20 },
+      { header: 'Section', key: 'section', width: 15 },
+      { header: 'College', key: 'college', width: 15 },
+      { header: 'ID Number', key: 'idNumber', width: 15 },
+      { header: 'Email', key: 'email', width: 25 },
+      { header: 'Year Level', key: 'yearLevel', width: 12 },
+      { header: 'Semester', key: 'semester', width: 15 }
+    ];
+    
+    // Add sample data
+    worksheet.addRows([
+      {
+        name: 'John Doe',
+        section: 'BSIT-4A',
+        college: 'CCS',
+        idNumber: '2020-12345',
+        email: 'john.doe@student.edu',
+        yearLevel: '4',
+        semester: '1st Semester'
+      },
+      {
+        name: 'Jane Smith',
+        section: 'BSCS-3B',
+        college: 'CCS',
+        idNumber: '2021-67890',
+        email: 'jane.smith@student.edu',
+        yearLevel: '3',
+        semester: '1st Semester'
+      },
+      {
+        name: 'Mike Johnson',
+        section: 'BSENG-2A',
+        college: 'CEA',
+        idNumber: '2022-11111',
+        email: 'mike.johnson@student.edu',
+        yearLevel: '2',
+        semester: '1st Semester'
+      },
+      {
+        name: 'Sarah Wilson',
+        section: 'BSBA-1A',
+        college: 'CABE',
+        idNumber: '2023-22222',
+        email: 'sarah.wilson@student.edu',
+        yearLevel: '1',
+        semester: '1st Semester'
+      },
+      {
+        name: 'Alex Brown',
+        section: 'BSN-2B',
+        college: 'CN',
+        idNumber: '2022-33333',
+        email: 'alex.brown@student.edu',
+        yearLevel: '2',
+        semester: '1st Semester'
+      }
+    ]);
+    
+    // Add data validation for college column (column C) using reference to hidden sheet
+    worksheet.dataValidations.add('C2:C1000', {
+      type: 'list',
+      allowBlank: false,
+      formulae: [`DropdownValues!$A$1:$A$${colleges.length}`],
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: 'Invalid College',
+      error: 'Please select a valid college from the dropdown list.'
+    });
+    
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+    
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="student_template.xlsx"');
+    res.send(buffer);
+    
+  } catch (error) {
+    console.error('Error generating Excel template:', error);
+    res.status(500).json({ error: 'Failed to generate template' });
+  }
 });
 
 // Debug route to check student statuses
@@ -767,10 +865,8 @@ router.post('/debug/test-deactivation', async (req, res) => {
       console.log('Active students before deactivation:', beforeStudents);
     }
     
-    // Check assessment counts before
-    const { data: ryffCount } = await supabase
-      .from('ryffscoring')
-      .select('*', { count: 'exact', head: true });
+    // Check assessment counts before (ryffscoring table no longer used)
+    // Assessment data is now stored in assessments_42items and assessments_84items tables
     
     const { data: assess42Count } = await supabase
       .from('assessments_42items')
@@ -781,7 +877,7 @@ router.post('/debug/test-deactivation', async (req, res) => {
       .select('*', { count: 'exact', head: true });
     
     console.log('Assessment counts before:', {
-      ryffscoring: ryffCount,
+      // ryffscoring table no longer used - data in assessments_42items/assessments_84items
       assessments_42items: assess42Count,
       assessments_84items: assess84Count
     });
@@ -818,7 +914,7 @@ router.post('/debug/test-deactivation', async (req, res) => {
       deactivation_result: deactivateData,
       before_counts: {
         active_students: beforeStudents,
-        ryffscoring: ryffCount,
+        // ryffscoring table no longer used - data in assessments_42items/assessments_84items
         assessments_42items: assess42Count,
         assessments_84items: assess84Count
       },
@@ -1065,17 +1161,10 @@ router.get('/colleges/assessment-names', async (req, res) => {
 });
 
 // GET /api/accounts/student-status - Check current student status
-router.get('/student-status', async (req, res) => {
+router.get('/student-status', verifyStudentSession, async (req, res) => {
   try {
-    // Get student ID from session/auth
-    const studentId = req.session?.user?.id;
-    
-    if (!studentId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Student not authenticated'
-      });
-    }
+    // Get student ID from verified session (middleware provides req.user)
+    const studentId = req.user.id;
     
     // Check student status in database
     const { data: student, error } = await supabase

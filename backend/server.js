@@ -5,6 +5,11 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
+// Import database and Redis for graceful shutdown
+const { closeConnections } = require('./config/database');
+const { redis } = require('./config/redis');
+const logger = require('./config/logger');
+
 const accountRoutes = require('./routes/accounts');
 const { router: authRoutes } = require('./routes/auth');
 const bulkAssessmentRoutes = require('./routes/bulkAssessments');
@@ -17,6 +22,7 @@ const counselorManagementRoutes = require('./routes/counselorManagement');
 const aiInterventionRoutes = require('./routes/aiInterventions');
 const riskAlertsRoutes = require('./routes/riskAlerts');
 const yearlyTrendsRoutes = require('./routes/yearlyTrends');
+const academicSettingsRoutes = require('./routes/academicSettings');
 const { supabase } = require('./config/database');
 const { SessionManager } = require('./middleware/sessionManager');
 const autoInterventionService = require('./services/autoInterventionService');
@@ -24,6 +30,94 @@ const autoInterventionService = require('./services/autoInterventionService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const sessionManager = new SessionManager();
+
+// Store cleanup interval reference for proper cleanup
+let sessionCleanupInterval = null;
+
+// Memory monitoring
+const monitorMemory = () => {
+  const usage = process.memoryUsage();
+  const mbUsage = {
+    rss: Math.round(usage.rss / 1024 / 1024),
+    heapTotal: Math.round(usage.heapTotal / 1024 / 1024),
+    heapUsed: Math.round(usage.heapUsed / 1024 / 1024),
+    external: Math.round(usage.external / 1024 / 1024)
+  };
+  
+  // Log memory usage every 5 minutes
+  logger.info(`Memory Usage: RSS=${mbUsage.rss}MB, Heap=${mbUsage.heapUsed}/${mbUsage.heapTotal}MB, External=${mbUsage.external}MB`);
+  
+  // Warn if memory usage is high
+  if (mbUsage.heapUsed > 500) {
+    logger.warn(`High memory usage detected: ${mbUsage.heapUsed}MB heap used`);
+  }
+};
+
+// Critical Error Handlers - PREVENTS CRASHES
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('🚨 Unhandled Promise Rejection:', {
+    reason: reason?.message || reason,
+    stack: reason?.stack,
+    promise: promise.toString()
+  });
+  
+  // Don't exit process - log and continue
+  console.error('❌ Unhandled Promise Rejection detected - Server continuing...');
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error('🚨 Uncaught Exception:', {
+    message: error.message,
+    stack: error.stack
+  });
+  
+  console.error('❌ Uncaught Exception detected - Attempting graceful shutdown...');
+  
+  // Attempt graceful shutdown
+  gracefulShutdown('uncaughtException');
+});
+
+// Graceful Shutdown Handler
+const gracefulShutdown = async (signal) => {
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+  
+  try {
+    // Stop accepting new connections
+    if (server) {
+      server.close(() => {
+        console.log('✅ HTTP server closed');
+      });
+    }
+    
+    // Clear intervals
+    if (sessionCleanupInterval) {
+      clearInterval(sessionCleanupInterval);
+      console.log('✅ Session cleanup interval cleared');
+    }
+    
+    // Close database connections
+    await closeConnections();
+    
+    // Close Redis connection
+    if (redis && redis.status === 'ready') {
+      await redis.quit();
+      console.log('✅ Redis connection closed');
+    }
+    
+    console.log('✅ Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+};
+
+// Graceful shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Start memory monitoring
+setInterval(monitorMemory, 5 * 60 * 1000); // Every 5 minutes
 
 // Security middleware
 app.use(helmet());
@@ -35,7 +129,13 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 300, // Increased from 100 to 300 requests per 15 minutes
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
 });
 app.use(limiter);
 
@@ -60,6 +160,7 @@ app.use('/api/counselor-management', counselorManagementRoutes);
 app.use('/api/ai-interventions', aiInterventionRoutes);
 app.use('/api/risk-alerts', riskAlertsRoutes);
 app.use('/api/yearly-trends', yearlyTrendsRoutes);
+app.use('/api/academic-settings', academicSettingsRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
@@ -101,22 +202,28 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Session cleanup job - runs every hour
-setInterval(async () => {
+// Session cleanup job - runs every hour (with proper cleanup reference)
+sessionCleanupInterval = setInterval(async () => {
   try {
     await sessionManager.cleanupExpiredSessions();
     console.log('🧹 Session cleanup completed');
   } catch (error) {
     console.error('❌ Session cleanup failed:', error);
+    logger.logError(error, 'Session cleanup job');
   }
 }, 60 * 60 * 1000); // 1 hour
 
-app.listen(PORT, async () => {
+// Store server reference for graceful shutdown
+let server;
+
+server = app.listen(PORT, async () => {
   console.log(`🚀 EUNOIA Backend Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:8080'}`);
   console.log(`🔐 Session-based authentication enabled`);
   console.log(`🧹 Session cleanup job scheduled every hour`);
+  console.log(`🛡️ Crash prevention handlers enabled`);
+  console.log(`📊 Memory monitoring active`);
   
   // Initialize auto intervention service for automatic AI intervention generation
   console.log(`🤖 AI Intervention Service: Automatic mode enabled`);
@@ -126,7 +233,11 @@ app.listen(PORT, async () => {
     console.log('✅ Auto intervention service initialized successfully');
   } catch (error) {
     console.error('❌ Failed to initialize auto intervention service:', error);
+    logger.logError(error, 'Auto intervention service initialization');
   }
+  
+  // Log initial memory usage
+  monitorMemory();
 });
 
 module.exports = app;

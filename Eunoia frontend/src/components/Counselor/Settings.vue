@@ -8,7 +8,7 @@
         </div>
         <div class="header-text">
           <h1>Settings</h1>
-          <p>Manage your account, system preferences, and application settings</p>
+          <p>Manage your account information and security preferences</p>
         </div>
       </div>
     </div>
@@ -21,31 +21,19 @@
              :class="{ active: activeTab === 'account' }"
              @click="setActiveTab('account')">
           <i class="fas fa-user"></i>
-          <span>Account Settings</span>
-        </div>
-        <div class="nav-item" 
-             :class="{ active: activeTab === 'system' }"
-             @click="setActiveTab('system')">
-          <i class="fas fa-cogs"></i>
-          <span>System Preferences</span>
-        </div>
-        <div class="nav-item" 
-             :class="{ active: activeTab === 'notifications' }"
-             @click="setActiveTab('notifications')">
-          <i class="fas fa-bell"></i>
-          <span>Notifications</span>
+          <span>Account Information</span>
         </div>
         <div class="nav-item" 
              :class="{ active: activeTab === 'security' }"
              @click="setActiveTab('security')">
           <i class="fas fa-shield-alt"></i>
-          <span>Security</span>
+          <span>Security Settings</span>
         </div>
         <div class="nav-item" 
-             :class="{ active: activeTab === 'data' }"
-             @click="setActiveTab('data')">
-          <i class="fas fa-database"></i>
-          <span>Data Management</span>
+             :class="{ active: activeTab === 'academic' }"
+             @click="setActiveTab('academic')">
+          <i class="fas fa-calendar-alt"></i>
+          <span>School Year/Semester</span>
         </div>
       </div>
 
@@ -95,160 +83,18 @@
               <textarea id="bio" v-model="accountSettings.bio" 
                         placeholder="Brief description about yourself" rows="3"></textarea>
             </div>
-          </div>
-        </div>
-
-        <!-- System Preferences -->
-        <div v-if="activeTab === 'system'" class="settings-panel" key="system">
-          <div class="panel-header">
-            <h2>System Preferences</h2>
-            <p>Configure system behavior and default settings</p>
-          </div>
-          
-          <div class="form-section">
-            <div class="preference-item">
-              <div class="preference-info">
-                <h3>Default Assessment Version</h3>
-                <p>Choose the default Ryff Scale version for new assessments</p>
-              </div>
-              <select v-model="systemSettings.defaultAssessmentVersion" class="preference-select">
-                <option value="42">42-item version</option>
-                <option value="54">54-item version</option>
-                <option value="84">84-item version</option>
-              </select>
-            </div>
             
-            <div class="preference-item">
-              <div class="preference-info">
-                <h3>Risk Threshold</h3>
-                <p>Set the score threshold for identifying at-risk students</p>
-              </div>
-              <div class="threshold-input">
-                <input type="number" v-model="systemSettings.riskThreshold" 
-                       min="1" max="30" class="threshold-number">
-                <span class="threshold-label">points or below</span>
-              </div>
-            </div>
-            
-            <div class="preference-item">
-              <div class="preference-info">
-                <h3>Auto-Save Frequency</h3>
-                <p>How often should the system automatically save data</p>
-              </div>
-              <select v-model="systemSettings.autoSaveFrequency" class="preference-select">
-                <option value="30">Every 30 seconds</option>
-                <option value="60">Every minute</option>
-                <option value="300">Every 5 minutes</option>
-                <option value="600">Every 10 minutes</option>
-              </select>
-            </div>
-            
-            <div class="preference-item">
-              <div class="preference-info">
-                <h3>Dashboard Theme</h3>
-                <p>Choose your preferred dashboard appearance</p>
-              </div>
-              <div class="theme-options">
-                <div class="theme-option" 
-                     :class="{ active: systemSettings.theme === 'light' }"
-                     @click="systemSettings.theme = 'light'">
-                  <div class="theme-preview light"></div>
-                  <span>Light</span>
-                </div>
-                <div class="theme-option" 
-                     :class="{ active: systemSettings.theme === 'dark' }"
-                     @click="systemSettings.theme = 'dark'">
-                  <div class="theme-preview dark"></div>
-                  <span>Dark</span>
-                </div>
-                <div class="theme-option" 
-                     :class="{ active: systemSettings.theme === 'auto' }"
-                     @click="systemSettings.theme = 'auto'">
-                  <div class="theme-preview auto"></div>
-                  <span>Auto</span>
-                </div>
-              </div>
+            <div class="form-actions">
+              <button class="btn-primary" type="button" @click="saveAccountSettings" :disabled="isLoading">
+                <i class="fas fa-spinner fa-spin" v-if="isLoading"></i>
+                <i class="fas fa-save" v-else></i>
+                {{ isLoading ? 'Saving...' : 'Save Changes' }}
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- Notifications -->
-        <div v-if="activeTab === 'notifications'" class="settings-panel" key="notifications">
-          <div class="panel-header">
-            <h2>Notification Settings</h2>
-            <p>Manage how and when you receive notifications</p>
-          </div>
-          
-          <div class="form-section">
-            <div class="notification-group">
-              <h3>Email Notifications</h3>
-              
-              <div class="notification-item">
-                <div class="notification-info">
-                  <h4>Assessment Completions</h4>
-                  <p>Get notified when students complete assessments</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="emailAssessments" 
-                         v-model="notificationSettings.email.assessmentCompletions">
-                  <label for="emailAssessments"></label>
-                </div>
-              </div>
-              
-              <div class="notification-item">
-                <div class="notification-info">
-                  <h4>High-Risk Alerts</h4>
-                  <p>Immediate alerts for students with concerning scores</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="emailRisk" 
-                         v-model="notificationSettings.email.riskAlerts">
-                  <label for="emailRisk"></label>
-                </div>
-              </div>
-              
-              <div class="notification-item">
-                <div class="notification-info">
-                  <h4>Weekly Reports</h4>
-                  <p>Summary of assessment activities and trends</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="emailReports" 
-                         v-model="notificationSettings.email.weeklyReports">
-                  <label for="emailReports"></label>
-                </div>
-              </div>
-            </div>
-            
-            <div class="notification-group">
-              <h3>In-App Notifications</h3>
-              
-              <div class="notification-item">
-                <div class="notification-info">
-                  <h4>Real-time Updates</h4>
-                  <p>Show notifications within the application</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="inAppUpdates" 
-                         v-model="notificationSettings.inApp.realTimeUpdates">
-                  <label for="inAppUpdates"></label>
-                </div>
-              </div>
-              
-              <div class="notification-item">
-                <div class="notification-info">
-                  <h4>Sound Alerts</h4>
-                  <p>Play sound for important notifications</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="soundAlerts" 
-                         v-model="notificationSettings.inApp.soundAlerts">
-                  <label for="soundAlerts"></label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <!-- Security -->
         <div v-if="activeTab === 'security'" class="settings-panel" key="security">
@@ -272,6 +118,7 @@
                   <input type="password" id="newPassword" 
                          v-model="securitySettings.newPassword" 
                          placeholder="Enter new password">
+                  <small class="password-hint">Password must be at least 8 characters long</small>
                 </div>
                 <div class="form-group">
                   <label for="confirmPassword">Confirm Password</label>
@@ -280,249 +127,469 @@
                          placeholder="Confirm new password">
                 </div>
               </div>
-            </div>
-            
-            <div class="security-section">
-              <h3>Session Management</h3>
-              
-              <div class="security-item">
-                <div class="security-info">
-                  <h4>Auto-logout</h4>
-                  <p>Automatically log out after period of inactivity</p>
-                </div>
-                <select v-model="securitySettings.autoLogoutTime" class="security-select">
-                  <option value="0">Never</option>
-                  <option value="30">30 minutes</option>
-                  <option value="60">1 hour</option>
-                  <option value="120">2 hours</option>
-                  <option value="480">8 hours</option>
-                </select>
-              </div>
-              
-              <div class="security-item">
-                <div class="security-info">
-                  <h4>Two-Factor Authentication</h4>
-                  <p>Add an extra layer of security to your account</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="twoFactor" 
-                         v-model="securitySettings.twoFactorAuth">
-                  <label for="twoFactor"></label>
-                </div>
-              </div>
+              <button class="btn-change-password" @click="changePassword" :disabled="isChangingPassword">
+                <i class="fas fa-spinner fa-spin" v-if="isChangingPassword"></i>
+                <i class="fas fa-key" v-else></i>
+                {{ isChangingPassword ? 'Changing Password...' : 'Change Password' }}
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- Data Management -->
-        <div v-if="activeTab === 'data'" class="settings-panel" key="data">
+        <!-- Academic Settings -->
+        <div v-if="activeTab === 'academic'" class="settings-panel" key="academic">
           <div class="panel-header">
-            <h2>Data Management</h2>
-            <p>Manage data retention, exports, and privacy settings</p>
+            <h2>School Year/Semester Date Range</h2>
+            <p>Configure academic years and semester date ranges for your institution</p>
           </div>
           
           <div class="form-section">
-            <div class="data-section">
-              <h3>Data Retention</h3>
-              
-              <div class="data-item">
-                <div class="data-info">
-                  <h4>Assessment Data Retention</h4>
-                  <p>How long to keep completed assessment data</p>
-                </div>
-                <select v-model="dataSettings.retentionPeriod" class="data-select">
-                  <option value="1">1 year</option>
-                  <option value="2">2 years</option>
-                  <option value="5">5 years</option>
-                  <option value="10">10 years</option>
-                  <option value="permanent">Permanent</option>
-                </select>
-              </div>
-              
-              <div class="data-item">
-                <div class="data-info">
-                  <h4>Auto-Archive</h4>
-                  <p>Automatically archive old assessment data</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="autoArchive" 
-                         v-model="dataSettings.autoArchive">
-                  <label for="autoArchive"></label>
+            <!-- School Year Section -->
+            <div class="academic-section">
+              <h3>School Year Management</h3>
+              <div class="form-group">
+                <label for="schoolYear">Select School Year</label>
+                <div class="school-year-container">
+                  <select id="schoolYear" v-model="academicSettings.selectedSchoolYear" class="school-year-select">
+                    <option value="">Select School Year</option>
+                    <option v-for="year in academicSettings.schoolYears" :key="year" :value="year">
+                      {{ year }}
+                    </option>
+                  </select>
+                  <button class="add-year-btn" @click="showAddYearModal = true" type="button">
+                    <i class="fas fa-plus"></i>
+                    Add School Year
+                  </button>
                 </div>
               </div>
             </div>
-            
-            <div class="data-section">
-              <h3>Export & Backup</h3>
-              
-              <div class="export-options">
-                <button class="export-btn" @click="exportData('assessments')">
-                  <i class="fas fa-download"></i>
-                  Export Assessment Data
-                </button>
-                <button class="export-btn" @click="exportData('reports')">
-                  <i class="fas fa-file-export"></i>
-                  Export Reports
-                </button>
-                <button class="export-btn" @click="exportData('all')">
-                  <i class="fas fa-database"></i>
-                  Full Data Export
-                </button>
+
+            <!-- Semester Section -->
+            <div class="academic-section">
+              <h3>Semester Configuration</h3>
+              <div class="semester-list">
+                <div v-for="(semester, index) in academicSettings.semesters" :key="index" class="semester-item">
+                  <div class="semester-header">
+                    <h4>{{ semester.name }}</h4>
+                    <button class="remove-semester-btn" @click="removeSemester(index)" type="button">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                  <div class="semester-dates">
+                    <div class="form-group">
+                      <label :for="'startDate' + index">Start Date</label>
+                      <input type="date" :id="'startDate' + index" v-model="semester.startDate" class="date-input">
+                    </div>
+                    <div class="form-group">
+                      <label :for="'endDate' + index">End Date</label>
+                      <input type="date" :id="'endDate' + index" v-model="semester.endDate" class="date-input">
+                    </div>
+                  </div>
+                  <div class="semester-summary" v-if="semester.startDate && semester.endDate">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Duration: {{ calculateDuration(semester.startDate, semester.endDate) }} days</span>
+                  </div>
+                </div>
               </div>
+              
+              <button class="add-semester-btn" @click="addSemester" type="button">
+                <i class="fas fa-plus"></i>
+                Add New Semester
+              </button>
             </div>
             
-            <div class="data-section">
-              <h3>Privacy Settings</h3>
-              
-              <div class="data-item">
-                <div class="data-info">
-                  <h4>Data Anonymization</h4>
-                  <p>Remove personal identifiers from exported data</p>
-                </div>
-                <div class="toggle-switch">
-                  <input type="checkbox" id="anonymize" 
-                         v-model="dataSettings.anonymizeExports">
-                  <label for="anonymize"></label>
-                </div>
-              </div>
+            <div class="form-actions">
+              <button class="btn-primary" type="button" @click="saveAcademicSettings" :disabled="isLoading">
+                <i class="fas fa-spinner fa-spin" v-if="isLoading"></i>
+                <i class="fas fa-save" v-else></i>
+                {{ isLoading ? 'Saving...' : 'Save Academic Settings' }}
+              </button>
             </div>
           </div>
         </div>
+
+
       </div>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="settings-actions">
-      <button class="btn-secondary" @click="resetToDefaults">
-        <i class="fas fa-undo"></i>
-        Reset to Defaults
-      </button>
-      <button class="btn-primary" @click="saveSettings">
-        <i class="fas fa-save"></i>
-        Save Changes
-      </button>
-    </div>
+
 
     <!-- Success Message -->
     <div v-if="showSuccessMessage" class="success-message">
       <i class="fas fa-check-circle"></i>
       Settings saved successfully!
     </div>
+    
+    <!-- Error Message -->
+    <div v-if="showErrorMessage" class="error-message">
+      <i class="fas fa-exclamation-circle"></i>
+      {{ errorMessage }}
+    </div>
+
+    <!-- Add School Year Modal -->
+    <div v-if="showAddYearModal" class="modal-overlay" @click="closeAddYearModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>Add New School Year</h3>
+          <button class="modal-close" @click="closeAddYearModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="newSchoolYear">School Year</label>
+            <input type="text" id="newSchoolYear" v-model="newSchoolYear" 
+                   placeholder="e.g., 2024-2025" class="modal-input">
+            <small class="input-hint">Format: YYYY-YYYY (e.g., 2024-2025)</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="closeAddYearModal">Cancel</button>
+          <button class="btn-primary" @click="addSchoolYear" :disabled="!newSchoolYear.trim()">
+            <i class="fas fa-plus"></i>
+            Add School Year
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
   name: 'Settings',
   data() {
     return {
       activeTab: 'account',
       showSuccessMessage: false,
+      showErrorMessage: false,
+      errorMessage: '',
+      isLoading: false,
+      isChangingPassword: false,
       
       accountSettings: {
-        fullName: 'Dr. Sarah Johnson',
-        email: 'sarah.johnson@university.edu',
-        college: 'guidance',
-        position: 'Senior Counselor',
-        bio: 'Experienced counselor specializing in student mental health and well-being assessment.'
-      },
-      
-      systemSettings: {
-        defaultAssessmentVersion: '42',
-        riskThreshold: 17,
-        autoSaveFrequency: 60,
-        theme: 'light'
-      },
-      
-      notificationSettings: {
-        email: {
-          assessmentCompletions: true,
-          riskAlerts: true,
-          weeklyReports: false
-        },
-        inApp: {
-          realTimeUpdates: true,
-          soundAlerts: false
-        }
+        fullName: '',
+        email: '',
+        college: '',
+        position: '',
+        bio: ''
       },
       
       securitySettings: {
         currentPassword: '',
         newPassword: '',
-        confirmPassword: '',
-        autoLogoutTime: 60,
-        twoFactorAuth: false
+        confirmPassword: ''
       },
       
-      dataSettings: {
-        retentionPeriod: '5',
-        autoArchive: true,
-        anonymizeExports: true
-      }
+      academicSettings: {
+        selectedSchoolYear: '',
+        schoolYears: ['2023-2024', '2024-2025', '2025-2026'],
+        semesters: [
+          {
+            name: '1st Semester',
+            startDate: '',
+            endDate: ''
+          },
+          {
+            name: '2nd Semester', 
+            startDate: '',
+            endDate: ''
+          }
+        ]
+      },
+      
+      showAddYearModal: false,
+      newSchoolYear: '',
+      semesterCounter: 2
     }
+  },
+  
+  async mounted() {
+    await this.loadCounselorProfile();
+    await this.loadAcademicSettings();
   },
   methods: {
     setActiveTab(tab) {
       this.activeTab = tab;
     },
     
-    saveSettings() {
-      // Simulate saving settings
+    async loadCounselorProfile() {
+      try {
+        const response = await axios.get('/api/auth/counselor/profile', {
+          withCredentials: true
+        });
+        
+        if (response.data.success) {
+          const profile = response.data.counselor;
+          this.accountSettings = {
+            fullName: profile.name || '',
+            email: profile.email || '',
+            college: profile.college || '',
+            position: profile.role || '',
+            bio: profile.bio || ''
+          };
+        }
+      } catch (error) {
+        console.error('Error loading counselor profile:', error);
+        this.showError('Failed to load profile information');
+      }
+    },
+    
+    async loadAcademicSettings() {
+       try {
+         const response = await axios.get('/api/academic-settings', {
+           withCredentials: true
+         });
+         
+         if (response.data.success && response.data.data) {
+           // Load existing academic settings from the structured response
+           const settings = response.data.data;
+           
+           this.academicSettings.schoolYears = settings.schoolYears || [];
+           this.academicSettings.selectedSchoolYear = settings.selectedSchoolYear || '';
+           this.academicSettings.semesters = settings.semesters || [];
+         } else {
+           // No existing settings, keep defaults
+           console.log('No existing academic settings found, using defaults');
+         }
+       } catch (error) {
+         console.error('Error loading academic settings:', error);
+         this.showError('Failed to load academic settings');
+       }
+     },
+    
+    async saveAccountSettings() {
+      if (this.isLoading) return;
+      
+      this.isLoading = true;
+      this.showErrorMessage = false;
+      
+      try {
+        const response = await axios.put('/api/auth/counselor/profile', {
+          name: this.accountSettings.fullName,
+          email: this.accountSettings.email,
+          college: this.accountSettings.college,
+          role: this.accountSettings.position,
+          bio: this.accountSettings.bio
+        }, {
+          withCredentials: true
+        });
+        
+        if (response.data.success) {
+          this.showSuccess('Account information updated successfully!');
+        } else {
+          this.showError(response.data.message || 'Failed to update account information');
+        }
+      } catch (error) {
+        console.error('Error updating account:', error);
+        this.showError('Failed to update account information');
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+    async changePassword() {
+      if (this.isChangingPassword) return;
+      
+      // Validate passwords
+      if (!this.securitySettings.currentPassword) {
+        this.showError('Current password is required');
+        return;
+      }
+      
+      if (!this.securitySettings.newPassword) {
+        this.showError('New password is required');
+        return;
+      }
+      
+      if (this.securitySettings.newPassword !== this.securitySettings.confirmPassword) {
+        this.showError('New passwords do not match');
+        return;
+      }
+      
+      if (this.securitySettings.newPassword.length < 8) {
+        this.showError('New password must be at least 8 characters long');
+        return;
+      }
+      
+      this.isChangingPassword = true;
+      this.showErrorMessage = false;
+      
+      try {
+        const response = await axios.post('/api/auth/counselor/change-password', {
+          currentPassword: this.securitySettings.currentPassword,
+          newPassword: this.securitySettings.newPassword
+        }, {
+          withCredentials: true
+        });
+        
+        if (response.data.success) {
+          this.showSuccess('Password changed successfully!');
+          // Clear password fields
+          this.securitySettings.currentPassword = '';
+          this.securitySettings.newPassword = '';
+          this.securitySettings.confirmPassword = '';
+        } else {
+          this.showError(response.data.message || 'Failed to change password');
+        }
+      } catch (error) {
+        console.error('Error changing password:', error);
+        if (error.response && error.response.data && error.response.data.message) {
+          this.showError(error.response.data.message);
+        } else {
+          this.showError('Failed to change password');
+        }
+      } finally {
+        this.isChangingPassword = false;
+      }
+    },
+    
+    showSuccess(message) {
       this.showSuccessMessage = true;
       setTimeout(() => {
         this.showSuccessMessage = false;
       }, 3000);
-      
-      // Here you would typically send the settings to your backend
-      // Save settings configuration
-      const settingsData = {
-        account: this.accountSettings,
-        system: this.systemSettings,
-        notifications: this.notificationSettings,
-        security: this.securitySettings,
-        data: this.dataSettings
-      };
-      // TODO: Implement API call to save settings
-      // await this.saveSettingsToBackend(settingsData);
     },
     
-    resetToDefaults() {
-      if (confirm('Are you sure you want to reset all settings to their default values?')) {
-        // Reset all settings to defaults
-        this.systemSettings = {
-          defaultAssessmentVersion: '42',
-          riskThreshold: 17,
-          autoSaveFrequency: 60,
-          theme: 'light'
-        };
-        
-        this.notificationSettings = {
-          email: {
-            assessmentCompletions: true,
-            riskAlerts: true,
-            weeklyReports: false
-          },
-          inApp: {
-            realTimeUpdates: true,
-            soundAlerts: false
-          }
-        };
-        
-        this.securitySettings.autoLogoutTime = 60;
-        this.securitySettings.twoFactorAuth = false;
-        
-        this.dataSettings = {
-          retentionPeriod: '5',
-          autoArchive: true,
-          anonymizeExports: true
-        };
+    showError(message) {
+      this.errorMessage = message;
+      this.showErrorMessage = true;
+      setTimeout(() => {
+        this.showErrorMessage = false;
+      }, 5000);
+    },
+    
+    // Academic Settings Methods
+    addSemester() {
+      this.semesterCounter++;
+      this.academicSettings.semesters.push({
+        name: `${this.getOrdinalNumber(this.semesterCounter)} Semester`,
+        startDate: '',
+        endDate: ''
+      });
+    },
+    
+    removeSemester(index) {
+      if (this.academicSettings.semesters.length > 1) {
+        this.academicSettings.semesters.splice(index, 1);
+      } else {
+        this.showError('At least one semester must be configured');
       }
     },
     
-    exportData(type) {
-      // Simulate data export
-      alert(`Exporting ${type} data... This feature will be implemented with backend integration.`);
+    addSchoolYear() {
+      if (this.newSchoolYear.trim()) {
+        // Validate format (YYYY-YYYY)
+        const yearPattern = /^\d{4}-\d{4}$/;
+        if (!yearPattern.test(this.newSchoolYear.trim())) {
+          this.showError('Please use the format YYYY-YYYY (e.g., 2024-2025)');
+          return;
+        }
+        
+        // Check if year already exists
+        if (this.academicSettings.schoolYears.includes(this.newSchoolYear.trim())) {
+          this.showError('This school year already exists');
+          return;
+        }
+        
+        this.academicSettings.schoolYears.push(this.newSchoolYear.trim());
+        this.academicSettings.schoolYears.sort();
+        this.academicSettings.selectedSchoolYear = this.newSchoolYear.trim();
+        this.closeAddYearModal();
+        this.showSuccess('School year added successfully!');
+      }
+    },
+    
+    closeAddYearModal() {
+      this.showAddYearModal = false;
+      this.newSchoolYear = '';
+    },
+    
+    calculateDuration(startDate, endDate) {
+      if (!startDate || !endDate) return 0;
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end - start);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    },
+    
+    getOrdinalNumber(num) {
+      const ordinals = ['', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+      return ordinals[num] || `${num}th`;
+    },
+    
+    async saveAcademicSettings() {
+      if (this.isLoading) return;
+      
+      // Validate that a school year is selected
+      if (!this.academicSettings.selectedSchoolYear) {
+        this.showError('Please select a school year');
+        return;
+      }
+      
+      // Validate semester dates
+      for (let i = 0; i < this.academicSettings.semesters.length; i++) {
+        const semester = this.academicSettings.semesters[i];
+        if (!semester.startDate || !semester.endDate) {
+          this.showError(`Please set both start and end dates for ${semester.name}`);
+          return;
+        }
+        
+        if (new Date(semester.startDate) >= new Date(semester.endDate)) {
+          this.showError(`End date must be after start date for ${semester.name}`);
+          return;
+        }
+      }
+      
+      // Check for overlapping semesters
+      for (let i = 0; i < this.academicSettings.semesters.length - 1; i++) {
+        const current = this.academicSettings.semesters[i];
+        const next = this.academicSettings.semesters[i + 1];
+        
+        if (new Date(current.endDate) >= new Date(next.startDate)) {
+          this.showError(`${current.name} and ${next.name} have overlapping dates`);
+          return;
+        }
+      }
+      
+      this.isLoading = true;
+      this.showErrorMessage = false;
+      
+      try {
+        // Prepare the payload for the API
+        const payload = {
+          schoolYear: this.academicSettings.selectedSchoolYear,
+          semesters: this.academicSettings.semesters.map(semester => ({
+            name: semester.name,
+            startDate: semester.startDate,
+            endDate: semester.endDate
+          }))
+        };
+        
+        const response = await axios.post('/api/academic-settings', payload, {
+           withCredentials: true
+         });
+        
+        if (response.data.success) {
+          this.showSuccess('Academic settings saved successfully!');
+        } else {
+          this.showError(response.data.message || 'Failed to save academic settings');
+        }
+      } catch (error) {
+        console.error('Error saving academic settings:', error);
+        if (error.response && error.response.data && error.response.data.message) {
+          this.showError(error.response.data.message);
+        } else {
+          this.showError('Failed to save academic settings');
+        }
+      } finally {
+        this.isLoading = false;
+      }
     }
+
   }
 }
 </script>
@@ -819,6 +886,94 @@ export default {
   transform: translateY(-1px);
 }
 
+.form-group input.error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.btn-change-password {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.3);
+}
+
+.btn-change-password:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 179, 176, 0.4);
+}
+
+.btn-change-password:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.password-hint {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 5px;
+  font-style: italic;
+}
+
+.security-section {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--primary);
+  margin-bottom: 20px;
+}
+
+.security-section h3 {
+  color: var(--dark);
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.error-message {
+  background: rgba(244, 67, 54, 0.1);
+  color: var(--danger);
+  padding: 12px 15px;
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--danger);
+  margin: 15px 0;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.success-message {
+  background: rgba(76, 175, 80, 0.1);
+  color: var(--success);
+  padding: 12px 15px;
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--success);
+  margin: 15px 0;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .preference-item,
 .notification-item,
 .security-item,
@@ -1041,64 +1196,51 @@ export default {
   transform: translateY(0);
 }
 
-.settings-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-  padding: 30px;
-  background: white;
-  border-top: 1px solid #e0e0e0;
-  margin-top: 30px;
-}
 
-.btn-primary,
-.btn-secondary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border: none;
-  border-radius: var(--border-radius);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 179, 176, 0.3);
-}
-
-.btn-secondary {
-  background: #f8f9fa;
-  color: var(--text);
-  border: 2px solid #e0e0e0;
-}
-
-.btn-secondary:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
-  transform: translateY(-1px);
-}
 
 .success-message {
   position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #4CAF50;
+  color: white;
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  font-weight: 600;
+  font-size: 16px;
+  z-index: 10000;
+  min-width: 300px;
+  text-align: center;
+  border: 3px solid #45a049;
+  animation: fadeInScale 0.4s ease-out;
+}
+
+.success-message::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1;
+}
+
+.error-message {
+  position: fixed;
   top: 20px;
   right: 20px;
-  background: var(--success);
+  background: var(--danger);
   color: white;
   padding: 15px 20px;
   border-radius: var(--border-radius);
-  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.3);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1107,14 +1249,14 @@ export default {
   animation: slideInRight 0.4s ease-out;
 }
 
-@keyframes slideInRight {
+@keyframes fadeInScale {
   from {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translate(-50%, -50%) scale(0.9);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
@@ -1143,6 +1285,314 @@ export default {
     border-left: none;
     border-bottom-color: var(--primary);
   }
+}
+
+/* Academic Settings Styles */
+.academic-section {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--primary);
+  margin-bottom: 25px;
+}
+
+.academic-section h3 {
+  color: var(--dark);
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.school-year-container {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.school-year-select {
+  flex: 1;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  transition: var(--transition);
+  background: white;
+}
+
+.school-year-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.1);
+}
+
+.add-year-btn {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.add-year-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 179, 176, 0.3);
+}
+
+.semester-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.semester-item {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: var(--border-radius);
+  padding: 20px;
+  transition: var(--transition);
+}
+
+.semester-item:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.1);
+}
+
+.semester-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.semester-header h4 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.remove-semester-btn {
+  background: var(--danger);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-semester-btn:hover {
+  background: #d32f2f;
+  transform: translateY(-1px);
+}
+
+.semester-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.date-input {
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  transition: var(--transition);
+  background: white;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.1);
+}
+
+.semester-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  background: rgba(0, 179, 176, 0.05);
+  border-radius: var(--border-radius);
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.add-semester-btn {
+  background: transparent;
+  color: var(--primary);
+  border: 2px dashed var(--primary);
+  padding: 15px 20px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.add-semester-btn:hover {
+  background: rgba(0, 179, 176, 0.05);
+  transform: translateY(-1px);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 500px;
+  animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: var(--transition);
+}
+
+.modal-close:hover {
+  background: #f0f0f0;
+  color: var(--dark);
+}
+
+.modal-body {
+  padding: 25px;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  transition: var(--transition);
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 179, 176, 0.1);
+}
+
+.input-hint {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 5px;
+  font-style: italic;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  padding: 20px 25px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 2px solid #e0e0e0;
+  padding: 10px 20px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-secondary:hover {
+  background: #f0f0f0;
+  border-color: var(--text-light);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 179, 176, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 @media (max-width: 768px) {
@@ -1182,6 +1632,30 @@ export default {
   }
   
   .export-btn {
+    justify-content: center;
+  }
+  
+  .school-year-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .semester-dates {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+  }
+  
+  .btn-secondary,
+  .btn-primary {
+    width: 100%;
     justify-content: center;
   }
 }

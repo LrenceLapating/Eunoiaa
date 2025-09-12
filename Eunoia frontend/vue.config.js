@@ -129,6 +129,7 @@ module.exports = defineConfig({
     https: false,
     open: true,
     compress: true,
+    historyApiFallback: true,
     client: {
       overlay: {
         warnings: false,
