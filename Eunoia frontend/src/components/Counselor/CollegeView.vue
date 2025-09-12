@@ -64,11 +64,13 @@ import {
   getCollegeDimensionColor,
   getCollegeDimensionRiskLevel
 } from '../Shared/RyffScoringUtils';
+import apiConfig from '@/config/api';
 
 export default {
   name: 'CollegeView',
   data() {
     return {
+      $apiConfig: apiConfig,
       error: null,
       collegesFromBackend: [], // Store colleges fetched from backend
       collegeScores: [], // Store computed college scores from backend
@@ -166,7 +168,7 @@ export default {
   methods: {
     async loadCollegesFromBackend() {
       try {
-        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        const response = await fetch(this.$apiConfig.endpoint('accounts/colleges'));
         if (response.ok) {
           const data = await response.json();
           this.collegesFromBackend = data.colleges.map(college => ({
@@ -194,7 +196,7 @@ export default {
         // 2. College scores should be computed when assessments are submitted, not on-demand
         // 3. The getCollegeScores function can handle dynamic computation if needed
         console.log(`📥 Fetching computed scores for ${assessmentType}...`);
-        const response = await fetch(`http://localhost:3000/api/accounts/colleges/scores?assessmentType=${assessmentType}`);
+        const response = await fetch(this.$apiConfig.endpoint(`accounts/colleges/scores?assessmentType=${assessmentType}`));
         if (response.ok) {
           const data = await response.json();
           console.log(`✅ Received ${data.colleges?.length || 0} colleges for ${assessmentType}:`, data.colleges?.map(c => c.name));

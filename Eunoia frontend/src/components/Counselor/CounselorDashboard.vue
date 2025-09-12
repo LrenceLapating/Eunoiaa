@@ -659,7 +659,7 @@ export default {
     async initializeStudentData() {
       try {
         // Load students from backend API
-        const response = await fetch('http://localhost:3000/api/accounts/students?page=1&limit=100');
+        const response = await fetch(this.$apiConfig.endpoint('accounts/students?page=1&limit=100'));
         if (response.ok) {
           const data = await response.json();
           this.students = data.students.map(student => ({
@@ -694,7 +694,7 @@ export default {
     // Load college overview data from backend
     async loadCollegeOverviewData() {
       try {
-        const response = await fetch('http://localhost:3000/api/accounts/colleges');
+        const response = await fetch(this.$apiConfig.endpoint('accounts/colleges'));
         if (response.ok) {
           const data = await response.json();
           this.collegeOverviewData = data.colleges.map(college => ({

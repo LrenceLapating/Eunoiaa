@@ -205,6 +205,8 @@
 </template>
 
 <script>
+import apiConfig from '@/config/api';
+
 export default {
   name: 'CollegeFilter',
   props: {
@@ -227,6 +229,7 @@ export default {
   },
   data() {
     return {
+      $apiConfig: apiConfig,
       firstYearOpen: true,
       secondYearOpen: false,
       thirdYearOpen: false,
@@ -306,7 +309,7 @@ export default {
       this.loading = true;
       try {
         // Fetch sections and year levels for the specific college
-        const response = await fetch(`http://localhost:3000/api/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
+        const response = await fetch(this.$apiConfig.endpoint(`accounts/colleges/${encodeURIComponent(collegeName)}/sections`));
         if (!response.ok) {
           throw new Error('Failed to fetch college sections');
         }

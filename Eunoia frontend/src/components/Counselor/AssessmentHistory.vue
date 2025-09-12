@@ -133,10 +133,13 @@
 </template>
 
 <script>
+import apiConfig from '@/config/api';
+
 export default {
   name: 'AssessmentHistory',
   data() {
     return {
+      $apiConfig: apiConfig,
       searchQuery: '',
       showDetailsModal: false,
       selectedAssessment: {},
@@ -187,7 +190,7 @@ export default {
     // Load assessment data from backend
     async loadAssessments() {
       try {
-        const response = await fetch('http://localhost:3000/api/bulk-assessments/history', {
+        const response = await fetch(this.$apiConfig.endpoint('bulk-assessments/history'), {
           method: 'GET',
           credentials: 'include' // Include session cookies
         });
