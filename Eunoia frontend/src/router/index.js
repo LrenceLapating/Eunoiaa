@@ -150,6 +150,29 @@ const routes = [
         meta: { view: 'collegeFilter' }
       }
     ]
+  },
+  // Catch-all route for 404 errors - must be last
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: {
+      template: `
+        <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+          <h1 style="color: #e74c3c; font-size: 48px; margin-bottom: 20px;">404</h1>
+          <h2 style="color: #2c3e50; margin-bottom: 20px;">Page Not Found</h2>
+          <p style="color: #7f8c8d; margin-bottom: 30px;">The page you're looking for doesn't exist.</p>
+          <button @click="$router.push('/')" style="
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+          ">Go Home</button>
+        </div>
+      `
+    }
   }
 ];
 

@@ -69,12 +69,11 @@ export default {
   name: 'CollegeView',
   data() {
     return {
-      // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000',
       error: null,
       collegesFromBackend: [], // Store colleges fetched from backend
       collegeScores: [], // Store computed college scores from backend
-      assessmentTypeFilter: '42-item' // Default to 42-item
+      assessmentTypeFilter: '42-item', // Default to 42-item
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
     };
   },
   async mounted() {

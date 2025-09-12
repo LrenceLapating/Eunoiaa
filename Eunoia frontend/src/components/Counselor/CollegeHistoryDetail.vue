@@ -182,8 +182,6 @@ export default {
   },
   data() {
     return {
-      // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000',
       selectedYear: '',
       selectedSection: '',
       availableYears: [],
@@ -191,7 +189,8 @@ export default {
       loadingFilters: false,
       historyData: null,
       loading: true,
-      error: null
+      error: null,
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
     };
   },
   watch: {
@@ -339,7 +338,7 @@ export default {
           section
         });
         
-        const url = `${this.apiBaseUrl}/api/accounts/colleges/history?${params.toString()}`;
+        const url = `${this.apiBaseUrl}/accounts/colleges/history?${params.toString()}`;
         const response = await fetch(url, {
           method: 'GET',
           credentials: 'include',

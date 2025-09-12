@@ -858,7 +858,7 @@ export default {
         }
         
         // Request historical data from the new history endpoint
-        const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/history?${params.toString()}`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/history?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -948,7 +948,7 @@ export default {
         }
         
         // Request all results by setting a high limit
-        const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/results?${params.toString()}`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/results?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -2126,9 +2126,7 @@ export default {
   user-select: none;
 }
 
-.tab-option.active {
-  /* Remove the border-bottom and padding-bottom */
-}
+
 
 .radio-circle {
   width: 18px;

@@ -620,7 +620,7 @@ export default {
     // Load colleges data from backend
     async loadCurrentAcademicPeriod() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/academic-settings/current`);
+        const response = await fetch(`${this.apiBaseUrl}/api/academic-settings/current`);
         
         if (response.ok) {
           const data = await response.json();
@@ -650,7 +650,7 @@ export default {
     },
     async loadCollegesFromBackend() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/accounts/colleges`);
+        const response = await fetch(`${this.apiBaseUrl}/api/accounts/colleges`);
         if (response.ok) {
           const data = await response.json();
           this.colleges = data.colleges.map(college => ({
@@ -796,7 +796,7 @@ export default {
         console.log('Payload with target data:', payload); // Debug log
 
         // Call the backend API
-        const response = await fetch(`${this.apiBaseUrl}/bulk-assessments/create`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/bulk-assessments/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -982,7 +982,7 @@ export default {
     // Load real college data from backend
     async loadCollegeRealData(collegeName) {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
+        const response = await fetch(`${this.apiBaseUrl}/api/accounts/colleges/${encodeURIComponent(collegeName)}/sections`);
         if (response.ok) {
           const data = await response.json();
           

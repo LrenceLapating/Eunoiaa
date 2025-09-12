@@ -248,8 +248,6 @@ export default {
   },
   data() {
     return {
-      // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
       showHistoryPanel: false,
       selectedHistoryData: null,
       selectedAssessmentName: '',
@@ -271,7 +269,8 @@ export default {
       },
       loadingRiskDistribution: false,
       assessmentHistory: [],
-      loadingHistory: false
+      loadingHistory: false,
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
     };
   },
   watch: {
@@ -960,7 +959,7 @@ export default {
            section: this.selectedSection
          });
          
-         const response = await fetch(`${this.apiBaseUrl}/accounts/colleges/scores?${params.toString()}`, {
+         const response = await fetch(`${this.apiBaseUrl}/api/accounts/colleges/scores?${params.toString()}`, {
            method: 'GET',
            credentials: 'include',
            headers: {
@@ -1218,7 +1217,7 @@ export default {
             section: this.selectedSection
           });
           
-          const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/risk-distribution?${params.toString()}`, {
+          const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/risk-distribution?${params.toString()}`, {
             method: 'GET',
             credentials: 'include',
             headers: {

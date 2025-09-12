@@ -273,8 +273,7 @@ export default {
   },
   data() {
     return {
-      // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000',
       selectedReportType: '',
       studentSearchQuery: '',
       filteredStudents: [],
@@ -420,7 +419,7 @@ export default {
       try {
         console.log(`Fetching assessment history for student ID: ${studentId}`);
         
-        const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/student/${studentId}/history`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/student/${studentId}/history`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -585,7 +584,7 @@ export default {
         });
         
         // Fetch student assessment data
-        const response = await fetch(`${this.apiBaseUrl}/counselor-assessments/student/${this.selectedStudent.id}/history`, {
+        const response = await fetch(`${this.apiBaseUrl}/api/counselor-assessments/student/${this.selectedStudent.id}/history`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -989,7 +988,7 @@ export default {
     
     async loadCollegesFromBackend() {
       try {
-        const response = await fetch(`${this.apiBaseUrl}/accounts/colleges`);
+        const response = await fetch(`${this.apiBaseUrl}/api/accounts/colleges`);
         if (response.ok) {
           const data = await response.json();
           this.collegesFromBackend = data.colleges.map(college => ({

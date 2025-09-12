@@ -138,7 +138,7 @@ export default {
   data() {
     return {
       // API configuration - uses environment variable for production
-      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000',
+      apiBaseUrl: process.env.VUE_APP_API_URL || 'http://localhost:3000/api',
       searchQuery: '',
       showDetailsModal: false,
       selectedAssessment: {},
