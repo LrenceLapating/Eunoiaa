@@ -74,7 +74,7 @@ router.post('/student/login', async (req, res) => {
     res.cookie('sessionToken', sessionData.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
 
@@ -218,7 +218,7 @@ router.post('/counselor/login', async (req, res) => {
     res.cookie('sessionToken', sessionData.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
 
@@ -403,7 +403,11 @@ router.post('/logout', async (req, res) => {
     }
 
     // Clear session cookie
-    res.clearCookie('sessionToken');
+    res.clearCookie('sessionToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    });
     
     res.json({ message: 'Logout successful' });
   } catch (error) {
