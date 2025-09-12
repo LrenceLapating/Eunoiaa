@@ -273,6 +273,7 @@
 
 <script>
 import authService from '@/services/authService'
+import apiConfig from '@/config/api'
 import YearlyTrendAnalysis from './YearlyTrendAnalysis.vue'
 import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
@@ -303,6 +304,8 @@ export default {
   },
   data() {
     return {
+      // API configuration for making requests
+      $apiConfig: apiConfig,
       showSubmenu: null,
       selectedCollege: 'all',
       showModal: false,
@@ -542,7 +545,7 @@ export default {
     async loadRiskAlertsData() {
       this.riskAlertsLoading = true;
       try {
-        const response = await fetch('http://localhost:3000/api/risk-alerts', {
+        const response = await fetch(this.$apiConfig.endpoint('risk-alerts'), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
