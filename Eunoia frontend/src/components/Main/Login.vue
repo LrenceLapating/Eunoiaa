@@ -177,7 +177,7 @@ export default {
       }
     },
     goToLanding() {
-      this.$emit('switch-to-landing');
+      this.$router.push('/');
     }
   }
 }
