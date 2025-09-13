@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LandingPage from '../components/Main/LandingPage.vue'
+import LandingPageDesktop from '../components/Main/LandingPageDesktop.vue'
+import LandingPageMobile from '../components/Main/LandingPageMobile.vue'
 import Login from '../components/Main/Login.vue'
+import deviceDetection from '../utils/deviceDetection.js'
 import StudentDashboard from '../components/Student/StudentDashboard.vue'
 import CounselorDashboard from '../components/Counselor/CounselorDashboard.vue'
 
@@ -26,7 +28,24 @@ const routes = [
   {
     path: '/',
     name: 'Landing',
-    component: LandingPage
+    component: () => {
+      // Detect device type and return appropriate component
+      if (deviceDetection.isMobile()) {
+        return LandingPageMobile;
+      } else {
+        return LandingPageDesktop;
+      }
+    }
+  },
+  {
+    path: '/desktop',
+    name: 'LandingDesktop',
+    component: LandingPageDesktop
+  },
+  {
+    path: '/mobile',
+    name: 'LandingMobile',
+    component: LandingPageMobile
   },
   {
     path: '/login',
