@@ -7,7 +7,16 @@
                 <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="logo-svg">
                 <h1>EUNOIA</h1>
             </div>
-            <nav>
+            
+            <!-- Mobile Menu Toggle -->
+            <button class="mobile-menu-toggle" @click="toggleMobileMenu" :class="{ active: mobileMenuOpen }">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <!-- Desktop Navigation -->
+            <nav class="desktop-nav">
                 <ul>
                     <li><a href="#features">Features</a></li>
                     <li><a href="#how-it-works">How It Works</a></li>
@@ -16,8 +25,24 @@
                     <li><a href="#contact">Contact</a></li>
                 </ul>
             </nav>
-            <a @click="navigateToLogin" class="cta-button">Login</a>
+            
+            <!-- Mobile Navigation -->
+            <nav class="mobile-nav" :class="{ active: mobileMenuOpen }">
+                <ul>
+                    <li><a href="#features" @click="scrollToSection('features')">Features</a></li>
+                    <li><a href="#how-it-works" @click="scrollToSection('how-it-works')">How It Works</a></li>
+                    <li><a href="#training" @click="scrollToSection('training')">Training</a></li>
+                    <li><a href="#about" @click="scrollToSection('about')">About</a></li>
+                    <li><a href="#contact" @click="scrollToSection('contact')">Contact</a></li>
+                    <li><a @click="navigateToLogin; closeMobileMenu()" class="mobile-login-btn">Login</a></li>
+                </ul>
+            </nav>
+            
+            <a @click="navigateToLogin" class="cta-button desktop-login">Login</a>
         </div>
+        
+        <!-- Mobile Menu Overlay -->
+        <div class="mobile-overlay" :class="{ active: mobileMenuOpen }" @click="closeMobileMenu"></div>
     </header>
 
     <!-- Hero Section -->
@@ -743,7 +768,8 @@ export default {
   name: 'LandingPage',
   data() {
     return {
-      parallaxElements: []
+      parallaxElements: [],
+      mobileMenuOpen: false
     };
   },
   mounted() {
@@ -1070,9 +1096,34 @@ export default {
     },
     navigateToLogin() {
       this.$router.push('/login');
-    }
-  }
-}
+    },
+    toggleMobileMenu() {
+      this.mobileMenuOpen = !this.mobileMenuOpen;
+      // Prevent body scroll when menu is open
+      if (this.mobileMenuOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    },
+    closeMobileMenu() {
+        this.mobileMenuOpen = false;
+        document.body.style.overflow = '';
+      },
+      scrollToSection(sectionId) {
+        this.closeMobileMenu();
+        setTimeout(() => {
+          const element = document.getElementById(sectionId);
+          if (element) {
+            element.scrollIntoView({ 
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        }, 300);
+      }
+     }
+   }
 </script>
 
 <style>
@@ -2993,6 +3044,696 @@ export default {
 
 .animated-button:hover:before {
     left: 100%;
+}
+
+/* Mobile Navigation Styles */
+.mobile-menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1001;
+}
+
+.mobile-menu-toggle span {
+  width: 100%;
+  height: 3px;
+  background-color: var(--primary);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.mobile-menu-toggle.active span:nth-child(1) {
+  transform: rotate(45deg) translate(7px, 7px);
+}
+
+.mobile-menu-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.mobile-menu-toggle.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -7px);
+}
+
+.mobile-nav {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 250px;
+  max-width: 75vw;
+  height: 100vh;
+  background: white;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transition: right 0.3s ease;
+  padding-top: 80px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-nav.active {
+  right: 0;
+}
+
+.mobile-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-nav ul li {
+  border-bottom: 1px solid #f0f0f0;
+  width: 100%;
+  display: block;
+}
+
+.mobile-nav ul li a {
+  display: block;
+  padding: 16px 20px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  font-size: 15px;
+  line-height: 1.4;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.mobile-nav ul li a:hover {
+  background-color: var(--light);
+  color: var(--primary);
+}
+
+.mobile-login-btn {
+  background: var(--primary) !important;
+  color: white !important;
+  margin: 15px 20px 30px 20px !important;
+  border-radius: 25px !important;
+  text-align: center !important;
+  font-weight: 600 !important;
+  padding: 12px 20px !important;
+  font-size: 15px !important;
+}
+
+.mobile-login-btn:hover {
+  background: var(--primary-dark) !important;
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.mobile-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.desktop-nav {
+  display: block;
+}
+
+.desktop-login {
+  display: inline-block;
+}
+
+/* Comprehensive Mobile Responsive Styles */
+@media (max-width: 768px) {
+  /* Header Mobile Styles */
+  .mobile-menu-toggle {
+    display: flex;
+  }
+  
+  .mobile-nav {
+    display: block;
+  }
+  
+  .mobile-overlay {
+    display: block;
+  }
+  
+  .desktop-nav {
+    display: none;
+  }
+  
+  .desktop-login {
+    display: none;
+  }
+  
+  .header-container {
+    padding: 10px 0;
+  }
+  
+  .logo h1 {
+    font-size: 20px;
+  }
+  
+  .logo-svg {
+    height: 36px;
+    width: 36px;
+    margin-right: 8px;
+  }
+  
+  /* Hero Section Mobile */
+  .hero {
+    padding: 100px 0 60px;
+    text-align: center;
+  }
+  
+  .hero-content {
+    flex-direction: column;
+    gap: 40px;
+  }
+  
+  .hero-text {
+    order: 2;
+  }
+  
+  .hero-graphic {
+    order: 1;
+  }
+  
+  .hero-text h2 {
+    font-size: 28px;
+    line-height: 1.3;
+    margin-bottom: 20px;
+  }
+  
+  .hero-text p {
+    font-size: 16px;
+    margin-bottom: 30px;
+  }
+  
+  .hero-buttons {
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+  }
+  
+  .hero-buttons .cta-button,
+  .hero-buttons .cta-button-outline {
+    width: 100%;
+    max-width: 280px;
+    text-align: center;
+  }
+  
+  .hero-stats {
+    margin-top: 40px;
+  }
+  
+  .stat-item.wide-stat {
+    padding: 20px;
+  }
+  
+  .stat-highlight {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  
+  /* Dimensions Container Mobile */
+  .dimensions-container {
+    transform: scale(0.8);
+    margin: 20px 0;
+  }
+  
+  /* Assessment Section Mobile */
+  .assessment-section {
+    padding: 60px 0;
+  }
+  
+  .assessment-cards {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-top: 30px;
+  }
+  
+  .assessment-card {
+    padding: 25px 20px;
+  }
+  
+  .assessment-card h4 {
+    font-size: 20px;
+  }
+  
+  .assessment-meta {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  /* Features Section Mobile */
+  .features {
+    padding: 60px 0;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-top: 30px;
+  }
+  
+  .feature-card {
+    padding: 25px 20px;
+  }
+  
+  .feature-icon {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 15px;
+  }
+  
+  .feature-icon i {
+    font-size: 24px;
+  }
+  
+  .feature-card h4 {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .feature-card p {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  
+  .feature-detail {
+    font-size: 13px;
+  }
+  
+  /* User Roles Section Mobile */
+  .user-roles-section {
+    padding: 60px 0;
+  }
+  
+  .roles-container {
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 30px;
+  }
+  
+  .role-card {
+    padding: 25px 20px;
+    text-align: center;
+  }
+  
+  .role-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 15px;
+  }
+  
+  .role-icon i {
+    font-size: 24px;
+  }
+  
+  .role-card h4 {
+    font-size: 20px;
+    margin-bottom: 15px;
+  }
+  
+  .role-features {
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  
+  .role-features li {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  /* Data Visualization Mobile */
+  .data-visualization {
+    padding: 60px 0;
+  }
+  
+  .dashboard-tabs {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .dashboard-tab {
+    width: 100%;
+    text-align: center;
+    padding: 12px 20px;
+  }
+  
+  .dashboard-image img {
+    height: 200px;
+    object-fit: cover;
+  }
+  
+  .overlay-text h4 {
+    font-size: 18px;
+  }
+  
+  .overlay-text p {
+    font-size: 14px;
+  }
+  
+  /* How It Works Mobile */
+  .how-it-works {
+    padding: 60px 0;
+  }
+  
+  .steps-container {
+    gap: 30px;
+    margin-top: 30px;
+  }
+  
+  .step {
+    flex-direction: column;
+    text-align: center;
+    padding: 25px 20px;
+  }
+  
+  .step-number {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  
+  .step-content {
+    margin-left: 0;
+  }
+  
+  .step-content h4 {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .step-content p {
+    font-size: 14px;
+  }
+  
+  .step-icon {
+    margin-top: 15px;
+  }
+  
+  .step-icon i {
+    font-size: 24px;
+  }
+  
+  /* Research Section Mobile */
+  .research-section {
+    padding: 60px 0;
+  }
+  
+  .research-content {
+    flex-direction: column;
+    gap: 30px;
+    margin-top: 30px;
+  }
+  
+  .research-text h4 {
+    font-size: 24px;
+  }
+  
+  .research-text p {
+    font-size: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .research-stats {
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .research-stat {
+    text-align: center;
+  }
+  
+  .stat-number {
+    font-size: 32px;
+  }
+  
+  .stat-label {
+    font-size: 14px;
+  }
+  
+  /* Training Section Mobile */
+  .training-section {
+    padding: 60px 0;
+  }
+  
+  .training-tabs {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .training-tab {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+  
+  .training-modules {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .training-module {
+    padding: 15px;
+  }
+  
+  .module-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 16px;
+  }
+  
+  .module-content h5 {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  
+  .module-content p {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  
+  .training-panel-content {
+    padding: 25px 20px;
+  }
+  
+  .training-panel-content h4 {
+    font-size: 22px;
+  }
+  
+  /* About Section Mobile */
+  .about {
+    padding: 60px 0;
+  }
+  
+  .about-content {
+    flex-direction: column;
+    gap: 30px;
+    margin-top: 30px;
+  }
+  
+  .about-text h3 {
+    font-size: 28px;
+    margin-bottom: 15px;
+  }
+  
+  .about-text p {
+    font-size: 15px;
+    margin-bottom: 15px;
+  }
+  
+  /* CTA Section Mobile */
+  .cta {
+    padding: 60px 0;
+  }
+  
+  .cta h3 {
+    font-size: 28px;
+    margin-bottom: 15px;
+  }
+  
+  .cta p {
+    font-size: 16px;
+    margin-bottom: 25px;
+  }
+  
+  /* Contact Section Mobile */
+  .contact-section {
+    padding: 60px 0;
+  }
+  
+  .contact-container {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-top: 30px;
+  }
+  
+  .contact-info {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .contact-card {
+    padding: 20px;
+  }
+  
+  .contact-form {
+    padding: 25px 20px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group input,
+  .form-group textarea {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  /* Footer Mobile */
+  footer {
+    padding: 60px 0 20px;
+  }
+  
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+  }
+  
+  .footer-column {
+    text-align: center;
+  }
+  
+  .footer-column h4 {
+    font-size: 16px;
+    margin-bottom: 15px;
+  }
+  
+  .footer-column ul li {
+    margin-bottom: 8px;
+  }
+  
+  .footer-column ul li a {
+    font-size: 14px;
+  }
+  
+  .social-links {
+    justify-content: center;
+    margin-top: 15px;
+  }
+  
+  .copyright {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .copyright p {
+    font-size: 13px;
+  }
+  
+  /* General Mobile Optimizations */
+  .container {
+    padding: 0 15px;
+  }
+  
+  .section-title h3 {
+    font-size: 28px;
+    margin-bottom: 15px;
+  }
+  
+  .section-title p {
+    font-size: 16px;
+  }
+  
+  .cta-button,
+  .cta-button-outline,
+  .cta-button-white {
+    padding: 12px 24px;
+    font-size: 14px;
+    border-radius: 25px;
+  }
+  
+  /* Hide complex animations on mobile for better performance */
+  .shape,
+  .bg-shape,
+  .particle {
+    display: none;
+  }
+  
+  .animated-background,
+  .features-bg,
+  .cta-particles {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small mobile devices */
+  .hero-text h2 {
+    font-size: 24px;
+  }
+  
+  .hero-text p {
+    font-size: 15px;
+  }
+  
+  .dimensions-container {
+    transform: scale(0.7);
+  }
+  
+  .section-title h3 {
+    font-size: 24px;
+  }
+  
+  .section-title p {
+    font-size: 15px;
+  }
+  
+  .assessment-card,
+  .feature-card,
+  .role-card {
+    padding: 20px 15px;
+  }
+  
+  .contact-form,
+  .training-panel-content {
+    padding: 20px 15px;
+  }
+  
+  .container {
+    padding: 0 10px;
+  }
 }
 
 /* Add this style to the <style> section of the component */
