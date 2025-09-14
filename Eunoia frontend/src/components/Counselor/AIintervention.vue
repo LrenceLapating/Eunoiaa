@@ -177,6 +177,7 @@
               <th>Section</th>
               <th>{{ getDimensionColumnTitle() }}</th>
               <th>Intervention Status</th>
+              <th>Review</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -252,13 +253,29 @@
                 </div>
               </td>
               <td>
+                <div class="review-status">
+                  <span v-if="getStudentReviewStatus(student)" class="status-reviewed" title="Student has reviewed the intervention">
+                    <i class="fas fa-check-circle"></i>
+                    Completed Review
+                  </span>
+                  <span v-else-if="hasInterventionSent(student)" class="status-not-reviewed" title="Student has not reviewed the intervention yet">
+                    <i class="fas fa-clock"></i>
+                    Not Been Review
+                  </span>
+                  <span v-else class="status-no-intervention" title="No intervention sent yet">
+                    <i class="fas fa-minus"></i>
+                    -
+                  </span>
+                </div>
+              </td>
+              <td>
                 <button class="view-button" @click="viewStudentDetails(student)">
                   <i class="fas fa-eye"></i> View
                 </button>
               </td>
             </tr>
             <tr v-if="filteredCurrentStudents.length === 0" class="no-data">
-              <td colspan="8">No students found in this category</td>
+              <td colspan="9">No students found in this category</td>
             </tr>
           </tbody>
         </table>
@@ -395,6 +412,7 @@ export default {
       editableActionPlan: [],
       isEditingActionPlan: false,
       sentInterventions: new Set(), // Track students who have received interventions
+      interventionReviewStatus: [], // Store review status for each student's intervention
       isLoading: false,
       isSendingIntervention: false, // Loading state for sending intervention
       isBulkGenerating: false, // Loading state for bulk intervention generation
@@ -589,14 +607,22 @@ export default {
           if (result.success && result.data) {
             // Clear existing sent interventions and populate with backend data
             this.sentInterventions.clear();
+            this.interventionReviewStatus = [];
             
             result.data.forEach(intervention => {
               if (intervention.status === 'sent') {
                 this.sentInterventions.add(intervention.student_id);
               }
+              
+              // Store review status for each intervention
+              this.interventionReviewStatus.push({
+                student_id: intervention.student_id,
+                is_read: intervention.is_read || false
+              });
             });
             
             console.log('Sent interventions loaded:', this.sentInterventions.size, 'students');
+            console.log('Review status loaded for:', this.interventionReviewStatus.length, 'interventions');
           }
         } else {
           console.error('Failed to fetch sent interventions - status:', response.status);
@@ -934,6 +960,12 @@ export default {
       return this.sentInterventions.has(student?.id);
     },
     
+    getStudentReviewStatus(student) {
+      // Find the intervention for this student and check if it's been reviewed
+      const intervention = this.interventionReviewStatus.find(item => item.student_id === student?.id);
+      return intervention ? intervention.is_read : false;
+    },
+    
     getDimensionInterventions(student) {
       const interventions = {};
       if (student?.subscales) {
@@ -1023,8 +1055,11 @@ export default {
     // Intervention Methods
     getOverallRiskClass(student) {
       const overallScore = this.calculateOverallScore(student);
-      if (overallScore <= this.riskThresholds.q1) return 'high-risk';
-      if (overallScore < this.riskThresholds.q4) return 'medium-risk';
+      const assessmentType = student?.assessmentType || 'ryff_42';
+      const thresholds = this.riskThresholds[assessmentType];
+      
+      if (overallScore <= thresholds.atRisk) return 'high-risk';
+      if (overallScore <= thresholds.moderate) return 'medium-risk';
       return 'low-risk';
     },
     
@@ -2423,7 +2458,7 @@ export default {
 .intervention-status {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .status-sent {
@@ -2465,6 +2500,65 @@ export default {
   0% { opacity: 1; }
   50% { opacity: 0.5; }
   100% { opacity: 1; }
+}
+
+/* Review Status Styles */
+.review-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.status-reviewed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #4caf50;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(76, 175, 80, 0.15);
+  border-radius: 20px;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.status-reviewed i {
+  font-size: 0.9rem;
+}
+
+.status-not-reviewed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ff9800;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(255, 152, 0, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.status-not-reviewed i {
+  font-size: 0.9rem;
+  animation: pulse 2s infinite;
+}
+
+.status-no-intervention {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #9e9e9e;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(158, 158, 158, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(158, 158, 158, 0.3);
+}
+
+.status-no-intervention i {
+  font-size: 0.9rem;
 }
 
 /* Assessment Prompt Styles */

@@ -2459,7 +2459,7 @@ export default {
 }
 
 .score-value.score-high {
-  color: #ff6b6b;
+  color: #28a745;
 }
 
 .score-value.score-moderate {
@@ -2467,7 +2467,7 @@ export default {
 }
 
 .score-value.score-low {
-  color: #48dbfb;
+  color: #ff6b6b;
 }
 
 .status-badge {
@@ -2573,7 +2573,7 @@ export default {
 }
 
 .dimension-score.score-high {
-  background: #ff6b6b;
+  background: #28a745;
 }
 
 .dimension-score.score-moderate {
@@ -2581,7 +2581,7 @@ export default {
 }
 
 .dimension-score.score-low {
-  background: #48dbfb;
+  background: #ff6b6b;
 }
 
 .dimension-score.score-unknown {
