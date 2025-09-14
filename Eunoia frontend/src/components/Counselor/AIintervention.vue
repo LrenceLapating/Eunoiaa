@@ -1,5 +1,18 @@
 <template>
   <div class="ai-intervention-container">
+    <!-- Notification System -->
+    <div v-if="notification.show" :class="['notification', notification.type]" @click="hideNotification">
+      <div class="notification-content">
+        <i :class="notificationIcon"></i>
+        <div class="notification-text">
+          <h4>{{ notification.title }}</h4>
+          <p>{{ notification.message }}</p>
+        </div>
+        <button class="notification-close" @click="hideNotification">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
 
 
     <!-- Main Dashboard View -->
@@ -386,6 +399,14 @@ export default {
       isSendingIntervention: false, // Loading state for sending intervention
       isBulkGenerating: false, // Loading state for bulk intervention generation
 
+      // Notification system
+      notification: {
+        show: false,
+        type: 'success', // 'success', 'error', 'warning', 'info'
+        title: '',
+        message: ''
+      },
+
       aiGeneratedInterventions: new Map(), // Store AI-generated interventions by student ID
       // Real student data from backend
       atRiskStudents: [],
@@ -423,6 +444,20 @@ export default {
   },
   computed: {
     // These are now data properties fetched from backend
+    notificationIcon() {
+      switch (this.notification.type) {
+        case 'success':
+          return 'fas fa-check-circle';
+        case 'error':
+          return 'fas fa-exclamation-circle';
+        case 'warning':
+          return 'fas fa-exclamation-triangle';
+        case 'info':
+          return 'fas fa-info-circle';
+        default:
+          return 'fas fa-info-circle';
+      }
+    }
   },
   methods: {
 
@@ -749,26 +784,83 @@ export default {
     },
     viewStudentDetails(student) {
       this.selectedStudent = student;
-      this.editableActionPlan = [...this.getActionPlan(student)];
       this.isEditingActionPlan = false;
       this.showDetailsModal = true;
       
       // Fetch AI intervention for this student if not already loaded
       this.fetchAIInterventionForStudent(student.id);
+      
+      // Set action plan after a brief delay to allow AI intervention to load
+      setTimeout(() => {
+        this.updateEditableActionPlan();
+      }, 100);
     },
     
     // Action Plan Editing Methods
-    toggleEditActionPlan() {
+    async toggleEditActionPlan() {
       if (this.isEditingActionPlan) {
-        // Save changes
-        this.isEditingActionPlan = false;
-        this.$emit('action-plan-updated', {
-          student: this.selectedStudent,
-          actionPlan: this.editableActionPlan
-        });
+        // Save changes to database
+        await this.saveActionPlan();
       } else {
         // Enter edit mode
         this.isEditingActionPlan = true;
+      }
+    },
+    
+    async saveActionPlan() {
+      if (!this.selectedStudent) return;
+      
+      try {
+        // Get the current intervention ID
+        let aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+        if (!aiIntervention || !aiIntervention.id) {
+          // Try to fetch the intervention again if not found
+          await this.fetchAIInterventionForStudent(this.selectedStudent.id);
+          aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+          if (!aiIntervention || !aiIntervention.id) {
+            this.showNotification('error', 'Error', 'No intervention found to update. Please ensure an intervention has been generated for this student.');
+            return;
+          }
+        }
+        
+        // Filter out empty action items
+        const filteredActionPlan = this.editableActionPlan.filter(item => item.trim() !== '');
+        
+        const response = await fetch(apiUrl(`/counselor-interventions/${aiIntervention.id}/action-plan`), {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            actionPlan: filteredActionPlan
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Update the stored intervention data with the response from server
+          const updatedIntervention = {
+            ...aiIntervention,
+            action_plan: result.data.action_plan || filteredActionPlan
+          };
+          this.aiGeneratedInterventions.set(this.selectedStudent.id, updatedIntervention);
+          
+          // Update the editable action plan to reflect the saved changes
+          this.editableActionPlan = [...(result.data.action_plan || filteredActionPlan)];
+          
+          // Exit edit mode
+          this.isEditingActionPlan = false;
+          
+          // Show success notification
+          this.showNotification('success', 'Success', 'Action plan updated successfully!');
+        } else {
+          this.showNotification('error', 'Error', result.error || 'Failed to update action plan');
+        }
+      } catch (error) {
+        console.error('Error saving action plan:', error);
+        this.showNotification('error', 'Error', 'Failed to save action plan. Please try again.');
       }
     },
     
@@ -805,17 +897,29 @@ export default {
           // Mark intervention as sent
           this.sentInterventions.add(this.selectedStudent.id);
           
-          // Show success message
-          alert(`AI intervention sent successfully to ${this.selectedStudent.name}`);
+          // Show success notification
+          this.showNotification(
+            'success',
+            'Intervention Sent Successfully!',
+            `AI intervention has been sent to ${this.selectedStudent.name}. They will receive personalized mental health recommendations based on their assessment results.`
+          );
           
           // Close modal
           this.showDetailsModal = false;
         } else {
           console.error('Failed to send intervention:', result.error);
           if (result.error.includes('No intervention found')) {
-            alert('No AI intervention available for this student. The system will generate one automatically.');
+            this.showNotification(
+              'warning',
+              'No Intervention Available',
+              'No AI intervention found for this student. The system will generate one automatically when needed.'
+            );
           } else {
-            alert('Failed to send intervention. Please try again.');
+            this.showNotification(
+              'error',
+              'Failed to Send Intervention',
+              'Unable to send the intervention. Please check your connection and try again.'
+            );
           }
         }
       } catch (error) {
@@ -877,17 +981,35 @@ export default {
           const failedCount = result.data.summary.failed;
           
           if (failedCount > 0) {
-            alert(`AI interventions generated: ${successCount} successful, ${failedCount} failed. Check console for details.`);
+            this.showNotification(
+              'warning',
+              'Bulk Interventions Completed',
+              `${successCount} interventions sent successfully, ${failedCount} failed. Check console for detailed error information.`,
+              7000
+            );
             console.log('Failed interventions:', result.data.errors);
           } else {
-            alert(`AI interventions sent successfully to ${successCount} students`);
+            this.showNotification(
+              'success',
+              'Bulk Interventions Sent Successfully!',
+              `AI interventions have been sent to all ${successCount} students. They will receive personalized mental health recommendations.`,
+              6000
+            );
           }
         } else {
           console.error('Failed to generate bulk interventions:', result.error);
           if (result.error.includes('AI service is not available')) {
-            alert('AI service is not available. Please ensure Ollama is running with Qwen 4B model.');
+            this.showNotification(
+              'error',
+              'AI Service Unavailable',
+              'The AI service is currently not available. Please ensure Ollama is running with the Qwen 4B model and try again.'
+            );
           } else {
-            alert('Failed to generate interventions. Please try again.');
+            this.showNotification(
+              'error',
+              'Failed to Generate Interventions',
+              'Unable to generate bulk interventions. Please check your connection and try again.'
+            );
           }
         }
       } catch (error) {
@@ -929,8 +1051,74 @@ export default {
         return aiIntervention.overallStrategy;
       }
       
-      // Return loading message if no AI intervention available
-      return "Loading AI-generated intervention strategy...";
+      // Provide meaningful fallback strategy based on student's risk level and scores
+      if (!student || !student.subscales) {
+        return "A comprehensive mental health strategy will be developed based on your assessment results. Please ensure your assessment is completed for personalized recommendations.";
+      }
+      
+      const riskLevel = student.riskLevel || this.determineRiskLevel(student);
+      const atRiskDimensions = this.getAtRiskDimensionsForStudent(student);
+      const moderateDimensions = this.getModerateDimensionsForStudent(student);
+      
+      let strategy = "";
+      
+      if (riskLevel === 'at-risk' || atRiskDimensions.length > 0) {
+        strategy = `Based on your assessment results, you show some areas that need immediate attention across ${atRiskDimensions.length} dimension(s). `;
+        strategy += "Your mental health strategy should focus on building resilience and developing coping mechanisms in these key areas. ";
+        strategy += "It's recommended to work closely with a counselor to address these concerns and develop personalized interventions. ";
+        strategy += "Remember that seeking help is a sign of strength, and with proper support, significant improvement is achievable.";
+      } else if (riskLevel === 'moderate' || moderateDimensions.length > 0) {
+        strategy = `Your assessment shows moderate scores in ${moderateDimensions.length} dimension(s), indicating areas for growth and improvement. `;
+        strategy += "Your mental health strategy should focus on preventive measures and skill-building to maintain and enhance your well-being. ";
+        strategy += "This is an excellent opportunity to develop healthy habits and coping strategies before any issues become more serious. ";
+        strategy += "Consider engaging in wellness activities and maintaining regular check-ins with support systems.";
+      } else {
+        strategy = "Your assessment results indicate healthy functioning across all dimensions of psychological well-being. ";
+        strategy += "Your mental health strategy should focus on maintaining these positive patterns and continuing personal growth. ";
+        strategy += "Consider this an opportunity to further develop your strengths and perhaps support others in their wellness journey. ";
+        strategy += "Regular self-reflection and continued engagement in meaningful activities will help sustain your well-being.";
+      }
+      
+      return strategy;
+    },
+    
+    getAtRiskDimensionsForStudent(student) {
+      const atRiskDimensions = [];
+      if (student?.subscales) {
+        Object.entries(student.subscales).forEach(([subscale, score]) => {
+          if (score !== undefined && score !== null && this.isAtRisk(score, student)) {
+            atRiskDimensions.push(subscale);
+          }
+        });
+      }
+      return atRiskDimensions;
+    },
+    
+    getModerateDimensionsForStudent(student) {
+      const moderateDimensions = [];
+      if (student?.subscales) {
+        Object.entries(student.subscales).forEach(([subscale, score]) => {
+          if (score !== undefined && score !== null && this.isModerate(score, student)) {
+            moderateDimensions.push(subscale);
+          }
+        });
+      }
+      return moderateDimensions;
+    },
+    
+    determineRiskLevel(student) {
+      if (!student?.subscales) return 'moderate';
+      
+      const atRiskCount = this.getAtRiskDimensionsForStudent(student).length;
+      const moderateCount = this.getModerateDimensionsForStudent(student).length;
+      
+      if (atRiskCount > 0) {
+        return 'at-risk';
+      } else if (moderateCount > 0) {
+        return 'moderate';
+      } else {
+        return 'healthy';
+      }
     },
     
     getDimensionIntervention(subscale, score) {
@@ -951,8 +1139,54 @@ export default {
         return aiIntervention.actionPlan;
       }
       
-      // Return loading message if no AI intervention available
-      return ["Loading AI-generated action plan..."];
+      // Provide meaningful fallback action plan based on student's risk level and scores
+      if (!student || !student.subscales) {
+        return [
+          "Complete your psychological well-being assessment (Example: Take the full assessment to get personalized recommendations)",
+          "Schedule a consultation with your counselor (Example: Book a 30-minute session within the next week)",
+          "Begin a daily self-reflection practice (Example: Write in a journal for 10 minutes each evening)"
+        ];
+      }
+      
+      const riskLevel = student.riskLevel || this.determineRiskLevel(student);
+      const atRiskDimensions = this.getAtRiskDimensionsForStudent(student);
+      const moderateDimensions = this.getModerateDimensionsForStudent(student);
+      
+      let actionPlan = [];
+      
+      if (riskLevel === 'at-risk' || atRiskDimensions.length > 0) {
+        actionPlan = [
+          "Schedule an immediate consultation with a counselor (Example: Book an appointment within 48 hours to discuss your results)",
+          "Develop a daily stress management routine (Example: Practice deep breathing exercises for 10 minutes each morning)",
+          "Build a support network (Example: Reach out to 2-3 trusted friends or family members this week)",
+          "Engage in regular physical activity (Example: Take a 20-minute walk daily or join a fitness class)",
+          "Practice mindfulness and relaxation techniques (Example: Use a meditation app for 15 minutes before bed)",
+          "Establish healthy sleep habits (Example: Go to bed and wake up at the same time daily, aim for 7-8 hours)",
+          "Monitor your progress weekly (Example: Keep a mood diary and review it with your counselor)"
+        ];
+      } else if (riskLevel === 'moderate' || moderateDimensions.length > 0) {
+        actionPlan = [
+          "Schedule a check-in with a counselor (Example: Book a session within 2 weeks to discuss improvement strategies)",
+          "Develop personal growth goals (Example: Set 3 specific, measurable goals for the next month)",
+          "Practice regular self-care activities (Example: Dedicate 30 minutes daily to activities you enjoy)",
+          "Strengthen social connections (Example: Plan weekly social activities with friends or join a club)",
+          "Engage in meaningful activities (Example: Volunteer for 2 hours weekly or pursue a hobby)",
+          "Maintain physical wellness (Example: Exercise 3 times per week for at least 30 minutes)",
+          "Practice stress prevention techniques (Example: Learn and use time management strategies)"
+        ];
+      } else {
+        actionPlan = [
+          "Continue your current positive practices (Example: Maintain the healthy habits that are working well for you)",
+          "Set new personal development goals (Example: Learn a new skill or take on a leadership role)",
+          "Share your wellness strategies with others (Example: Mentor a peer or participate in wellness programs)",
+          "Engage in community service (Example: Volunteer 4 hours monthly for a cause you care about)",
+          "Pursue advanced personal growth (Example: Take a course in emotional intelligence or mindfulness)",
+          "Maintain work-life balance (Example: Set clear boundaries between study/work time and personal time)",
+          "Regular wellness check-ins (Example: Schedule quarterly self-assessments to maintain your well-being)"
+        ];
+      }
+      
+      return actionPlan;
     },
     
     createComprehensiveIntervention(student, overallIntervention, dimensionInterventions, actionPlan) {
@@ -1030,10 +1264,16 @@ export default {
           // Parse the AI intervention content
           const intervention = result.data;
           this.aiGeneratedInterventions.set(studentId, {
+            id: intervention.id, // Include intervention ID for saving
             overallStrategy: intervention.overall_strategy,
             dimensionInterventions: intervention.dimension_interventions,
             actionPlan: intervention.action_plan
           });
+          
+          // Update action plan if this is the currently selected student
+          if (this.selectedStudent && this.selectedStudent.id === studentId) {
+            this.updateEditableActionPlan();
+          }
         } else if (response.status === 404) {
           // No intervention found for this student - set empty data to stop loading
           console.log('No AI intervention found for student:', studentId);
@@ -1062,6 +1302,38 @@ export default {
       }
     },
     
+    // Update editable action plan based on current data
+    updateEditableActionPlan() {
+      if (!this.selectedStudent) return;
+      
+      const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+      if (aiIntervention && aiIntervention.actionPlan && aiIntervention.actionPlan.length > 0) {
+        // Use AI-generated action plan if available
+        this.editableActionPlan = [...aiIntervention.actionPlan];
+      } else {
+        // Use fallback action plan only if no AI intervention exists
+        this.editableActionPlan = [...this.getActionPlan(this.selectedStudent)];
+      }
+    },
+    
+    // Notification methods
+    showNotification(type, title, message, duration = 5000) {
+      this.notification = {
+        show: true,
+        type,
+        title,
+        message
+      };
+      
+      // Auto-hide notification after duration
+      setTimeout(() => {
+        this.hideNotification();
+      }, duration);
+    },
+    
+    hideNotification() {
+      this.notification.show = false;
+    }
 
   },
   watch: {
@@ -2378,5 +2650,128 @@ export default {
   color: #718096;
   margin: 0;
   font-weight: 500;
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  min-width: 350px;
+  max-width: 500px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: slideInRight 0.3s ease-out;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.notification:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.notification.success {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+}
+
+.notification.error {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+}
+
+.notification.warning {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+}
+
+.notification.info {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: white;
+}
+
+.notification-content {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px;
+  gap: 15px;
+}
+
+.notification-content i {
+  font-size: 24px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.notification-text {
+  flex: 1;
+}
+
+.notification-text h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.notification-text p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0.95;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.notification-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive notification styles */
+@media (max-width: 768px) {
+  .notification {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .notification-content {
+    padding: 16px;
+  }
+  
+  .notification-text h4 {
+    font-size: 15px;
+  }
+  
+  .notification-text p {
+    font-size: 13px;
+  }
 }
 </style>

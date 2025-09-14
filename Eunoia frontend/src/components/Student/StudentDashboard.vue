@@ -346,12 +346,12 @@
                     <h4>Overall Mental Health Strategy</h4>
                   </div>
                   <div class="strategy-content">
-                    <p>{{ intervention.overall_strategy || intervention.intervention_text }}</p>
+                    <p>{{ intervention.overall_strategy || 'No overall strategy available.' }}</p>
                   </div>
                 </div>
 
                 <!-- Dimension Interventions Section -->
-                <div class="dimensions-section" v-if="intervention.dimension_interventions">
+                <div class="dimensions-section" v-if="intervention.dimension_interventions && Object.keys(parseDimensionInterventions(intervention.dimension_interventions)).length > 0">
                   <div class="section-header">
                     <i class="fas fa-chart-bar"></i>
                     <h4>Dimension Scores & Targeted Interventions</h4>
@@ -376,7 +376,7 @@
                 </div>
 
                 <!-- Action Plan Section -->
-                <div class="action-plan-section" v-if="intervention.action_plan">
+                <div class="action-plan-section" v-if="intervention.action_plan && parseActionPlan(intervention.action_plan).length > 0">
                   <div class="section-header">
                     <i class="fas fa-tasks"></i>
                     <h4>Recommended Action Plan</h4>

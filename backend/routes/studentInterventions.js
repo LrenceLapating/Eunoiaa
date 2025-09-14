@@ -40,6 +40,74 @@ router.get('/', verifyStudentSession, async (req, res) => {
       });
     }
 
+    // Transform interventions to ensure proper structure
+    const transformedInterventions = interventions.map(intervention => {
+      // Check if we have meaningful structured data in separate columns (new format)
+      const hasOverallStrategy = intervention.overall_strategy && intervention.overall_strategy.trim().length > 0;
+      const hasDimensionInterventions = intervention.dimension_interventions && 
+        typeof intervention.dimension_interventions === 'object' && 
+        Object.keys(intervention.dimension_interventions).length > 0;
+      const hasActionPlan = intervention.action_plan && 
+        Array.isArray(intervention.action_plan) && 
+        intervention.action_plan.length > 0;
+      
+      if (hasOverallStrategy || hasDimensionInterventions || hasActionPlan) {
+        // Use structured data from database columns
+        return {
+          ...intervention,
+          overall_strategy: intervention.overall_strategy || 'No intervention strategy available.',
+          dimension_interventions: intervention.dimension_interventions || {},
+          action_plan: intervention.action_plan || []
+        };
+      } else {
+        // Fallback: try to parse intervention_text as JSON (legacy format)
+        try {
+          const parsedIntervention = JSON.parse(intervention.intervention_text);
+          return {
+            ...intervention,
+            overall_strategy: parsedIntervention.overallStrategy || 'No intervention strategy available.',
+            dimension_interventions: parsedIntervention.dimensionInterventions || {},
+            action_plan: parsedIntervention.actionPlan || []
+          };
+        } catch (error) {
+          // If parsing fails, treat as legacy plain text format and parse it
+          console.log('Intervention is in legacy text format, parsing structured sections');
+          
+          const text = intervention.intervention_text || '';
+          
+          // Extract overall strategy (everything before "Dimension Scores & Targeted Interventions:")
+          const strategyMatch = text.match(/Overall Mental Health Strategy:\s*([\s\S]*?)(?=\n\n|Dimension Scores|$)/i);
+          const overallStrategy = strategyMatch ? strategyMatch[1].trim() : 'No intervention strategy available.';
+          
+          // Extract dimension interventions
+          const dimensionInterventions = {};
+          const dimensionPattern = /(Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery)\s*\([^)]+\):\s*([^\n]+)/gi;
+          let match;
+          while ((match = dimensionPattern.exec(text)) !== null) {
+            const dimensionName = match[1].toLowerCase().replace(/\s+/g, '_');
+            dimensionInterventions[dimensionName] = match[2].trim();
+          }
+          
+          // Create action plan from dimension interventions if available
+          const actionPlan = Object.values(dimensionInterventions).length > 0 
+            ? Object.values(dimensionInterventions)
+            : [
+                'Schedule a follow-up consultation with your counselor',
+                'Review the provided intervention guidance',
+                'Implement suggested strategies gradually',
+                'Monitor your progress and adjust as needed'
+              ];
+          
+          return {
+            ...intervention,
+            overall_strategy: overallStrategy,
+            dimension_interventions: dimensionInterventions,
+            action_plan: actionPlan
+          };
+        }
+      }
+    });
+
     // Try to get assessment scores for this student from the correct table
     const { data: assessmentData } = await supabase
       .from('assessments_42items')
@@ -51,8 +119,8 @@ router.get('/', verifyStudentSession, async (req, res) => {
 
     const dimensionScores = assessmentData && assessmentData[0] ? assessmentData[0].scores : null;
 
-    // Add dimension scores to each intervention
-    const interventionsWithScores = interventions.map(intervention => ({
+    // Add dimension scores to each transformed intervention
+    const interventionsWithScores = transformedInterventions.map(intervention => ({
       ...intervention,
       dimension_scores: dimensionScores
     }));

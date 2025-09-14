@@ -200,22 +200,27 @@ router.post('/bulk-generate', verifyCounselorSession, async (req, res) => {
           riskLevel: studentAssessment.risk_level
         };
         
-        // Generate AI intervention
-        const intervention = await aiService.generateIntervention(
+        // Generate structured AI intervention
+        const structuredIntervention = await aiService.generateStructuredIntervention(
           studentData, 
           studentAssessment.risk_level
         );
         
-        // Save intervention to database
+        // Save intervention to database with structured data
         const { data: savedIntervention, error: insertError } = await supabase
           .from('counselor_interventions')
           .insert({
             student_id: studentId,
             assessment_id: studentAssessment.id,
             risk_level: studentAssessment.risk_level,
-            intervention_title: intervention.title,
-            intervention_text: intervention.text,
+            intervention_title: structuredIntervention.title,
+            intervention_text: structuredIntervention.interventionText,
+            overall_strategy: structuredIntervention.overallStrategy,
+            dimension_interventions: structuredIntervention.dimensionInterventions,
+            action_plan: structuredIntervention.actionPlan,
             counselor_id: counselorId,
+            intervention_type: 'ai_structured',
+            status: 'generated',
             is_read: false
           })
           .select()

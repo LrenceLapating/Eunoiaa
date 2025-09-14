@@ -1938,7 +1938,7 @@ router.get('/student/:studentId/dimension/:dimension', verifyCounselorSession, a
     
     console.log(`Fetching ${dimension} responses for student ${studentId}`);
     
-    // Fetch the specific assessment from both tables
+    // Fetch the specific assessment from active tables and historical table
     let assessment;
     let assessmentType = 'ryff_42'; // default
     
@@ -1967,16 +1967,30 @@ router.get('/student/:studentId/dimension/:dimension', verifyCounselorSession, a
           assessment = assessment84;
           assessmentType = 'ryff_84';
         } else {
-          console.error('Assessment not found in either table:', { error42, error84 });
-          return res.status(404).json({
-            success: false,
-            message: 'Assessment not found'
-          });
+          // Try historical table (ryff_history) for archived assessments
+          const { data: historicalAssessment, error: historyError } = await supabaseAdmin
+            .from('ryff_history')
+            .select('*')
+            .eq('id', assessmentId)
+            .eq('student_id', studentId)
+            .single();
+            
+          if (historicalAssessment) {
+            assessment = historicalAssessment;
+            assessmentType = historicalAssessment.assessment_type || 'ryff_42';
+            console.log(`Found historical assessment with type: ${assessmentType}`);
+          } else {
+            console.error('Assessment not found in any table:', { error42, error84, historyError });
+            return res.status(404).json({
+              success: false,
+              message: 'Assessment not found'
+            });
+          }
         }
       }
     } else {
-      // Fetch latest assessment for the student from both tables
-      const [result42, result84] = await Promise.all([
+      // Fetch latest assessment for the student from active and historical tables
+      const [result42, result84, resultHistory] = await Promise.all([
         supabaseAdmin
           .from('assessments_42items')
           .select('*')
@@ -1990,13 +2004,21 @@ router.get('/student/:studentId/dimension/:dimension', verifyCounselorSession, a
           .eq('student_id', studentId)
           .order('completed_at', { ascending: false })
           .limit(1)
+          .maybeSingle(),
+        supabaseAdmin
+          .from('ryff_history')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('completed_at', { ascending: false })
+          .limit(1)
           .maybeSingle()
       ]);
       
-      // Choose the most recent assessment
+      // Choose the most recent assessment from all sources
       const assessments = [];
       if (result42.data) assessments.push({ ...result42.data, type: 'ryff_42' });
       if (result84.data) assessments.push({ ...result84.data, type: 'ryff_84' });
+      if (resultHistory.data) assessments.push({ ...resultHistory.data, type: resultHistory.data.assessment_type || 'ryff_42' });
       
       if (assessments.length === 0) {
         return res.status(404).json({

@@ -364,7 +364,6 @@
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Assessment Name</th>
                   <th>Assessment Type</th>
                   <th>Overall Score</th>
                   <th>Completion Time</th>
@@ -375,15 +374,12 @@
               <tbody>
                 <tr v-for="(assessment, index) in getStudentAssessmentHistory(selectedStudentForHistory)" :key="index">
                   <td>{{ formatDateShort(assessment.submissionDate) }}</td>
-                  <td>
-                    <span class="assessment-name">{{ assessment.assessment_name }}</span>
-                  </td>
                   <td>{{ assessment.assessmentType }}</td>
                   <td>{{ calculateAssessmentOverallScore(assessment) }}</td>
                   <td>{{ formatCompletionTime(assessment.completion_time) }}</td>
                   <td>
-                    <span class="risk-badge" :class="hasAssessmentRisk(assessment) ? 'high-risk' : 'low-risk'">
-                      {{ hasAssessmentRisk(assessment) ? 'At Risk' : 'Healthy' }}
+                    <span class="risk-badge" :class="getRiskLevelClass(assessment)">
+                      {{ getRiskLevelText(assessment) }}
                     </span>
                   </td>
                   <td>
@@ -468,8 +464,8 @@
                   <td class="score-cell">{{ calculateAssessmentOverallScore(assessment) }}</td>
                   <td>{{ formatCompletionTime(assessment.completion_time) }}</td>
                   <td>
-                    <span class="risk-badge" :class="hasAssessmentRisk(assessment) ? 'high-risk' : 'low-risk'">
-                      {{ hasAssessmentRisk(assessment) ? 'AT RISK' : 'HEALTHY' }}
+                    <span class="risk-badge" :class="getRiskLevelClass(assessment)">
+                      {{ getRiskLevelText(assessment).toUpperCase() }}
                     </span>
                   </td>
                   <td>{{ getAssessmentAtRiskDimensionsCount(assessment) }}/6</td>
@@ -885,6 +881,8 @@ export default {
                 'ryff_84': '84-item'
               };
               
+              const mappedAssessmentType = assessmentTypeMapping[assessment.assessment_type] || assessment.assessment_type || 'Unknown';
+              
               return {
                 id: assessment.student?.id || assessment.student_id,
                 name: assessment.student?.name || 'Historical Student',
@@ -903,7 +901,8 @@ export default {
                 },
                 overallScore: assessment.overall_score,
                 atRiskDimensions: assessment.at_risk_dimensions || [],
-                assessmentType: assessmentTypeMapping[assessment.assessment_type] || assessment.assessment_type || 'Unknown',
+                assessmentType: mappedAssessmentType,
+                assessment_type: assessment.assessment_type, // Keep original for mapping
                 assignmentId: assessment.assignment?.id,
                 riskLevel: assessment.risk_level,
                 id_number: assessment.student?.id_number || `HIST-${assessment.student_id?.slice(-8)}`,
@@ -978,6 +977,8 @@ export default {
                 'ryff_84': '84-item'
               };
               
+              const mappedAssessmentType = assessmentTypeMapping[assessment.assessment_type] || assessment.assessment_type || 'Unknown';
+              
               return {
                 id: assessment.student?.id || assessment.student_id,
                 name: assessment.student?.name || assessment.student_name || 'Unknown Student',
@@ -996,7 +997,8 @@ export default {
                  },
                 overallScore: assessment.overall_score,
                 atRiskDimensions: assessment.at_risk_dimensions || [],
-                assessmentType: assessmentTypeMapping[assessment.assessment_type] || assessment.assessment_type || 'Unknown',
+                assessmentType: mappedAssessmentType,
+                assessment_type: assessment.assessment_type, // Keep original for mapping
                 assignmentId: assessment.assignment?.id,
                 riskLevel: assessment.risk_level,
                 id_number: assessment.student?.id_number || assessment.student_id
@@ -1339,9 +1341,109 @@ export default {
       this.selectedStudent = student;
       this.showDetailsModal = true;
     },
-    viewStudentHistory(student) {
+    async viewStudentHistory(student) {
       this.selectedStudentForHistory = student;
       this.showHistoryModal = true;
+      
+      // Fetch fresh assessment history data from backend
+      await this.fetchStudentAssessmentHistory(student.id);
+    },
+    
+    // Fetch assessment history for a specific student from backend API
+    async fetchStudentAssessmentHistory(studentId) {
+      try {
+        console.log(`Fetching assessment history for student ID: ${studentId}`);
+        
+        const response = await fetch(apiUrl(`counselor-assessments/student/${studentId}/history`), {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const apiResponse = await response.json();
+          console.log('Fetched student assessment history:', apiResponse);
+          
+          if (apiResponse.success && apiResponse.data && apiResponse.data.assessments) {
+            // Transform the backend data to match the expected format
+            const transformedHistory = apiResponse.data.assessments.map(assessment => {
+              console.log('Processing assessment:', assessment);
+              console.log('Assessment type field:', assessment.assessmentType);
+              console.log('Assessment type (alternative):', assessment.assessment_type);
+              
+              // Map backend assessment type to frontend format
+              let frontendAssessmentType = '42-item'; // default
+              const backendType = assessment.assessmentType || assessment.assessment_type;
+              
+              if (backendType) {
+                console.log('Backend type found:', backendType);
+                if (backendType === 'ryff_84' || backendType === '84-item') {
+                  frontendAssessmentType = '84-item';
+                } else if (backendType === 'ryff_42' || backendType === '42-item') {
+                  frontendAssessmentType = '42-item';
+                }
+              }
+              
+              console.log('Mapped to frontend type:', frontendAssessmentType);
+              
+              return {
+                submissionDate: assessment.completedAt || assessment.displayDate,
+                assessmentType: frontendAssessmentType,
+                subscales: assessment.scores || {},
+                overallScore: assessment.overallScore || 0,
+                completion_time: assessment.completion_time,
+                riskLevel: assessment.riskLevel,
+                atRiskDimensions: assessment.atRiskDimensions || [],
+                isArchived: assessment.isArchived || false,
+                assignmentId: assessment.assignmentId
+              };
+            });
+            
+            // Update the selected student with the fetched history
+            if (this.selectedStudentForHistory) {
+              this.selectedStudentForHistory.assessmentHistory = transformedHistory;
+              
+              // Update student's assessment type based on the most recent assessment
+              if (transformedHistory.length > 0) {
+                const mostRecentAssessment = transformedHistory[0];
+                this.selectedStudentForHistory.assessmentType = mostRecentAssessment.assessmentType;
+                this.selectedStudentForHistory.assessment_type = mostRecentAssessment.assessmentType === '84-item' ? 'ryff_84' : 'ryff_42';
+                console.log(`Updated student assessment type to: ${mostRecentAssessment.assessmentType}`);
+              }
+            }
+            
+            console.log(`Successfully loaded ${transformedHistory.length} assessments for student`);
+          } else {
+            console.error('Invalid API response structure:', apiResponse);
+            if (this.selectedStudentForHistory) {
+              this.selectedStudentForHistory.assessmentHistory = [];
+            }
+          }
+        } else {
+          console.error('Failed to fetch student assessment history:', response.statusText);
+          if (this.selectedStudentForHistory) {
+            this.selectedStudentForHistory.assessmentHistory = [];
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching student assessment history:', error);
+        if (this.selectedStudentForHistory) {
+          this.selectedStudentForHistory.assessmentHistory = [];
+        }
+      }
+    },
+    
+    // Helper method to find assignment by ID
+    findAssignmentById(assignmentId) {
+      // Search through current students data for assignment information
+      for (const student of this.students) {
+        if (student.assignment && student.assignment.id === assignmentId) {
+          return student.assignment;
+        }
+      }
+      return null;
     },
     contactStudent(student) {
       if (!student) {
@@ -1438,34 +1540,79 @@ export default {
         return [];
       }
       
+      console.log('getStudentAssessmentHistory called with student:', student);
+      
+      // Helper function to map assessment types consistently
+      const mapAssessmentType = (backendType) => {
+        console.log('mapAssessmentType called with:', backendType);
+        if (!backendType) return '42-item';
+        const typeStr = backendType.toString().toLowerCase();
+        if (typeStr.includes('84') || typeStr === 'ryff_84') return '84-item';
+        if (typeStr.includes('42') || typeStr === 'ryff_42') return '42-item';
+        return '42-item'; // default fallback
+      };
+      
       // If this is a consolidated student (from history view), return all assessments
       if (student.allAssessments && Array.isArray(student.allAssessments)) {
-        return student.allAssessments.map(assessment => ({
-          submissionDate: assessment.submissionDate || 'N/A',
-          assessmentType: assessment.assessment_type === 'ryff_84' ? '84-item' : '42-item',
-          subscales: assessment.subscales || {},
-          overallScore: assessment.overallScore || 0,
-          completion_time: assessment.completion_time,
-          assessment_name: assessment.assignment?.bulk_assessment?.assessment_name || 
-                          (assessment.assessment_type === 'ryff_84' ? '84-Item Ryff Assessment' : '42-Item Ryff Assessment')
-        }));
+        console.log('Using allAssessments path, data:', student.allAssessments);
+        return student.allAssessments.map(assessment => {
+          console.log('Processing allAssessments item:', assessment);
+          const frontendAssessmentType = mapAssessmentType(assessment.assessment_type);
+          const result = {
+            submissionDate: assessment.submissionDate || 'N/A',
+            assessmentType: frontendAssessmentType,
+            subscales: assessment.subscales || {},
+            overallScore: assessment.overallScore || 0,
+            completion_time: assessment.completion_time,
+
+            riskLevel: assessment.riskLevel || this.calculateRiskLevel(assessment)
+          };
+          console.log('Mapped allAssessments result:', result);
+          return result;
+        });
       }
       
-      // Fallback for individual student view or legacy data
+      // Primary: Use fetched assessment history data
       if (student.assessmentHistory && Array.isArray(student.assessmentHistory)) {
+        console.log('Using assessmentHistory path, data:', student.assessmentHistory);
         return student.assessmentHistory;
       }
       
       // Single assessment fallback
-      return [{
+      console.log('Using single assessment fallback path');
+      console.log('Student assessment_type:', student.assessment_type);
+      const frontendAssessmentType = mapAssessmentType(student.assessment_type);
+      const result = [{
         submissionDate: student.submissionDate || 'N/A',
-        assessmentType: student.assessment_type === 'ryff_84' ? '84-item' : '42-item',
+        assessmentType: frontendAssessmentType,
         subscales: student.subscales || {},
         overallScore: student.overallScore || 0,
         completion_time: student.completion_time,
-        assessment_name: student.assignment?.bulk_assessment?.assessment_name || 
-                        (student.assessment_type === 'ryff_84' ? '84-Item Ryff Assessment' : '42-Item Ryff Assessment')
+
+        riskLevel: student.riskLevel || this.calculateRiskLevel(student)
       }];
+      console.log('Single assessment fallback result:', result);
+      return result;
+    },
+    
+    // Calculate risk level based on assessment data
+    calculateRiskLevel(assessment) {
+      if (!assessment || !assessment.subscales) {
+        return 'Unknown';
+      }
+      
+      // Check if any subscale score is at risk (below Q1 threshold)
+      const atRiskCount = Object.values(assessment.subscales).filter(score => {
+        return score !== undefined && score !== null && score <= this.riskThresholds.q1;
+      }).length;
+      
+      if (atRiskCount >= 3) {
+        return 'at-risk';
+      } else if (atRiskCount >= 1) {
+        return 'moderate';
+      } else {
+        return 'healthy';
+      }
     },
     
     // Get overall score from database (already calculated and stored)
@@ -1477,12 +1624,68 @@ export default {
     
     // Check if an assessment has any risk dimensions
     hasAssessmentRisk(assessment) {
-      if (!assessment || !assessment.subscales) return false;
+      if (!assessment) return false;
+      
+      // First check if we have a direct risk level from the backend
+      if (assessment.riskLevel) {
+        return assessment.riskLevel === 'at-risk' || assessment.riskLevel === 'high';
+      }
+      
+      // Fallback to subscale analysis
+      if (!assessment.subscales) return false;
       
       return Object.values(assessment.subscales).some(score => {
         if (score === undefined || score === null) return false;
         return score <= this.riskThresholds.q1;
       });
+    },
+    
+    // Get formatted risk level text for display
+    getRiskLevelText(assessment) {
+      if (!assessment) return 'Unknown';
+      
+      // Use backend risk level if available
+      if (assessment.riskLevel) {
+        switch (assessment.riskLevel.toLowerCase()) {
+          case 'at-risk':
+          case 'high':
+            return 'At Risk';
+          case 'moderate':
+            return 'Moderate';
+          case 'healthy':
+          case 'low':
+            return 'Healthy';
+          default:
+            return assessment.riskLevel;
+        }
+      }
+      
+      // Fallback to calculated risk level
+      return this.hasAssessmentRisk(assessment) ? 'At Risk' : 'Healthy';
+    },
+
+    // Get CSS class for risk level
+    getRiskLevelClass(assessment) {
+      if (!assessment) return 'low-risk';
+      
+      // Use backend risk level if available
+      if (assessment.riskLevel) {
+        switch (assessment.riskLevel.toLowerCase()) {
+          case 'at-risk':
+          case 'high':
+            return 'high-risk';
+          case 'moderate':
+            return 'moderate';
+          case 'healthy':
+          case 'low':
+            return 'low-risk';
+          default:
+            return 'low-risk';
+        }
+      }
+      
+      // Fallback to calculated risk level
+      return this.hasAssessmentRisk(assessment) ? 'high-risk' : 'low-risk';
     },
 
     // Comprehensive report methods
@@ -1745,6 +1948,7 @@ export default {
               .score-cell { text-align: center; }
               .risk-badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
               .high-risk { background-color: #ffebee; color: #c62828; }
+              .moderate-risk { background-color: #fff3e0; color: #f57c00; }
               .low-risk { background-color: #e8f5e8; color: #2e7d32; }
               @media print { .header-actions { display: none; } }
             </style>
@@ -1898,10 +2102,23 @@ export default {
         const backendDimension = this.convertToBackendDimension(dimension);
         
         // Fetch dimension-specific data from backend
-        // Add assessmentId parameter if available to ensure we get the correct assessment data
+        // Add assessmentId and assessmentType parameters to ensure we get the correct assessment data
         let endpoint = `counselor-assessments/student/${student.id}/dimension/${backendDimension}`;
+        const params = new URLSearchParams();
+        
         if (student.assessmentId) {
-          endpoint += `?assessmentId=${student.assessmentId}`;
+          params.append('assessmentId', student.assessmentId);
+        }
+        
+        // Add assessment type to ensure correct question count
+        const assessmentType = student.assessmentType || student.assessment_type;
+        if (assessmentType) {
+          const dbAssessmentType = assessmentType === '84-item' || assessmentType === 'ryff_84' ? 'ryff_84' : 'ryff_42';
+          params.append('assessmentType', dbAssessmentType);
+        }
+        
+        if (params.toString()) {
+          endpoint += `?${params.toString()}`;
         }
         
         const fetchUrl = apiUrl(endpoint);
@@ -3713,11 +3930,6 @@ export default {
   text-align: center;
 }
 
-/* Assessment name styling in history modal */
-.assessment-name {
-  font-weight: 500;
-  color: #2d3748;
-  font-size: 0.9rem;
-}
+
 
 </style>

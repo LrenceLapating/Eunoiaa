@@ -3,6 +3,110 @@ const router = express.Router();
 const { supabase } = require('../config/database');
 const { verifyCounselorSession } = require('../middleware/sessionManager');
 
+// Helper function to generate dynamic action plan based on dimension scores and risk levels
+function generateDynamicActionPlan(dimensionScores, dimensionInterventions) {
+  const actionPlan = [];
+  
+  // Define dimension mappings
+  const dimensionMap = {
+    'autonomy': 'Autonomy',
+    'personal_growth': 'Personal Growth', 
+    'purpose_in_life': 'Purpose in Life',
+    'self_acceptance': 'Self Acceptance',
+    'positive_relations': 'Positive Relations',
+    'environmental_mastery': 'Environmental Mastery'
+  };
+  
+  // Process each dimension based on its score
+  Object.entries(dimensionScores).forEach(([dimension, score]) => {
+    const dimensionName = dimensionMap[dimension] || dimension;
+    
+    // Determine risk level based on score (assuming 42 is max score)
+    let riskLevel;
+    if (score <= 14) riskLevel = 'At Risk';
+    else if (score <= 28) riskLevel = 'Moderate';
+    else riskLevel = 'Healthy';
+    
+    if (riskLevel === 'At Risk' || riskLevel === 'Moderate') {
+      // Generate specific improvement actions for at-risk/moderate dimensions
+      switch (dimension) {
+        case 'autonomy':
+          actionPlan.push(`For the ${dimensionName}: You need to practice making independent decisions (Example: choose your own study schedule and stick to it for one week).`);
+          break;
+        case 'personal_growth':
+          actionPlan.push(`For the ${dimensionName}: You need to challenge yourself with new learning opportunities (Example: enroll in an online course or workshop related to your interests).`);
+          break;
+        case 'purpose_in_life':
+          actionPlan.push(`For the ${dimensionName}: You need to identify meaningful goals that align with your values (Example: volunteer for a cause you care about for 2 hours per week).`);
+          break;
+        case 'self_acceptance':
+          actionPlan.push(`For the ${dimensionName}: You need to practice self-compassion and positive self-talk (Example: write down 3 things you appreciate about yourself each morning).`);
+          break;
+        case 'positive_relations':
+          actionPlan.push(`For the ${dimensionName}: Reach out to a friend or family member at least once a week (Example: have dinner together or call them for a meaningful conversation).`);
+          break;
+        case 'environmental_mastery':
+          actionPlan.push(`For the ${dimensionName}: You need to develop better organizational and time management skills (Example: create a weekly planner and review it every Sunday).`);
+          break;
+      }
+    } else if (riskLevel === 'Healthy') {
+      // Generate positive reinforcement actions for healthy dimensions
+      switch (dimension) {
+        case 'autonomy':
+          actionPlan.push(`For the ${dimensionName}: You're doing well! Keep it up by continuing to make confident decisions (Example: take on a leadership role in a group project).`);
+          break;
+        case 'personal_growth':
+          actionPlan.push(`For the ${dimensionName}: You're doing well! Keep it up by continuing to seek new challenges (Example: mentor someone or share your knowledge with others).`);
+          break;
+        case 'purpose_in_life':
+          actionPlan.push(`For the ${dimensionName}: You're doing well! Keep it up by continuing to pursue meaningful activities (Example: expand your current volunteer work or start a new meaningful project).`);
+          break;
+        case 'self_acceptance':
+          actionPlan.push(`For the ${dimensionName}: You're doing well! Keep it up by continuing your positive self-care practices (Example: maintain your journaling habit or meditation routine).`);
+          break;
+        case 'positive_relations':
+          actionPlan.push(`For the ${dimensionName}: You're doing well! Keep it up by continuing to nurture your relationships (Example: organize a group activity or be a supportive friend to someone in need).`);
+          break;
+        case 'environmental_mastery':
+          actionPlan.push(`For the ${dimensionName}: You're doing well! Keep it up by continuing to manage your environment effectively (Example: help others with organization or time management tips).`);
+          break;
+      }
+    }
+  });
+  
+  // Add general wellness actions
+  actionPlan.push('Schedule a follow-up session with your counselor within 2 weeks to discuss your progress.');
+  actionPlan.push('Practice mindfulness or relaxation techniques for 10 minutes daily to maintain overall well-being.');
+  
+  return actionPlan;
+}
+
+// Helper function to extract dimension scores from intervention text
+function extractDimensionScores(interventionText) {
+  const scores = {};
+  
+  // Extract scores using regex patterns
+  const scorePatterns = [
+    /Autonomy \((\d+)\/\d+\)/i,
+    /Personal Growth \((\d+)\/\d+\)/i, 
+    /Purpose in Life \((\d+)\/\d+\)/i,
+    /Self Acceptance \((\d+)\/\d+\)/i,
+    /Positive Relations \((\d+)\/\d+\)/i,
+    /Environmental Mastery \((\d+)\/\d+\)/i
+  ];
+  
+  const dimensions = ['autonomy', 'personal_growth', 'purpose_in_life', 'self_acceptance', 'positive_relations', 'environmental_mastery'];
+  
+  scorePatterns.forEach((pattern, index) => {
+    const match = interventionText.match(pattern);
+    if (match) {
+      scores[dimensions[index]] = parseInt(match[1]);
+    }
+  });
+  
+  return scores;
+}
+
 // POST /api/counselor-interventions/send - Send AI intervention to a student
 router.post('/send', verifyCounselorSession, async (req, res) => {
   try {
@@ -287,9 +391,38 @@ router.get('/student/:studentId/latest', verifyCounselorSession, async (req, res
         
         const text = intervention.intervention_text || '';
         
-        // Extract overall strategy (everything before "Dimension Scores & Targeted Interventions:")
-        const strategyMatch = text.match(/Overall Mental Health Strategy:\s*([\s\S]*?)(?=\n\n|Dimension Scores|$)/i);
-        const overallStrategy = strategyMatch ? strategyMatch[1].trim() : 'No intervention strategy available.';
+        // Extract overall strategy - try multiple patterns
+        let overallStrategy = 'No intervention strategy available.';
+        
+        // Pattern 1: Look for "Overall Mental Health Strategy:" section
+        let strategyMatch = text.match(/Overall Mental Health Strategy:\s*([\s\S]*?)(?=\n\n|Dimension Scores|Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery|$)/i);
+        
+        if (strategyMatch && strategyMatch[1].trim().length > 0) {
+          overallStrategy = strategyMatch[1].trim();
+        } else {
+          // Pattern 2: Look for "Overview:" section (common AI format)
+          strategyMatch = text.match(/Overview:\s*([\s\S]*?)(?=Dimension Scores & Targeted Interventions)/i);
+          
+          if (strategyMatch && strategyMatch[1].trim().length > 0) {
+            overallStrategy = strategyMatch[1].trim();
+          } else {
+            // Pattern 3: Look for content before dimension scores
+            strategyMatch = text.match(/^([\s\S]*?)(?=Dimension Scores & Targeted Interventions|Autonomy\s*\(|Personal Growth\s*\(|Purpose in Life\s*\(|Self Acceptance\s*\(|Positive Relations\s*\(|Environmental Mastery\s*\()/i);
+            
+            if (strategyMatch && strategyMatch[1].trim().length > 0) {
+              // Clean up the extracted strategy
+              let strategy = strategyMatch[1].trim();
+              // Remove any leading labels or formatting
+              strategy = strategy.replace(/^(Overall Mental Health Strategy:|Strategy:|Overall Strategy:|Overview:)\s*/i, '');
+              strategy = strategy.replace(/\n\s*\n/g, ' '); // Replace double newlines with space
+              strategy = strategy.trim();
+              
+              if (strategy.length > 10) { // Only use if it's substantial content
+                overallStrategy = strategy;
+              }
+            }
+          }
+        }
         
         // Extract dimension interventions
         const dimensionInterventions = {};
@@ -300,12 +433,15 @@ router.get('/student/:studentId/latest', verifyCounselorSession, async (req, res
           dimensionInterventions[dimensionName] = match[2].trim();
         }
         
-        // Create action plan from dimension interventions if available
-        const actionPlan = Object.values(dimensionInterventions).length > 0 
-          ? Object.values(dimensionInterventions)
+        // Extract dimension scores from the intervention text
+        const dimensionScores = extractDimensionScores(text);
+        
+        // Create dynamic action plan based on dimension scores and risk levels
+        const actionPlan = Object.keys(dimensionScores).length > 0 
+          ? generateDynamicActionPlan(dimensionScores, dimensionInterventions)
           : [
               'Schedule a follow-up consultation with your counselor',
-              'Review the provided intervention guidance',
+              'Review the provided intervention guidance', 
               'Implement suggested strategies gradually',
               'Monitor your progress and adjust as needed'
             ];
@@ -455,6 +591,80 @@ router.get('/debug/students', verifyCounselorSession, async (req, res) => {
     
   } catch (error) {
     console.error('Error in debug students route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// PUT /api/counselor-interventions/:id/action-plan - Update action plan for an intervention
+router.put('/:id/action-plan', verifyCounselorSession, async (req, res) => {
+  try {
+    const counselorId = req.user.id;
+    const interventionId = req.params.id;
+    const { actionPlan } = req.body;
+    
+    console.log('Updating action plan for intervention:', {
+      interventionId,
+      counselorId,
+      actionPlanLength: actionPlan?.length || 0
+    });
+    
+    // Validate input
+    if (!actionPlan || !Array.isArray(actionPlan)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Action plan must be an array'
+      });
+    }
+    
+    // Verify the intervention exists (removed counselor ownership check for collaborative editing)
+    const { data: intervention, error: fetchError } = await supabase
+      .from('counselor_interventions')
+      .select('id, counselor_id')
+      .eq('id', interventionId)
+      .single();
+    
+    if (fetchError || !intervention) {
+      console.error('Error fetching intervention:', fetchError);
+      return res.status(404).json({
+        success: false,
+        error: 'Intervention not found'
+      });
+    }
+    
+    console.log(`Allowing counselor ${counselorId} to update intervention originally created by ${intervention.counselor_id}`);
+    
+    // Update the action plan
+    const { data: updatedIntervention, error: updateError } = await supabase
+      .from('counselor_interventions')
+      .update({
+        action_plan: actionPlan,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', interventionId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('Error updating action plan:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update action plan'
+      });
+    }
+    
+    console.log(`Action plan updated successfully for intervention ${interventionId}`);
+    
+    res.json({
+      success: true,
+      data: updatedIntervention,
+      message: 'Action plan updated successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error in update action plan route:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'
