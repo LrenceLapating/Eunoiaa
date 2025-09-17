@@ -12,8 +12,19 @@
 export function buildApiUrl(endpoint, baseUrl = null) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   
-  // Always use relative URLs with /api prefix when served from same domain
-  // This works both in development (with proxy) and production (served from backend)
+  // In production, use the backend URL from environment variables
+  if (process.env.NODE_ENV === 'production') {
+    const backendUrl = process.env.VUE_APP_API_URL || process.env.VUE_APP_BACKEND_URL;
+    if (backendUrl) {
+      // Remove trailing slash and add /api prefix
+      const cleanBaseUrl = backendUrl.replace(/\/$/, '');
+      return `${cleanBaseUrl}/api/${cleanEndpoint}`;
+    }
+    // Fallback to relative URL if no backend URL is configured
+    console.warn('No backend URL configured for production. Using relative URLs.');
+  }
+  
+  // Development: use relative URLs with /api prefix (works with proxy)
   return `/api/${cleanEndpoint}`;
 }
 

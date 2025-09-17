@@ -128,6 +128,11 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://eunoiaafrontend.vercel.app',
   'https://eunoiaafrontend-ncib1j5iv-lrencelapatings-projects.vercel.app',
+  // Add common Vercel deployment patterns
+  'https://eunoia-frontend.vercel.app',
+  'https://eunoia.vercel.app',
+  // Allow any Vercel preview deployments for this project
+  /^https:\/\/.*-lrencelapatings-projects\.vercel\.app$/,
   process.env.FRONTEND_URL
 ].filter(Boolean); // Remove any undefined values
 
@@ -136,10 +141,21 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin is in the allowed list or matches regex patterns
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
