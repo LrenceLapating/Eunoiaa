@@ -23,7 +23,7 @@
               <span v-show="sidebarExpanded">Dashboard</span>
             </a>
           </li>
-          <li :class="{ active: ['bulkAssessment', 'autoReminders'].includes(currentView) }">
+          <li :class="{ active: ['bulkAssessment', 'individualAssessment', 'autoReminders'].includes(currentView) }">
             <a @click="toggleSubmenu('ryffAssessment')" class="menu-item has-submenu" data-tooltip="Test Management">
               <div class="menu-icon">
               <i class="fas fa-chart-bar"></i>
@@ -36,6 +36,12 @@
                 <a @click="setView('bulkAssessment')" class="submenu-item">
                   <i class="fas fa-users"></i>
                   <span v-show="sidebarExpanded">Bulk Assessment</span>
+                </a>
+              </li>
+              <li :class="{ active: currentView === 'individualAssessment' }">
+                <a @click="setView('individualAssessment')" class="submenu-item">
+                  <i class="fas fa-user"></i>
+                  <span v-show="sidebarExpanded">Individual Assessment</span>
                 </a>
               </li>
               <li :class="{ active: currentView === 'autoReminders' }">
@@ -276,6 +282,7 @@ import authService from '@/services/authService'
 import YearlyTrendAnalysis from './YearlyTrendAnalysis.vue'
 import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
+import IndividualAssessment from './IndividualAssessment.vue'
 import AutoReminders from './AutoReminders.vue'
 import AccountManagement from './AccountManagement.vue'
 import CollegeView from './CollegeView.vue'
@@ -293,6 +300,7 @@ export default {
     YearlyTrendAnalysis,
     RyffScoring,
     BulkAssessment,
+    IndividualAssessment,
     AutoReminders,
     AccountManagement,
     CollegeView,
@@ -361,6 +369,7 @@ export default {
       const routeToViewMap = {
         'CounselorDashboard': 'dashboard',
         'BulkAssessment': 'bulkAssessment',
+        'IndividualAssessment': 'individualAssessment',
         'AutoReminders': 'autoReminders',
         'RyffScoring': 'ryffScoring',
         'CollegeSummary': 'guidance',
@@ -377,6 +386,8 @@ export default {
       switch(this.currentView) {
         case 'bulkAssessment':
           return 'Bulk Assessment';
+        case 'individualAssessment':
+          return 'Individual Assessment';
         case 'autoReminders':
           return 'Auto-Reminders';
         case 'ryffScoring':
@@ -399,6 +410,8 @@ export default {
       switch(this.currentView) {
         case 'bulkAssessment':
           return 'Distribute the Ryff assessment to target groups in one click';
+        case 'individualAssessment':
+          return 'Send assessments to specific students by searching and selecting them individually';
         case 'autoReminders':
           return 'Schedule automatic assessment reminders';
         case 'ryffScoring':
@@ -427,6 +440,7 @@ export default {
       const routeMap = {
         'dashboard': '/counselor',
         'bulkAssessment': '/counselor/bulk-assessment',
+        'individualAssessment': '/counselor/individual-assessment',
         'autoReminders': '/counselor/auto-reminders',
         'ryffScoring': '/counselor/ryff-scoring',
         'guidance': '/counselor/college-summary',

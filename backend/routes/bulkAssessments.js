@@ -130,8 +130,7 @@ async function cleanupExpiredAssessments() {
 // Create a new bulk assessment
 router.post('/create', verifyCounselorSession, async (req, res) => {
   try {
-    // Run automatic cleanup of expired assessments
-    await cleanupExpiredAssessments();
+    // Note: Automatic cleanup removed to prevent data deletion during duplicate prevention
     
     const {
       assessmentName,
@@ -156,37 +155,95 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
       });
     }
 
-    // Determine current academic year and semester
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
-    
-    // Academic year logic: June-May cycle
-    // June-December = 1st semester, January-May = 2nd semester
+    // Get current academic year and semester from academic settings
     let academicYear, semester;
-    if (currentMonth >= 6) {
-      // June-December: 1st semester of current academic year
-      academicYear = `${currentYear}-${currentYear + 1}`;
-      semester = '1st';
-    } else {
-      // January-May: 2nd semester of previous academic year
-      academicYear = `${currentYear - 1}-${currentYear}`;
-      semester = '2nd';
+    
+    try {
+      // Fetch current academic period from academic settings
+      const checkDate = new Date().toISOString().split('T')[0];
+      
+      // Try to find exact semester match first
+      const { data: semesterData, error: semesterError } = await supabase
+        .from('academic_settings')
+        .select('school_year, semester_name')
+        .eq('is_active', true)
+        .lte('start_date', checkDate)
+        .gte('end_date', checkDate)
+        .order('start_date', { ascending: false })
+        .limit(1);
+
+      if (semesterError) {
+        console.error('Error getting semester data:', semesterError);
+        throw semesterError;
+      }
+
+      if (semesterData && semesterData.length > 0) {
+        // Found exact semester match
+        const semester_data = semesterData[0];
+        academicYear = semester_data.school_year;
+        semester = semester_data.semester_name;
+        console.log(`Using academic settings: ${academicYear} ${semester}`);
+      } else {
+        // No semester found, try to find school year only
+        const currentYear = new Date(checkDate).getFullYear();
+        const { data: yearData, error: yearError } = await supabase
+          .from('academic_settings')
+          .select('school_year')
+          .eq('is_active', true)
+          .or(`school_year.like.${currentYear}-%,school_year.like.%-${currentYear}`)
+          .order('start_date', { ascending: false })
+          .limit(1);
+          
+        if (yearError) {
+          console.error('Error getting year data:', yearError);
+          throw yearError;
+        }
+        
+        if (yearData && yearData.length > 0) {
+          academicYear = yearData[0].school_year;
+          semester = null;
+          console.log(`Using academic settings (year only): ${academicYear}`);
+        } else {
+          throw new Error('No academic settings found');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching academic settings, falling back to automatic detection:', error);
+      
+      // Fallback: Determine current academic year and semester automatically
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+      
+      // Academic year logic: June-May cycle
+      // June-December = 1st semester, January-May = 2nd semester
+      if (currentMonth >= 6) {
+        // June-December: 1st semester of current academic year
+        academicYear = `${currentYear}-${currentYear + 1}`;
+        semester = '1st Semester';
+      } else {
+        // January-May: 2nd semester of previous academic year
+        academicYear = `${currentYear - 1}-${currentYear}`;
+        semester = '2nd Semester';
+      }
+      console.log(`Using fallback academic period: ${academicYear} ${semester}`);
     }
     
-    // Check for semester-based duplicates
+    // Check for existing assessments to merge with
     const { data: existingAssessments, error: duplicateCheckError } = await supabase
       .from('bulk_assessments')
-      .select('id, assessment_name, target_colleges, target_year_levels, target_sections, created_at, school_year, semester')
+      .select('id, assessment_name, target_colleges, target_year_levels, target_sections, created_at, school_year, semester, status')
       .eq('counselor_id', counselorId)
       .eq('assessment_type', assessmentType)
       .neq('status', 'cancelled');
 
+    let existingAssessmentToMerge = null;
+
     if (duplicateCheckError) {
-      console.error('Error checking for duplicates:', duplicateCheckError);
+      console.error('Error checking for existing assessments:', duplicateCheckError);
     } else if (existingAssessments && existingAssessments.length > 0) {
-      // Check for duplicates in the current semester
-      const semesterDuplicates = existingAssessments.filter(assessment => {
+      // Look for existing assessments in the current semester that can be merged
+      const mergeableAssessments = existingAssessments.filter(assessment => {
         // Check if assessment is from current semester
         const assessmentYear = assessment.school_year || academicYear;
         const assessmentSemester = assessment.semester || semester;
@@ -194,58 +251,21 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
         
         if (!isSameSemester) return false;
         
-        // Enhanced duplicate detection: Check for overlapping college-section combinations
+        // Check for overlapping colleges (we want to merge with existing college assessments)
         const currentColleges = targetColleges || [];
-        const currentYearLevels = targetYearLevels || [];
-        const currentSections = targetSections || [];
-        
         const existingColleges = assessment.target_colleges || [];
-        const existingYearLevels = assessment.target_year_levels || [];
-        const existingSections = assessment.target_sections || [];
         
-        // Check if there's any overlap in colleges
+        // Check if there's any overlap in colleges - if yes, we can merge
         const hasCollegeOverlap = currentColleges.some(college => existingColleges.includes(college));
         
-        // Check if there's any overlap in year levels
-        const hasYearLevelOverlap = currentYearLevels.some(yearLevel => existingYearLevels.includes(yearLevel));
-        
-        // Check if there's any overlap in sections
-        const hasSectionOverlap = currentSections.some(section => existingSections.includes(section));
-        
-        // If all three have overlaps, it's a duplicate
-        return hasCollegeOverlap && hasYearLevelOverlap && hasSectionOverlap;
+        return hasCollegeOverlap;
       });
 
-      if (semesterDuplicates.length > 0) {
-        const duplicateAssessment = semesterDuplicates[0];
+      if (mergeableAssessments.length > 0) {
+        // Use the first (oldest) assessment for merging
+        existingAssessmentToMerge = mergeableAssessments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
         
-        // Find the specific overlapping colleges and sections
-        const currentColleges = targetColleges || [];
-        const currentSections = targetSections || [];
-        const existingColleges = duplicateAssessment.target_colleges || [];
-        const existingSections = duplicateAssessment.target_sections || [];
-        
-        const overlappingColleges = currentColleges.filter(college => existingColleges.includes(college));
-        const overlappingSections = currentSections.filter(section => existingSections.includes(section));
-        
-        // Create detailed error message with specific overlaps
-        const collegeNames = overlappingColleges.join(', ') || 'selected colleges';
-        const sectionNames = overlappingSections.join(', ') || 'selected sections';
-        const currentSemesterDisplay = `${academicYear} ${semester} Semester`;
-        
-        return res.status(409).json({
-          success: false,
-          message: `Assessment for ${collegeNames} (${sectionNames}) has already been sent in ${currentSemesterDisplay}. Duplicate assessments are not allowed within the same semester.`,
-          duplicateInfo: {
-            colleges: overlappingColleges,
-            sections: overlappingSections,
-            semester: currentSemesterDisplay,
-            assessmentName: duplicateAssessment.assessment_name,
-            createdAt: duplicateAssessment.created_at,
-            originalColleges: targetColleges,
-            originalSections: targetSections
-          }
-        });
+        console.log(`Found existing assessment to merge with: ${existingAssessmentToMerge.assessment_name} (ID: ${existingAssessmentToMerge.id})`);
       }
     }
 
@@ -336,21 +356,45 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
 
     // Create assessment assignments for target students
     if (targetStudents.length > 0) {
-      // Check for existing active assignments to prevent duplicates
+      // Check for existing assessments of the SAME assessment type in the SAME semester to prevent duplicates
       const studentIds = targetStudents.map(student => student.id);
-      const { data: existingAssignments, error: existingError } = await supabase
-        .from('assessment_assignments')
-        .select('student_id')
-        .in('student_id', studentIds)
-        .in('status', ['assigned', 'in_progress'])
-        .gte('expires_at', new Date().toISOString());
+      console.log(`🔍 Checking for existing ${assessmentType} assessments in ${academicYear} ${semester} semester for ${studentIds.length} students`);
+      
+      // First, get bulk assessments that match our criteria
+      const { data: matchingBulkAssessments, error: bulkError } = await supabase
+        .from('bulk_assessments')
+        .select('id')
+        .eq('assessment_type', assessmentType)
+        .eq('school_year', academicYear)
+        .eq('semester', semester);
 
-      if (existingError) {
-        console.error('Error checking existing assignments:', existingError);
+      if (bulkError) {
+        console.error('Error checking bulk assessments:', bulkError);
       }
 
-      // Filter out students who already have active assignments
-      const existingStudentIds = new Set(existingAssignments?.map(a => a.student_id) || []);
+      let existingStudentIds = new Set();
+      
+      if (matchingBulkAssessments && matchingBulkAssessments.length > 0) {
+        const bulkAssessmentIds = matchingBulkAssessments.map(ba => ba.id);
+        
+        // Now check for existing assignments for these bulk assessments
+        const { data: existingAssignments, error: existingError } = await supabase
+          .from('assessment_assignments')
+          .select('student_id')
+          .in('student_id', studentIds)
+          .in('bulk_assessment_id', bulkAssessmentIds);
+
+        if (existingError) {
+          console.error('Error checking existing assignments:', existingError);
+        } else {
+          existingStudentIds = new Set(existingAssignments?.map(a => a.student_id) || []);
+          console.log(`📋 Found ${existingAssignments?.length || 0} existing ${assessmentType} assignments in ${academicYear} ${semester} semester to skip`);
+        }
+      } else {
+        console.log(`📋 No existing bulk assessments found for ${assessmentType} in ${academicYear} ${semester} semester`);
+      }
+
+      // Filter out students who already have assessments of this type in this semester
       const studentsToAssign = targetStudents.filter(student => !existingStudentIds.has(student.id));
 
       if (studentsToAssign.length > 0) {
@@ -374,9 +418,25 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
 
       // Update response message to reflect actual assignments created
       const skippedCount = targetStudents.length - studentsToAssign.length;
+      
+      // If no students were assigned (all were skipped), return an error
+      if (studentsToAssign.length === 0 && skippedCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Assessment could not be sent. All ${skippedCount} students already have active or taken the ${assessmentType} assignments in the same semester.`,
+          data: {
+            bulkAssessment,
+            assignedStudents: 0,
+            skippedStudents: skippedCount,
+            totalTargetStudents: targetStudents.length,
+            errorType: 'all_students_skipped'
+          }
+        });
+      }
+      
       let responseMessage = `Bulk assessment created successfully. Assigned to ${studentsToAssign.length} students.`;
       if (skippedCount > 0) {
-        responseMessage += ` ${skippedCount} students were skipped as they already have active assignments.`;
+        responseMessage += ` ${skippedCount} students were skipped as they already have active or taken the ${assessmentType} assignments.`;
       }
 
       res.json({
@@ -415,17 +475,17 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
 router.get('/history', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, assessment_type } = req.query;
     
-    const offset = (page - 1) * limit;
-
-    // Get bulk assessments
-    const { data: assessments, error } = await supabase
+    console.log(`📊 Fetching assessment history for counselor ${counselorId}, filter: ${assessment_type || 'all'}`);
+    
+    // Get ALL bulk assessments first (we'll handle filtering after grouping)
+    let query = supabase
       .from('bulk_assessments')
       .select('*')
-      .eq('counselor_id', counselorId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .eq('counselor_id', counselorId);
+    
+    const { data: assessments, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching assessment history:', error);
@@ -434,6 +494,8 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
         message: 'Failed to fetch assessment history'
       });
     }
+
+    console.log(`📋 Found ${assessments.length} total assessments before filtering`);
 
     // Get assignment counts for each assessment
     const enrichedAssessments = await Promise.all(assessments.map(async (assessment) => {
@@ -460,9 +522,97 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
       };
     }));
 
+    // Group assessments by college and assessment type to merge duplicates
+    const groupedAssessments = {};
+    
+    enrichedAssessments.forEach(assessment => {
+      // Create a unique key for each college-assessment type combination
+      const colleges = assessment.target_colleges || [];
+      const assessmentType = assessment.assessment_type;
+      
+      colleges.forEach(college => {
+        const groupKey = `${college}_${assessmentType}`;
+        
+        if (!groupedAssessments[groupKey]) {
+          // First assessment for this college-type combination
+          groupedAssessments[groupKey] = {
+            id: assessment.id, // Use the first assessment's ID
+            assessment_name: assessment.assessment_name,
+            assessment_type: assessment.assessment_type,
+            target_type: assessment.target_type,
+            target_colleges: [college], // Single college for this group
+            custom_message: assessment.custom_message,
+            scheduled_date: assessment.scheduled_date,
+            status: assessment.status,
+            created_at: assessment.created_at, // Use earliest date
+            updated_at: assessment.updated_at,
+            target_year_levels: assessment.target_year_levels || [],
+            target_sections: assessment.target_sections || [],
+            school_year: assessment.school_year,
+            semester: assessment.semester,
+            total_assigned: assessment.total_assigned,
+            total_completed: assessment.total_completed,
+            completion_percentage: assessment.completion_percentage,
+            // Keep track of merged assessments
+            merged_assessment_ids: [assessment.id],
+            merged_sections: assessment.target_sections || []
+          };
+        } else {
+          // Merge with existing group
+          const existing = groupedAssessments[groupKey];
+          
+          // Merge recipient counts
+          existing.total_assigned += assessment.total_assigned;
+          existing.total_completed += assessment.total_completed;
+          
+          // Recalculate completion percentage
+          existing.completion_percentage = existing.total_assigned > 0 
+            ? Math.round((existing.total_completed / existing.total_assigned) * 100) 
+            : 0;
+          
+          // Use the most recent date
+          if (new Date(assessment.created_at) > new Date(existing.created_at)) {
+            existing.created_at = assessment.created_at;
+            existing.updated_at = assessment.updated_at;
+          }
+          
+          // Merge sections
+          const newSections = assessment.target_sections || [];
+          existing.merged_sections = [...new Set([...existing.merged_sections, ...newSections])];
+          existing.target_sections = existing.merged_sections;
+          
+          // Keep track of merged assessment IDs
+          existing.merged_assessment_ids.push(assessment.id);
+        }
+      });
+    });
+
+    // Convert grouped assessments back to array
+    let finalAssessments = Object.values(groupedAssessments);
+    
+    // Apply assessment type filter AFTER grouping
+    if (assessment_type && (assessment_type === 'ryff_42' || assessment_type === 'ryff_84')) {
+      finalAssessments = finalAssessments.filter(assessment => 
+        assessment.assessment_type === assessment_type
+      );
+      console.log(`🔍 Filtered to ${finalAssessments.length} assessments of type ${assessment_type}`);
+    }
+    
+    // Sort by date
+    finalAssessments = finalAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Apply pagination to the filtered results
+    const offset = (page - 1) * limit;
+    const paginatedAssessments = finalAssessments.slice(offset, offset + limit);
+
+    console.log(`📄 Returning ${paginatedAssessments.length} assessments (page ${page})`);
+
     res.json({
       success: true,
-      data: enrichedAssessments
+      data: paginatedAssessments,
+      total: finalAssessments.length,
+      page: parseInt(page),
+      limit: parseInt(limit)
     });
 
   } catch (error) {

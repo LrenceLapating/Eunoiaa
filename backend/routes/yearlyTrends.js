@@ -1,6 +1,21 @@
 const express = require('express');
 const { supabaseAdmin } = require('../config/database');
+const { cacheManager } = require('../config/redis');
 const router = express.Router();
+
+// Cache TTL constants (in seconds)
+const CACHE_TTL = {
+  AT_RISK_DATA: 1800,      // 30 minutes
+  IMPROVEMENT_DATA: 1800,   // 30 minutes
+  AVAILABLE_YEARS: 3600     // 1 hour
+};
+
+// Cache key generators
+const getCacheKey = {
+  atRisk: (dimension, year) => `yearly_trends:at_risk:${dimension}:${year}`,
+  improvement: (dimension, year) => `yearly_trends:improvement:${dimension}:${year}`,
+  availableYears: () => 'yearly_trends:available_years'
+};
 
 // Ryff dimension mappings
 const RYFF_DIMENSIONS = {
@@ -23,6 +38,37 @@ const RISK_THRESHOLDS = {
 };
 
 /**
+ * Retry utility for Supabase queries with exponential backoff
+ */
+async function retrySupabaseQuery(queryFunction, description, maxRetries = 3, delay = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Attempting ${description} (attempt ${attempt}/${maxRetries})`);
+      const result = await queryFunction();
+      
+      if (result.error) {
+        throw new Error(`Supabase error: ${result.error.message}`);
+      }
+      
+      console.log(`✅ Successfully completed ${description}`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Attempt ${attempt} failed for ${description}:`, error.message);
+      
+      if (attempt === maxRetries) {
+        console.error(`🚫 All ${maxRetries} attempts failed for ${description}`);
+        throw error;
+      }
+      
+      // Wait before retrying with exponential backoff
+      console.log(`⏳ Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+}
+
+/**
  * GET /api/yearly-trends/at-risk
  * Get yearly at-risk trends by college and dimension
  */
@@ -36,44 +82,70 @@ router.get('/at-risk', async (req, res) => {
     const currentYear = new Date().getFullYear();
     const targetYear = year ? parseInt(year) : currentYear;
     
+    // Check cache first
+    const cacheKey = getCacheKey.atRisk(dimension, targetYear);
+    const cachedData = await cacheManager.get(cacheKey);
+    
+    if (cachedData) {
+      console.log(`📦 Cache hit for at-risk trends: ${cacheKey}`);
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true
+      });
+    }
+    
+    console.log(`🔍 Cache miss for at-risk trends: ${cacheKey}`);
+    
+    // Proceed with database queries if not cached
+    
     // Query historical data from ryff_history table as primary source (permanent data)
-    const historicalData = await supabaseAdmin
-      .from('ryff_history')
-      .select(`
-        id,
-        student_id,
-        scores,
-        at_risk_dimensions,
-        completed_at,
-        archived_at
-      `)
-      .gte('completed_at', `${targetYear}-01-01`)
-      .lt('completed_at', `${targetYear + 1}-01-01`);
+    const historicalData = await retrySupabaseQuery(
+      () => supabaseAdmin
+        .from('ryff_history')
+        .select(`
+          id,
+          student_id,
+          scores,
+          at_risk_dimensions,
+          completed_at,
+          archived_at
+        `)
+        .gte('completed_at', `${targetYear}-01-01`)
+        .lt('completed_at', `${targetYear + 1}-01-01`),
+      'historical data from ryff_history'
+    );
 
     // Query current assessments from assessments_42items and assessments_84items tables
-    const current42Data = await supabaseAdmin
-      .from('assessments_42items')
-      .select(`
-        id,
-        student_id,
-        scores,
-        at_risk_dimensions,
-        completed_at
-      `)
-      .gte('completed_at', `${targetYear}-01-01`)
-      .lt('completed_at', `${targetYear + 1}-01-01`);
+    const current42Data = await retrySupabaseQuery(
+      () => supabaseAdmin
+        .from('assessments_42items')
+        .select(`
+          id,
+          student_id,
+          scores,
+          at_risk_dimensions,
+          completed_at
+        `)
+        .gte('completed_at', `${targetYear}-01-01`)
+        .lt('completed_at', `${targetYear + 1}-01-01`),
+      'current 42-item assessments'
+    );
 
-    const current84Data = await supabaseAdmin
-      .from('assessments_84items')
-      .select(`
-        id,
-        student_id,
-        scores,
-        at_risk_dimensions,
-        completed_at
-      `)
-      .gte('completed_at', `${targetYear}-01-01`)
-      .lt('completed_at', `${targetYear + 1}-01-01`);
+    const current84Data = await retrySupabaseQuery(
+      () => supabaseAdmin
+        .from('assessments_84items')
+        .select(`
+          id,
+          student_id,
+          scores,
+          at_risk_dimensions,
+          completed_at
+        `)
+        .gte('completed_at', `${targetYear}-01-01`)
+        .lt('completed_at', `${targetYear + 1}-01-01`),
+      'current 84-item assessments'
+    );
 
     // Combine current data from both tables
     const currentData = {
@@ -211,26 +283,50 @@ router.get('/at-risk', async (req, res) => {
 
     console.log(`✅ At-risk trends calculated for ${dimension}:`, trendData);
 
+    const responseData = {
+      dimension,
+      year: targetYear,
+      trends: trendData,
+      summary: {
+        highestRiskCollege: trendData[0]?.college || 'N/A',
+        highestRiskCount: trendData[0]?.atRiskCount || 0,
+        totalAssessments: allAssessments.length
+      }
+    };
+    
+    // Cache the result
+    await cacheManager.set(cacheKey, responseData, CACHE_TTL.AT_RISK_DATA);
+    console.log(`💾 Cached at-risk trends: ${cacheKey}`);
+
     res.json({
       success: true,
-      data: {
-        dimension,
-        year: targetYear,
-        trends: trendData,
-        summary: {
-          highestRiskCollege: trendData[0]?.college || 'N/A',
-          highestRiskCount: trendData[0]?.atRiskCount || 0,
-          totalAssessments: allAssessments.length
-        }
-      }
+      data: responseData
     });
 
   } catch (error) {
     console.error('Error in at-risk trends endpoint:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error while fetching at-risk trends'
-    });
+    
+    // Check if it's a network/connection error
+    const isNetworkError = error.message?.includes('fetch failed') || 
+                          error.message?.includes('ECONNREFUSED') ||
+                          error.message?.includes('ENOTFOUND') ||
+                          error.code === 'ECONNREFUSED' ||
+                          error.code === 'ENOTFOUND';
+    
+    if (isNetworkError) {
+      console.warn('Network connectivity issue detected in at-risk trends');
+      res.status(503).json({
+        success: false,
+        message: 'Database connection temporarily unavailable. Please try again later.',
+        error: 'NETWORK_ERROR'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching at-risk trends',
+        error: 'INTERNAL_ERROR'
+      });
+    }
   }
 });
 
@@ -248,36 +344,27 @@ router.get('/improvement', async (req, res) => {
     const targetYear = year ? parseInt(year) : currentYear;
     const previousYear = targetYear - 1;
     
+    // Check cache first
+    const cacheKey = getCacheKey.improvement(dimension, targetYear);
+    const cachedData = await cacheManager.get(cacheKey);
+    
+    if (cachedData) {
+      console.log(`📦 Cache hit for improvement trends: ${cacheKey}`);
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true
+      });
+    }
+    
+    console.log(`🔍 Cache miss for improvement trends: ${cacheKey}`);
+    
     // Get assessments for both years from ryff_history (primary source) and assessments tables (current)
     const [currentYearHistoryData, previousYearHistoryData, currentYearCurrentData] = await Promise.all([
       // Current year from history table
-      supabaseAdmin
-        .from('ryff_history')
-        .select(`
-          student_id,
-          scores,
-          overall_score,
-          completed_at
-        `)
-        .gte('completed_at', `${targetYear}-01-01`)
-        .lt('completed_at', `${targetYear + 1}-01-01`),
-      
-      // Previous year from history table
-      supabaseAdmin
-        .from('ryff_history')
-        .select(`
-          student_id,
-          scores,
-          overall_score,
-          completed_at
-        `)
-        .gte('completed_at', `${previousYear}-01-01`)
-        .lt('completed_at', `${previousYear + 1}-01-01`),
-        
-      // Current year from current tables (without join)
-      Promise.all([
-        supabaseAdmin
-          .from('assessments_42items')
+      retrySupabaseQuery(
+        () => supabaseAdmin
+          .from('ryff_history')
           .select(`
             student_id,
             scores,
@@ -286,16 +373,52 @@ router.get('/improvement', async (req, res) => {
           `)
           .gte('completed_at', `${targetYear}-01-01`)
           .lt('completed_at', `${targetYear + 1}-01-01`),
-        supabaseAdmin
-          .from('assessments_84items')
+        'current year history data'
+      ),
+      
+      // Previous year from history table
+      retrySupabaseQuery(
+        () => supabaseAdmin
+          .from('ryff_history')
           .select(`
             student_id,
             scores,
             overall_score,
             completed_at
           `)
-          .gte('completed_at', `${targetYear}-01-01`)
-          .lt('completed_at', `${targetYear + 1}-01-01`)
+          .gte('completed_at', `${previousYear}-01-01`)
+          .lt('completed_at', `${previousYear + 1}-01-01`),
+        'previous year history data'
+      ),
+        
+      // Current year from current tables (without join)
+      Promise.all([
+        retrySupabaseQuery(
+          () => supabaseAdmin
+            .from('assessments_42items')
+            .select(`
+              student_id,
+              scores,
+              overall_score,
+              completed_at
+            `)
+            .gte('completed_at', `${targetYear}-01-01`)
+            .lt('completed_at', `${targetYear + 1}-01-01`),
+          'current year 42-item assessments'
+        ),
+        retrySupabaseQuery(
+          () => supabaseAdmin
+            .from('assessments_84items')
+            .select(`
+              student_id,
+              scores,
+              overall_score,
+              completed_at
+            `)
+            .gte('completed_at', `${targetYear}-01-01`)
+            .lt('completed_at', `${targetYear + 1}-01-01`),
+          'current year 84-item assessments'
+        )
       ]).then(([current42Data, current84Data]) => ({
         data: [...(current42Data.data || []), ...(current84Data.data || [])],
         error: current42Data.error || current84Data.error
@@ -443,28 +566,52 @@ router.get('/improvement', async (req, res) => {
 
     console.log(`✅ Improvement trends calculated for ${dimension}:`, improvementData);
 
+    const responseData = {
+      dimension,
+      currentYear: targetYear,
+      previousYear,
+      trends: improvementData,
+      summary: {
+        mostImprovedCollege: improvementData[0]?.college || 'N/A',
+        highestImprovement: improvementData[0]?.improvement || 0,
+        totalCurrentAssessments: currentYearData.length,
+        totalPreviousAssessments: previousYearData.length
+      }
+    };
+    
+    // Cache the result
+    await cacheManager.set(cacheKey, responseData, CACHE_TTL.IMPROVEMENT_DATA);
+    console.log(`💾 Cached improvement trends: ${cacheKey}`);
+
     res.json({
       success: true,
-      data: {
-        dimension,
-        currentYear: targetYear,
-        previousYear,
-        trends: improvementData,
-        summary: {
-          mostImprovedCollege: improvementData[0]?.college || 'N/A',
-          highestImprovement: improvementData[0]?.improvement || 0,
-          totalCurrentAssessments: currentYearData.length,
-          totalPreviousAssessments: previousYearData.length
-        }
-      }
+      data: responseData
     });
 
   } catch (error) {
     console.error('Error in improvement trends endpoint:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error while fetching improvement trends'
-    });
+    
+    // Check if it's a network/connection error
+    const isNetworkError = error.message?.includes('fetch failed') || 
+                          error.message?.includes('ECONNREFUSED') ||
+                          error.message?.includes('ENOTFOUND') ||
+                          error.code === 'ECONNREFUSED' ||
+                          error.code === 'ENOTFOUND';
+    
+    if (isNetworkError) {
+      console.warn('Network connectivity issue detected in improvement trends');
+      res.status(503).json({
+        success: false,
+        message: 'Database connection temporarily unavailable. Please try again later.',
+        error: 'NETWORK_ERROR'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching improvement trends',
+        error: 'INTERNAL_ERROR'
+      });
+    }
   }
 });
 
@@ -475,6 +622,21 @@ router.get('/improvement', async (req, res) => {
 router.get('/available-years', async (req, res) => {
   try {
     console.log('🔍 Fetching available years for trend analysis');
+
+    // Check cache first
+    const cacheKey = getCacheKey.availableYears();
+    const cachedData = await cacheManager.get(cacheKey);
+    
+    if (cachedData) {
+      console.log(`📦 Cache hit for available years: ${cacheKey}`);
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true
+      });
+    }
+    
+    console.log(`🔍 Cache miss for available years: ${cacheKey}`);
 
     // Get years from both current and historical data
     const [current42Years, current84Years, historicalYears] = await Promise.all([
@@ -530,20 +692,44 @@ router.get('/available-years', async (req, res) => {
     
     console.log('✅ Available years:', availableYears);
 
+    const responseData = {
+      years: availableYears,
+      currentYear: new Date().getFullYear()
+    };
+    
+    // Cache the result
+    await cacheManager.set(cacheKey, responseData, CACHE_TTL.AVAILABLE_YEARS);
+    console.log(`💾 Cached available years: ${cacheKey}`);
+
     res.json({
       success: true,
-      data: {
-        years: availableYears,
-        currentYear: new Date().getFullYear()
-      }
+      data: responseData
     });
 
   } catch (error) {
     console.error('Error fetching available years:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error while fetching available years'
-    });
+    
+    // Check if it's a network/connection error
+    const isNetworkError = error.message?.includes('fetch failed') || 
+                          error.message?.includes('ECONNREFUSED') ||
+                          error.message?.includes('ENOTFOUND') ||
+                          error.code === 'ECONNREFUSED' ||
+                          error.code === 'ENOTFOUND';
+    
+    if (isNetworkError) {
+      console.warn('Network connectivity issue detected in available years');
+      res.status(503).json({
+        success: false,
+        message: 'Database connection temporarily unavailable. Please try again later.',
+        error: 'NETWORK_ERROR'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching available years',
+        error: 'INTERNAL_ERROR'
+      });
+    }
   }
 });
 

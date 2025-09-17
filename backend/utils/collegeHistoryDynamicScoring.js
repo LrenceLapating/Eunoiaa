@@ -15,6 +15,15 @@ function getCollegeDimensionRiskLevel(rawScore) {
   return 'at_risk';
 }
 
+// Helper function to determine individual dimension risk level based on dimension score
+function getDimensionRiskLevel(dimensionScore) {
+  // Ryff scale typically ranges from 1-6 per item, with 7 items per dimension = 7-42 range
+  // Healthy: 30-42, Moderate: 20-29, At Risk: 7-19
+  if (dimensionScore >= 30) return 'healthy';
+  if (dimensionScore >= 20) return 'moderate';
+  return 'at risk';
+}
+
 /**
  * Compute dynamic college history scores with filtering
  * This function fetches individual assessment data and recalculates scores based on filters
@@ -269,111 +278,168 @@ async function computeDynamicHistoryForAssessment(supabase, collegeName, assessm
   }
 }
 
-// Process aggregated data when no filters are applied
+// Process data by working with existing aggregated data and applying filtering logic
 async function processAggregatedData(supabase, filters) {
-  const { collegeName } = filters;
+  const { collegeName, yearLevel, section } = filters;
   
-  let query = supabase
-    .from('college_scores_history')
-    .select('*');
-  
-  if (collegeName) {
-    query = query.eq('college_name', collegeName);
-  }
-  
-  const { data: historyRecords, error } = await query;
-  
-  if (error) {
-    console.error('Error fetching college history records:', error);
-    throw error;
-  }
-  
-  if (!historyRecords || historyRecords.length === 0) {
-    console.log('No college history records found matching the filters');
-    return {
-      success: true,
-      history: [],
-      filteringMetadata: {
-        totalRecords: 0,
-        availableYearLevels: [],
-        availableSections: []
-      }
-    };
-  }
-  
-  console.log(`Found ${historyRecords.length} aggregated history records`);
-  
-  // Group records by college and process aggregated data
-  const collegeData = {};
-  const allYearLevels = new Set();
-  const allSections = new Set();
-  
-  for (const record of historyRecords) {
-    const college = record.college_name;
+  try {
+    // Get aggregated data from college_scores_history
+    let query = supabase
+      .from('college_scores_history')
+      .select('*');
     
-    if (!collegeData[college]) {
-      collegeData[college] = {
-        dimensions: {},
-        totalStudents: 0
+    if (collegeName) {
+      query = query.eq('college_name', collegeName);
+    }
+    
+    const { data: aggregatedData, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching aggregated data:', error);
+      throw error;
+    }
+    
+    if (!aggregatedData || aggregatedData.length === 0) {
+      return {
+        success: true,
+        history: [],
+        filteringMetadata: {
+          totalRecords: 0,
+          availableYearLevels: [],
+          availableSections: []
+        }
       };
     }
     
-    // Collect metadata from arrays
-    if (record.available_year_levels) {
-      record.available_year_levels.forEach(year => allYearLevels.add(year));
-    }
-    if (record.available_sections) {
-      record.available_sections.forEach(sec => allSections.add(sec));
+    // Get available year levels and sections from the data
+    const allYearLevels = new Set();
+    const allSections = new Set();
+    
+    aggregatedData.forEach(record => {
+      if (record.available_year_levels) {
+        record.available_year_levels.forEach(level => allYearLevels.add(level));
+      }
+      if (record.available_sections) {
+        record.available_sections.forEach(sec => allSections.add(sec));
+      }
+    });
+    
+    const availableYearLevels = Array.from(allYearLevels).sort((a, b) => a - b);
+    const availableSections = Array.from(allSections).sort();
+    
+    // Apply filtering logic - check if requested filters are available
+    let filteredData = aggregatedData;
+    
+    if (yearLevel || section) {
+      const yearLevelNum = yearLevel ? parseInt(yearLevel) : null;
+      
+      // Check if the requested filters are available in the data
+      const hasRequestedYearLevel = !yearLevel || availableYearLevels.includes(yearLevelNum);
+      const hasRequestedSection = !section || availableSections.includes(section);
+      
+      // If the requested filters are not available, return empty results
+      if (!hasRequestedYearLevel || !hasRequestedSection) {
+        filteredData = [];
+      }
+      // If filters are available, keep all records since aggregated data represents the filtered subset
     }
     
-    // Store aggregated dimension data
-    collegeData[college].dimensions[record.dimension_name] = {
-      score: record.raw_score,
-      riskLevel: record.risk_level,
-      studentCount: record.student_count
+    if (filteredData.length === 0) {
+      return {
+        success: true,
+        history: [],
+        filteringMetadata: {
+          totalRecords: 0,
+          availableYearLevels,
+          availableSections
+        }
+      };
+    }
+    
+    // Group by assessment and calculate overall scores
+    const assessmentGroups = {};
+    
+    filteredData.forEach(record => {
+      const key = `${record.assessment_type}-${record.assessment_name}`;
+      if (!assessmentGroups[key]) {
+        assessmentGroups[key] = {
+          assessment_type: record.assessment_type,
+          assessment_name: record.assessment_name,
+          records: [],
+          last_calculated: record.last_calculated
+        };
+      }
+      assessmentGroups[key].records.push(record);
+    });
+    
+    const history = Object.values(assessmentGroups).map(group => {
+      const records = group.records;
+      
+      // Build dimensions object from records
+      const dimensions = {};
+      let totalScore = 0;
+      const riskCounts = { 'healthy': 0, 'moderate': 0, 'at_risk': 0 };
+      let totalStudents = 0;
+      
+      records.forEach(record => {
+        if (record.dimension_name) {
+          dimensions[record.dimension_name] = {
+            score: record.raw_score || 0,
+            riskLevel: record.risk_level || 'moderate',
+            studentCount: record.student_count || 0
+          };
+          totalScore += record.raw_score || 0;
+          
+          // Count risk levels
+          const riskLevel = record.risk_level || 'moderate';
+          if (riskLevel === 'at risk') {
+            riskCounts.at_risk++;
+          } else if (riskCounts.hasOwnProperty(riskLevel)) {
+            riskCounts[riskLevel]++;
+          }
+          
+          // Use the maximum student count (should be the same across dimensions)
+          totalStudents = Math.max(totalStudents, record.student_count || 0);
+        }
+      });
+      
+      const overallScore = totalScore;
+      const overallRiskLevel = getCollegeDimensionRiskLevel(overallScore);
+      
+      // Calculate risk distribution based on dimension risk levels
+      const riskDistribution = {
+        healthy: riskCounts.healthy,
+        moderate: riskCounts.moderate,
+        at_risk: riskCounts.at_risk
+      };
+      
+      return {
+        collegeName: collegeName,
+        dimensions,
+        overallScore: overallScore,
+        overallRiskLevel: overallRiskLevel,
+        totalStudents: totalStudents,
+        riskDistribution: riskDistribution,
+        assessmentType: group.assessment_type,
+        assessmentName: group.assessment_name,
+        lastCalculated: group.last_calculated
+      };
+    });
+    
+    return {
+      success: true,
+      history,
+      filteringMetadata: {
+        totalRecords: history.length,
+        availableYearLevels,
+        availableSections
+      }
     };
     
-    // Update total student count
-    if (record.student_count > collegeData[college].totalStudents) {
-      collegeData[college].totalStudents = record.student_count;
-    }
+  } catch (error) {
+    console.error('Error in processAggregatedData:', error);
+    throw error;
   }
-  
-  // Process results for each college
-  const results = [];
-  
-  for (const [college, data] of Object.entries(collegeData)) {
-    const dimensionScores = data.dimensions;
-    
-    // Calculate overall score from dimension scores
-    const dimensionValues = Object.values(dimensionScores).map(d => d.score);
-    const overallScore = dimensionValues.length > 0 
-      ? Number((dimensionValues.reduce((sum, score) => sum + score, 0) / dimensionValues.length).toFixed(2))
-      : 0;
-    
-    // Calculate risk distribution from dimension data
-    const riskDistribution = calculateRiskDistribution(dimensionScores, data.totalStudents);
-    
-    results.push({
-      college_name: college,
-      dimensions: dimensionScores,
-      overall_score: overallScore,
-      overall_risk_level: getCollegeDimensionRiskLevel(overallScore),
-      student_count: data.totalStudents,
-      risk_distribution: riskDistribution,
-      last_calculated: new Date().toISOString()
-    });
-  }
-  
-  return {
-    success: true,
-    history: results,
-    filteringMetadata: {
-      totalRecords: historyRecords.length,
-      availableYearLevels: Array.from(allYearLevels).sort((a, b) => a - b),
-      availableSections: Array.from(allSections).sort()
-    }
-  };
 }
 
 /**
@@ -382,27 +448,52 @@ async function processAggregatedData(supabase, filters) {
 function calculateRiskDistribution(dimensionScores, totalStudents) {
     const riskCounts = { healthy: 0, moderate: 0, at_risk: 0 };
     
-    // For individual assessments, count by risk level
+    // For aggregated dimension data, we need to determine the overall risk level
+    // based on the majority of dimensions or use a more sophisticated approach
     if (typeof dimensionScores === 'object' && Object.keys(dimensionScores).length > 0) {
-        // Check if this is dimension data with risk levels
         const firstDimension = Object.values(dimensionScores)[0];
+        
         if (firstDimension && firstDimension.riskLevel) {
-            // This is aggregated dimension data - distribute based on risk levels
+            // This is aggregated dimension data - count risk levels across dimensions
+            const dimensionRiskCounts = { healthy: 0, moderate: 0, at_risk: 0 };
+            
             Object.values(dimensionScores).forEach(dimension => {
                 const riskLevel = dimension.riskLevel;
-                if (riskCounts.hasOwnProperty(riskLevel)) {
-                    // For aggregated data, assume equal distribution across dimensions
-                    riskCounts[riskLevel] = Math.ceil(totalStudents / 3); // Rough distribution
+                if (dimensionRiskCounts.hasOwnProperty(riskLevel)) {
+                    dimensionRiskCounts[riskLevel]++;
                 }
             });
             
-            // Adjust to match total students
-            const totalCounted = Object.values(riskCounts).reduce((sum, count) => sum + count, 0);
-            if (totalCounted > totalStudents) {
-                // Reduce proportionally
-                const excess = totalCounted - totalStudents;
-                riskCounts.moderate = Math.max(0, riskCounts.moderate - Math.ceil(excess / 2));
-                riskCounts.at_risk = Math.max(0, riskCounts.at_risk - Math.floor(excess / 2));
+            // Determine overall college risk based on dimension distribution
+            const totalDimensions = Object.values(dimensionRiskCounts).reduce((sum, count) => sum + count, 0);
+            
+            if (totalDimensions > 0) {
+                const healthyRatio = dimensionRiskCounts.healthy / totalDimensions;
+                const atRiskRatio = dimensionRiskCounts.at_risk / totalDimensions;
+                const moderateRatio = dimensionRiskCounts.moderate / totalDimensions;
+                
+                // If majority of dimensions are in one category, assign all students to that category
+                if (moderateRatio >= 0.5) {
+                    // Majority moderate - all students are moderate
+                    riskCounts.moderate = totalStudents;
+                } else if (healthyRatio >= 0.5) {
+                    // Majority healthy - all students are healthy
+                    riskCounts.healthy = totalStudents;
+                } else if (atRiskRatio >= 0.5) {
+                    // Majority at-risk - all students are at-risk
+                    riskCounts.at_risk = totalStudents;
+                } else {
+                    // Mixed distribution - distribute proportionally
+                    riskCounts.healthy = Math.round(totalStudents * healthyRatio);
+                    riskCounts.moderate = Math.round(totalStudents * moderateRatio);
+                    riskCounts.at_risk = totalStudents - riskCounts.healthy - riskCounts.moderate;
+                    
+                    // Ensure no negative values
+                    if (riskCounts.at_risk < 0) {
+                        riskCounts.moderate += riskCounts.at_risk;
+                        riskCounts.at_risk = 0;
+                    }
+                }
             }
         } else {
             // This is individual score data - calculate risk distribution
@@ -418,10 +509,8 @@ function calculateRiskDistribution(dimensionScores, totalStudents) {
     // Ensure we have a reasonable distribution if no data
     const totalCounted = Object.values(riskCounts).reduce((sum, count) => sum + count, 0);
     if (totalCounted === 0 && totalStudents > 0) {
-        // Default distribution
-        riskCounts.healthy = Math.ceil(totalStudents * 0.4);
-        riskCounts.moderate = Math.ceil(totalStudents * 0.4);
-        riskCounts.at_risk = totalStudents - riskCounts.healthy - riskCounts.moderate;
+        // Default distribution - assume moderate risk
+        riskCounts.moderate = totalStudents;
     }
     
     return riskCounts;

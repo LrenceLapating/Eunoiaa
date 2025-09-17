@@ -34,7 +34,7 @@
         <div class="college-metrics" style="display: none;">
           <div class="metric">
             <span class="metric-label">Overall Score</span>
-            <span class="metric-value">{{ college.avgScore.toFixed(2) }}</span>
+            <span class="metric-value">{{ formatScore(college.avgScore) }}</span>
           </div>
           <div class="metric">
             <span class="metric-label">At Risk Students</span>
@@ -48,7 +48,7 @@
             <div class="progress-track">
               <div class="progress-fill" :style="{ width: `${(dim.score/maxScore)*100}%`, backgroundColor: getCollegeDimensionColor(dim.score, assessmentTypeFilter) }"></div>
           </div>
-          <span class="dimension-score" style="color: black;">{{ dim.score.toFixed(2) }}/{{ maxScore }}</span>
+          <span class="dimension-score" style="color: black;">{{ formatScore(dim.score) }}/{{ maxScore }}</span>
           </div>
         </div>
       </div>
@@ -128,11 +128,11 @@ export default {
             console.log(`🏫 Processing ${college.name}: Found score data:`, !!collegeScore);
             
             if (collegeScore) {
-              // Calculate overall average and at-risk count from dimensions
+              // Calculate overall score (sum) and at-risk count from dimensions
               const dimensions = collegeScore.dimensions;
               const dimensionScores = Object.values(dimensions).map(dim => dim.score);
               const avgScore = dimensionScores.length > 0 
-                ? dimensionScores.reduce((sum, score) => sum + score, 0) / dimensionScores.length 
+                ? dimensionScores.reduce((sum, score) => sum + score, 0)
                 : 0;
               
               // Count at-risk dimensions
@@ -255,6 +255,12 @@ export default {
         };
       });
       return formatted;
+    },
+
+    formatScore(score) {
+      if (!score || score === 0) return '0';
+      if (score % 1 === 0) return score.toString();
+      return parseFloat(score.toFixed(2)).toString();
     },
 
     setAssessmentType(type) {

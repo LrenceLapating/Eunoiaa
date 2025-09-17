@@ -12,23 +12,9 @@
 export function buildApiUrl(endpoint, baseUrl = null) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   
-  // In development, always use relative URLs with /api prefix
-  // This ensures the Vue proxy handles the routing correctly
-  if (process.env.NODE_ENV === 'development') {
-    return `/api/${cleanEndpoint}`;
-  }
-  
-  // In production, construct full URL
-  const apiBaseUrl = baseUrl || process.env.VUE_APP_API_URL || 'http://localhost:3000/api';
-  
-  // Ensure we don't double up on /api
-  if (apiBaseUrl.endsWith('/api')) {
-    // Base URL already includes /api, just append the endpoint
-    return `${apiBaseUrl}/${cleanEndpoint}`;
-  } else {
-    // Base URL doesn't include /api, add it
-    return `${apiBaseUrl}/api/${cleanEndpoint}`;
-  }
+  // Always use relative URLs with /api prefix when served from same domain
+  // This works both in development (with proxy) and production (served from backend)
+  return `/api/${cleanEndpoint}`;
 }
 
 /**

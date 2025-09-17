@@ -166,8 +166,23 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
     if (!assessmentType) {
       throw new Error('Assessment type is required to compute college scores');
     }
+
+    // College name mapping - convert full names to codes for database queries
+    const collegeNameMapping = {
+      'College of Computing and Information Sciences': 'CCS',
+      'College of Architecture and Built Environment': 'CABE',
+      'College of Engineering and Architecture': 'CEA',
+      'College of Nursing': 'CN'
+    };
+
+    // Convert college name to code if it's a full name
+    let collegeCode = collegeName;
+    if (collegeName && collegeNameMapping[collegeName]) {
+      collegeCode = collegeNameMapping[collegeName];
+      console.log(`🔄 Mapped college name "${collegeName}" to code "${collegeCode}"`);
+    }
     
-    console.log(`Computing college scores${collegeName ? ` for ${collegeName}` : ' for all colleges'} (${assessmentType}${assessmentName ? `, assessment: ${assessmentName}` : ''})...`);
+    console.log(`Computing college scores${collegeCode ? ` for ${collegeCode}` : ' for all colleges'} (${assessmentType}${assessmentName ? `, assessment: ${assessmentName}` : ''})...`);
     
     // Determine which table to query based on assessment type
     let tableName = 'assessments'; // Default to unified view
@@ -283,7 +298,7 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
       if (!college) return;
       
       // Filter by college if specified
-      if (collegeName && college !== collegeName) return;
+      if (collegeCode && college !== collegeCode) return;
       
       if (!collegeData[college]) {
         collegeData[college] = {
@@ -412,12 +427,27 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
  */
 async function getCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null) {
   try {
-    // Get completion data
+    // College name mapping - convert full names to codes for database queries
+    const collegeNameMapping = {
+      'College of Computing and Information Sciences': 'CCS',
+      'College of Architecture and Built Environment': 'CABE',
+      'College of Engineering and Architecture': 'CEA',
+      'College of Nursing': 'CN'
+    };
+
+    // Convert college name to code if it's a full name
+    let collegeCode = collegeName;
+    if (collegeName && collegeNameMapping[collegeName]) {
+      collegeCode = collegeNameMapping[collegeName];
+      console.log(`🔄 Mapped college name "${collegeName}" to code "${collegeCode}"`);
+    }
+
+    // Get completion data using the college code
     const completionData = await getAssessmentCompletionCounts(assessmentName, yearLevel, section);
     
     // If year or section filtering is requested, compute scores dynamically
     if (yearLevel || section) {
-      const result = await computeDynamicCollegeScores(collegeName, assessmentType, assessmentName, yearLevel, section);
+      const result = await computeDynamicCollegeScores(collegeCode, assessmentType, assessmentName, yearLevel, section);
       
       // Add completion data to the result
       if (result.success && result.colleges) {
@@ -455,8 +485,8 @@ async function getCollegeScores(collegeName = null, assessmentType = null, asses
       .order('college_name')
       .order('dimension_name');
 
-    if (collegeName) {
-      query = query.eq('college_name', collegeName);
+    if (collegeCode) {
+      query = query.eq('college_name', collegeCode);
     }
 
     if (assessmentType) {
@@ -597,7 +627,22 @@ async function getCollegeScores(collegeName = null, assessmentType = null, asses
  */
 async function computeDynamicCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null) {
   try {
-    console.log(`Computing dynamic college scores with filters: college=${collegeName}, type=${assessmentType}, assessment=${assessmentName}, year=${yearLevel}, section=${section}`);
+    // College name mapping - convert full names to codes for database queries
+    const collegeNameMapping = {
+      'College of Computing and Information Sciences': 'CCS',
+      'College of Architecture and Built Environment': 'CABE',
+      'College of Engineering and Architecture': 'CEA',
+      'College of Nursing': 'CN'
+    };
+
+    // Convert college name to code if it's a full name
+    let collegeCode = collegeName;
+    if (collegeName && collegeNameMapping[collegeName]) {
+      collegeCode = collegeNameMapping[collegeName];
+      console.log(`🔄 Mapped college name "${collegeName}" to code "${collegeCode}"`);
+    }
+
+    console.log(`Computing dynamic college scores with filters: college=${collegeCode}, type=${assessmentType}, assessment=${assessmentName}, year=${yearLevel}, section=${section}`);
     
     // Determine which table to query based on assessment type
     let tableName = 'assessments_42items'; // Default
@@ -680,8 +725,8 @@ async function computeDynamicCollegeScores(collegeName = null, assessmentType = 
       .eq('status', 'active');
     
     // Apply filters
-    if (collegeName) {
-      studentQuery = studentQuery.eq('college', collegeName);
+    if (collegeCode) {
+      studentQuery = studentQuery.eq('college', collegeCode);
     }
     
     if (yearLevel) {
@@ -799,6 +844,7 @@ async function computeDynamicCollegeScores(collegeName = null, assessmentType = 
 module.exports = {
   computeAndStoreCollegeScores,
   getCollegeScores,
+  computeDynamicCollegeScores,
   getAssessmentCompletionCounts,
   getCollegeDimensionRiskLevel,
   RYFF_DIMENSIONS

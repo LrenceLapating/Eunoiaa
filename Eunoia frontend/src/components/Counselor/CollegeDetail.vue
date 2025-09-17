@@ -535,7 +535,19 @@ export default {
       
       Object.entries(dimensionsData).forEach(([key, dimData]) => {
         // Handle both structures: {score: X, riskLevel: Y} from CollegeView and {score: X} from yearData
-        const score = dimData.score || dimData.averageScore || dimData || 0;
+        let score = dimData.score || dimData.averageScore || dimData || 0;
+        
+        // Ensure score is a valid number
+        if (typeof score !== 'number' || isNaN(score)) {
+          // Try to parse as number if it's a string
+          if (typeof score === 'string') {
+            const parsed = parseFloat(score);
+            score = isNaN(parsed) ? 0 : parsed;
+          } else {
+            score = 0;
+          }
+        }
+        
         const riskLevel = dimData.riskLevel || this.getRiskLevelFromScore(score);
         
         // Debug logging to see actual dimension keys and lookup results
@@ -667,7 +679,18 @@ export default {
     },
     getDisplayScore(dimension) {
       // Handle both score formats: averageScore (historical) and score (API)
-      const score = dimension.score || dimension.averageScore || 0;
+      let score = dimension.score || dimension.averageScore || 0;
+      
+      // Ensure score is a valid number
+      if (typeof score !== 'number' || isNaN(score)) {
+        // Try to parse as number if it's a string
+        if (typeof score === 'string') {
+          const parsed = parseFloat(score);
+          score = isNaN(parsed) ? 0 : parsed;
+        } else {
+          score = 0;
+        }
+      }
       
       // Format score to show appropriate decimal places
       if (score === 0) {

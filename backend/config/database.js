@@ -4,27 +4,42 @@ const { cacheManager } = require('./redis');
 const { config } = require('./environment');
 
 // Enhanced PostgreSQL connection pool with resilience
-const pool = new Pool({
-  connectionString: config.database.supabaseUrl?.replace('https://', 'postgresql://postgres:') + '?sslmode=require',
-  min: config.database.pool.min || 2, // Maintain minimum connections
-  max: config.database.pool.max,
-  idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
-  connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis,
-  // Enhanced error handling
-  allowExitOnIdle: false,
-  // Connection validation
-  query_timeout: 30000,
-  statement_timeout: 30000,
-  // Retry configuration
-  acquireTimeoutMillis: 60000
-});
+let pool = null;
+
+// Only create pool if SUPABASE_URL is properly configured
+if (config.database.supabaseUrl && config.database.supabaseUrl !== 'https://your-project-id.supabase.co') {
+  try {
+    const connectionString = config.database.supabaseUrl.replace('https://', 'postgresql://postgres:') + '?sslmode=require';
+    pool = new Pool({
+      connectionString,
+      min: config.database.pool.min || 2, // Maintain minimum connections
+      max: config.database.pool.max,
+      idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
+      connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis,
+      // Enhanced error handling
+      allowExitOnIdle: false,
+      // Connection validation
+      query_timeout: 30000,
+      statement_timeout: 30000,
+      // Retry configuration
+      acquireTimeoutMillis: 60000
+    });
+  } catch (error) {
+    console.error('❌ Failed to create database pool:', error.message);
+    console.warn('⚠️ Database pool not initialized. Please check your SUPABASE_URL configuration.');
+  }
+} else {
+  console.warn('⚠️ SUPABASE_URL not configured. Database pool not initialized.');
+  console.log('💡 Please copy .env.example to .env and configure your Supabase credentials.');
+}
 
 // Pool event handlers
-pool.on('connect', (client) => {
-  console.log('✅ New database client connected');
-});
+if (pool) {
+  pool.on('connect', (client) => {
+    console.log('✅ New database client connected');
+  });
 
-pool.on('error', (err, client) => {
+  pool.on('error', (err, client) => {
   console.error('❌ Database pool error:', {
     error: err.message,
     code: err.code,
@@ -55,33 +70,53 @@ pool.on('error', (err, client) => {
   }
   
   // Don't exit the process - let pool handle reconnection
-});
+  });
 
-pool.on('remove', (client) => {
-  console.log('🔄 Database client removed from pool');
-});
+  pool.on('remove', (client) => {
+    console.log('🔄 Database client removed from pool');
+  });
+}
 
-// Create Supabase client for frontend/auth operations (with RLS)
-const supabaseFrontend = createClient(config.database.supabaseUrl, config.database.supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: false
-  },
-  db: {
-    schema: 'public'
+// Create Supabase clients only if properly configured
+let supabaseFrontend = null;
+let supabase = null;
+
+if (config.database.supabaseUrl && 
+    config.database.supabaseAnonKey && 
+    config.database.supabaseUrl !== 'https://your-project-id.supabase.co') {
+  
+  try {
+    // Create Supabase client for frontend/auth operations (with RLS)
+    supabaseFrontend = createClient(config.database.supabaseUrl, config.database.supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: false
+      },
+      db: {
+        schema: 'public'
+      }
+    });
+
+    // Create Supabase client for backend operations (bypasses RLS)
+    if (config.database.supabaseServiceRoleKey) {
+      supabase = createClient(config.database.supabaseUrl, config.database.supabaseServiceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        },
+        db: {
+          schema: 'public'
+        }
+      });
+    } else {
+      console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY not configured. Backend operations may be limited.');
+    }
+  } catch (error) {
+    console.error('❌ Failed to create Supabase clients:', error.message);
   }
-});
-
-// Create Supabase client for backend operations (bypasses RLS)
-const supabase = createClient(config.database.supabaseUrl, config.database.supabaseServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  },
-  db: {
-    schema: 'public'
-  }
-});
+} else {
+  console.warn('⚠️ Supabase configuration incomplete. Please check your environment variables.');
+}
 
 // Enhanced database query function with caching
 const cachedQuery = async (queryKey, queryFn, ttl = 1800) => {

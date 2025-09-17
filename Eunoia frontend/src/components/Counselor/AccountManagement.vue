@@ -10,7 +10,7 @@
                 <input 
                   type="file" 
                   ref="fileInput" 
-                  accept=".csv" 
+                  accept=".csv,.xlsx" 
                   style="display:none" 
                   @change="handleFileUpload"
                 />
@@ -18,7 +18,7 @@
                   <i class="fas fa-user-plus"></i> Add Student
                 </button>
                 <button class="upload-btn" @click="showUploadModal = true">
-                  <i class="fas fa-upload"></i> Upload CSV
+                  <i class="fas fa-upload"></i> Upload File
                 </button>
                 <button class="template-btn" @click="downloadTemplate">
                   <i class="fas fa-download"></i> Download Template
@@ -76,6 +76,7 @@
                 <th>ID Number</th>
                 <th>Name</th>
                 <th>Year Level</th>
+                <th>Course</th>
                 <th>Section</th>
                 <th>Email</th>
                 <th>Actions</th>
@@ -86,6 +87,7 @@
                 <td>{{ user.id }}</td>
                 <td>{{ user.name }}</td>
                 <td>{{ user.yearLevel }}</td>
+                <td>{{ getCourseName(user) }}</td>
                 <td>{{ user.section }}</td>
                 <td>{{ user.email }}</td>
                 <td class="actions-cell">
@@ -120,7 +122,7 @@
             </div>
             <p class="checkbox-description">Check this to deactivate students from the previous list who are not in the new upload. They will become ineligible for bulk assessments but their history will be retained.</p>
           </div>
-          <div 
+          <div
             class="drop-area"
             @dragover.prevent="dragOverHandler"
             @dragleave.prevent="dragLeaveHandler"
@@ -130,11 +132,11 @@
             <input 
               type="file" 
               ref="modalFileInput" 
-              accept=".csv" 
+              accept=".csv,.xlsx" 
               style="display:none" 
               @change="handleModalFileUpload"
             />
-            <p>Drag & Drop your CSV file here, or click to select</p>
+            <p>Drag & Drop your CSV or XLSX file here, or click to select</p>
             <p class="file-name" v-if="uploadedFileName">{{ uploadedFileName }}</p>
           </div>
           <p class="format-text">Format: Name, Section, College, ID Number, Email, Year Level, Semester (optional)</p>
@@ -154,7 +156,7 @@
             <div class="spinner-container">
               <i class="fas fa-spinner fa-spin loading-spinner"></i>
             </div>
-            <h3>Uploading CSV File...</h3>
+            <h3>Uploading File...</h3>
             <p>Please wait while we process your file.</p>
           </div>
           <div v-else-if="uploadLoadingState === 'success'" class="success-content">
@@ -213,20 +215,8 @@
                 >
               </div>
               <div class="form-group">
-                <label for="student-section">Section *</label>
-                <input 
-                  type="text" 
-                  id="student-section" 
-                  v-model="studentForm.section" 
-                  required 
-                  placeholder="Enter section (e.g., CS-1A)"
-                >
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
                 <label for="student-college">College *</label>
-                <select id="student-college" v-model="studentForm.college" required>
+                <select id="student-college" v-model="studentForm.college" required @change="onCollegeChange">
                   <option value="">Select College</option>
                   <option v-for="college in colleges" :key="college.name" :value="college.name">
                     {{ college.name }}
@@ -241,9 +231,21 @@
                   class="custom-college-input"
                 >
               </div>
+            </div>
+            <div class="form-row" v-if="studentForm.college && studentForm.college !== 'other'">
+              <div class="form-group">
+                <label for="student-course">Course *</label>
+                <select id="student-course" v-model="studentForm.course" required @change="onCourseChange">
+                  <option value="">Select Course</option>
+                  <option v-for="course in availableCourses" :key="course.code" :value="course.code">
+                    {{ course.name }}
+                  </option>
+                </select>
+              </div>
               <div class="form-group">
                 <label for="student-year">Year Level *</label>
-                <select id="student-year" v-model="studentForm.year_level" required>
+                <select id="student-year" v-model="studentForm.year_level" required @change="onYearLevelChange">
+                  <option value="">Select Year Level</option>
                   <option value="1">1st Year</option>
                   <option value="2">2nd Year</option>
                   <option value="3">3rd Year</option>
@@ -253,13 +255,24 @@
                 </select>
               </div>
             </div>
-            <div class="form-group">
-              <label for="student-semester">Semester</label>
-              <select id="student-semester" v-model="studentForm.semester">
-                <option value="1st Semester">1st Semester</option>
-                <option value="2nd Semester">2nd Semester</option>
-                <option value="Summer">Summer</option>
-              </select>
+            <div class="form-row" v-if="studentForm.course && studentForm.year_level">
+              <div class="form-group">
+                <label for="student-section">Section *</label>
+                <select id="student-section" v-model="studentForm.section" required>
+                  <option value="">Select Section</option>
+                  <option v-for="section in availableSections" :key="section" :value="section">
+                    {{ section }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="student-semester">Semester</label>
+                <select id="student-semester" v-model="studentForm.semester">
+                  <option value="1st Semester">1st Semester</option>
+                  <option value="2nd Semester">2nd Semester</option>
+                  <option value="Summer">Summer</option>
+                </select>
+              </div>
             </div>
           </form>
         </div>
@@ -316,20 +329,8 @@
                 >
               </div>
               <div class="form-group">
-                <label for="edit-student-section">Section *</label>
-                <input 
-                  type="text" 
-                  id="edit-student-section" 
-                  v-model="studentForm.section" 
-                  required 
-                  placeholder="Enter section (e.g., CS-1A)"
-                >
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
                 <label for="edit-student-college">College *</label>
-                <select id="edit-student-college" v-model="studentForm.college" required>
+                <select id="edit-student-college" v-model="studentForm.college" required @change="onCollegeChange">
                   <option value="">Select College</option>
                   <option v-for="college in colleges" :key="college.name" :value="college.name">
                     {{ college.name }}
@@ -344,9 +345,21 @@
                   class="custom-college-input"
                 >
               </div>
+            </div>
+            <div class="form-row" v-if="studentForm.college && studentForm.college !== 'other'">
+              <div class="form-group">
+                <label for="edit-student-course">Course *</label>
+                <select id="edit-student-course" v-model="studentForm.course" required @change="onCourseChange">
+                  <option value="">Select Course</option>
+                  <option v-for="course in availableCourses" :key="course.code" :value="course.code">
+                    {{ course.name }}
+                  </option>
+                </select>
+              </div>
               <div class="form-group">
                 <label for="edit-student-year">Year Level *</label>
-                <select id="edit-student-year" v-model="studentForm.year_level" required>
+                <select id="edit-student-year" v-model="studentForm.year_level" required @change="onYearLevelChange">
+                  <option value="">Select Year Level</option>
                   <option value="1">1st Year</option>
                   <option value="2">2nd Year</option>
                   <option value="3">3rd Year</option>
@@ -356,13 +369,16 @@
                 </select>
               </div>
             </div>
-            <div class="form-group">
-              <label for="edit-student-semester">Semester</label>
-              <select id="edit-student-semester" v-model="studentForm.semester">
-                <option value="1st Semester">1st Semester</option>
-                <option value="2nd Semester">2nd Semester</option>
-                <option value="Summer">Summer</option>
-              </select>
+            <div class="form-row" v-if="studentForm.course && studentForm.year_level">
+              <div class="form-group">
+                <label for="edit-student-section">Section *</label>
+                <select id="edit-student-section" v-model="studentForm.section" required>
+                  <option value="">Select Section</option>
+                  <option v-for="section in availableSections" :key="section" :value="section">
+                    {{ section }}
+                  </option>
+                </select>
+              </div>
             </div>
           </form>
         </div>
@@ -401,6 +417,7 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script>
@@ -446,10 +463,72 @@ export default {
         email: '',
         section: '',
         college: '',
+        course: '',
         id_number: '',
         year_level: '',
         semester: '1st Semester',
         customCollege: ''
+      },
+      availableCourses: [],
+      availableSections: [],
+      courseMapping: {
+        'CABE': [
+          { code: 'BSA', name: 'Bachelor of Science in Accountancy' },
+          { code: 'BSMA', name: 'Bachelor of Science in Management Accounting' },
+          { code: 'BSAIS', name: 'Bachelor of Science in Accounting Information System' },
+          { code: 'BSREM', name: 'Bachelor of Science in Real Estate Management' },
+          { code: 'BSBA-MM', name: 'BSBA Major in Marketing Management' },
+          { code: 'BSBA-FM', name: 'BSBA Major in Financial Management' },
+          { code: 'BSBA-HRM', name: 'BSBA Major in Human Resource Management' }
+        ],
+        'CAH': [
+          { code: 'ABComm', name: 'BA Communication' },
+          { code: 'ABELS', name: 'BA English Language Studies' },
+          { code: 'ABPhilo', name: 'BA Philosophy (Law, Management, Research)' },
+          { code: 'ABPsy', name: 'BA Psychology' },
+          { code: 'BSPsy', name: 'BS Psychology' }
+        ],
+        'CCS': [
+          { code: 'BSIT', name: 'BS Information Technology' },
+          { code: 'BSIS', name: 'BS Information Systems' },
+          { code: 'BSCS', name: 'BS Computer Science' }
+        ],
+        'CEA': [
+          { code: 'BArch', name: 'BS Architecture' },
+          { code: 'BSCE', name: 'BS Civil Engineering' },
+          { code: 'BSCpE', name: 'BS Computer Engineering' },
+          { code: 'BSECE', name: 'BS Electronics Engineering' }
+        ],
+        'CHESFS': [
+          { code: 'BSND', name: 'BS Nutrition and Dietetics' },
+          { code: 'BSHRIM', name: 'BS Hotel, Restaurant & Institutional Management' },
+          { code: 'BSTour', name: 'BS Tourism Management' }
+        ],
+        'CM': [
+          { code: 'BMME', name: 'Bachelor of Music in Music Education' }
+        ],
+        'CMBS': [
+          { code: 'BSMT', name: 'BS Medical Technology / Medical Laboratory Science' },
+          { code: 'BSBio', name: 'BS Biology' }
+        ],
+        'CN': [
+          { code: 'BSN', name: 'BS Nursing' }
+        ],
+        'CPC': [
+          { code: 'BSChem', name: 'BS Chemistry' },
+          { code: 'BSPharma', name: 'BS Pharmacy' },
+          { code: 'BSPharmaClin', name: 'BS Pharmacy Major in Clinical Pharmacy' }
+        ],
+        'CTE': [
+          { code: 'BECEd', name: 'Bachelor of Early Childhood Education' },
+          { code: 'BEEd', name: 'Bachelor of Elementary Education' },
+          { code: 'BSNEd', name: 'Bachelor of Special Needs Education' },
+          { code: 'BPED', name: 'Bachelor of Physical Education' },
+          { code: 'BSEd-Eng', name: 'BSEd Major in English' },
+          { code: 'BSEd-Fil', name: 'BSEd Major in Filipino' },
+          { code: 'BSEd-Sci', name: 'BSEd Major in Sciences' },
+          { code: 'BSEd-Math', name: 'BSEd Major in Mathematics (Specialized in Business & Computing Education)' }
+        ]
       }
     }
   },
@@ -465,13 +544,46 @@ export default {
           (user.name.toLowerCase().includes(query) ||
           user.id.toLowerCase().includes(query) ||
           user.email.toLowerCase().includes(query) ||
-          user.section.toLowerCase().includes(query))
+          user.section.toLowerCase().includes(query) ||
+          (user.course && user.course.toLowerCase().includes(query)))
           && user.college === this.selectedCollege
         );
       });
     }
   },
   methods: {
+    getCourseName(user) {
+      // Safety check for user object
+      if (!user || !user.course) return 'N/A';
+      
+      // Trim and clean the course value
+      const userCourse = user.course.toString().trim();
+      if (!userCourse) return 'N/A';
+      
+      // If user has college and course, try to find the full course name
+      if (user.college && this.courseMapping && this.courseMapping[user.college]) {
+        const courses = this.courseMapping[user.college];
+        
+        // Try to find exact match first (case-sensitive)
+        let courseObj = courses.find(course => 
+          course.code === userCourse || course.name === userCourse
+        );
+        
+        // If no exact match, try case-insensitive match
+        if (!courseObj) {
+          courseObj = courses.find(course => 
+            course.code.toLowerCase() === userCourse.toLowerCase() || 
+            course.name.toLowerCase() === userCourse.toLowerCase()
+          );
+        }
+        
+        return courseObj ? courseObj.name : userCourse;
+      }
+      
+      // Return the course as-is if we can't find a mapping
+      return userCourse;
+    },
+    
     async viewCollegeUsers(collegeName) {
       this.selectedCollege = collegeName;
       this.searchQuery = '';
@@ -483,9 +595,12 @@ export default {
       const file = event.target.files[0];
       if (!file) return;
       
-      // Check if it's a CSV file
-      if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-        this.showNotification('Please upload a valid CSV file', 'error', 'fas fa-exclamation-circle');
+      // Check if it's a CSV or XLSX file
+      const isCSV = file.type === 'text/csv' || file.name.endsWith('.csv');
+      const isXLSX = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx');
+      
+      if (!isCSV && !isXLSX) {
+        this.showNotification('Please upload a valid CSV or XLSX file', 'error', 'fas fa-exclamation-circle');
         return;
       }
       
@@ -510,7 +625,7 @@ export default {
       
       // Get header row and check format
       const headers = lines[0].split(',').map(header => header.trim());
-      const requiredHeaders = ['Name', 'Section', 'College', 'ID Number', 'Email', 'Year Level'];
+      const requiredHeaders = ['Name', 'Section', 'College', 'Course', 'ID Number', 'Email', 'Year Level'];
       const optionalHeaders = ['Semester'];
       
       // Check if all required headers are present
@@ -524,6 +639,7 @@ export default {
       const nameIndex = headers.indexOf('Name');
       const sectionIndex = headers.indexOf('Section');
       const collegeIndex = headers.indexOf('College');
+      const courseIndex = headers.indexOf('Course');
       const idIndex = headers.indexOf('ID Number');
       const emailIndex = headers.indexOf('Email');
       const yearLevelIndex = headers.indexOf('Year Level');
@@ -543,12 +659,13 @@ export default {
         const name = values[nameIndex];
         const section = values[sectionIndex];
         const college = values[collegeIndex];
+        const course = values[courseIndex];
         const id = values[idIndex];
         const email = values[emailIndex];
         const yearLevel = values[yearLevelIndex];
         
         // Skip if any required field is empty
-        if (!name || !section || !college || !id || !email || !yearLevel) continue;
+        if (!name || !section || !college || !course || !id || !email || !yearLevel) continue;
         
         // Check if the college exists
         if (!existingColleges.has(college)) {
@@ -568,6 +685,7 @@ export default {
             id,
             email,
             college: college, // Use college column instead of department
+            course,
             yearLevel
           });
           
@@ -644,21 +762,34 @@ export default {
       this.$refs.modalFileInput.click();
     },
     handleModalFileUpload(event) {
+      console.log('handleModalFileUpload called', event.target.files);
       const file = event.target.files[0];
       if (file) {
+        console.log('File selected:', file.name, file.type, file.size);
         this.uploadedFile = file;
         this.uploadedFileName = file.name;
+      } else {
+        console.log('No file selected');
       }
     },
     async confirmUpload() {
+      console.log('confirmUpload called');
+      console.log('uploadedFile:', this.uploadedFile);
+      
       if (!this.uploadedFile) {
-        this.showNotification('Please upload a CSV file.', 'error', 'fas fa-exclamation-circle');
+        console.log('No file uploaded');
+        this.showNotification('Please upload a CSV or XLSX file.', 'error', 'fas fa-exclamation-circle');
         return;
       }
 
-      // Check if it's a CSV file before processing
-      if (this.uploadedFile.type !== 'text/csv' && !this.uploadedFile.name.endsWith('.csv')) {
-        this.showNotification('Please upload a valid CSV file', 'error', 'fas fa-exclamation-circle');
+      // Check if it's a CSV or XLSX file before processing
+      const isCSV = this.uploadedFile.type === 'text/csv' || this.uploadedFile.name.endsWith('.csv');
+      const isXLSX = this.uploadedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || this.uploadedFile.name.endsWith('.xlsx');
+      
+      console.log('File type check:', { isCSV, isXLSX, type: this.uploadedFile.type, name: this.uploadedFile.name });
+      
+      if (!isCSV && !isXLSX) {
+        this.showNotification('Please upload a valid CSV or XLSX file', 'error', 'fas fa-exclamation-circle');
         return;
       }
       
@@ -777,6 +908,7 @@ export default {
             id: student.id_number,
             name: student.name,
             college: student.college,
+            course: student.course,
             section: student.section,
             email: student.email,
             yearLevel: student.year_level
@@ -842,13 +974,57 @@ export default {
         email: user.email,
         section: user.section,
         college: user.college,
+        course: user.course || '',
         id_number: user.id,
         year_level: user.yearLevel,
         semester: user.semester || '1st Semester',
         customCollege: ''
       };
       this.editingStudentId = user.id;
+      
+      // Update available courses and sections for editing
+      this.onCollegeChange();
+      if (this.studentForm.course) {
+        this.updateAvailableSections();
+      }
+      
       this.showEditStudentModal = true;
+    },
+
+    onCollegeChange() {
+      // Reset dependent fields
+      this.studentForm.course = '';
+      this.studentForm.section = '';
+      this.availableCourses = [];
+      this.availableSections = [];
+      
+      // Update available courses based on selected college
+      if (this.studentForm.college && this.courseMapping[this.studentForm.college]) {
+        this.availableCourses = this.courseMapping[this.studentForm.college];
+      }
+    },
+
+    onCourseChange() {
+      // Reset section when course changes
+      this.studentForm.section = '';
+      this.availableSections = [];
+      this.updateAvailableSections();
+    },
+
+    onYearLevelChange() {
+      // Reset section when year level changes
+      this.studentForm.section = '';
+      this.updateAvailableSections();
+    },
+
+    updateAvailableSections() {
+      if (this.studentForm.course && this.studentForm.year_level) {
+        // Generate sections based on course and year level
+        const sections = ['A', 'B', 'C'];
+        this.availableSections = sections.map(section => 
+          `${this.studentForm.course}-${this.studentForm.year_level}${section}`
+        );
+      }
     },
 
     deleteStudent(user) {
@@ -870,11 +1046,14 @@ export default {
         email: '',
         section: '',
         college: '',
+        course: '',
         id_number: '',
         year_level: '',
         semester: '1st Semester',
         customCollege: ''
       };
+      this.availableCourses = [];
+      this.availableSections = [];
       this.editingStudentId = null;
     },
 
@@ -887,10 +1066,23 @@ export default {
           return;
         }
 
+        // For non-custom colleges, require course and section
+        if (this.studentForm.college !== 'other' && (!this.studentForm.course || !this.studentForm.section)) {
+          this.showNotification('Please select course and section', 'error', 'fas fa-exclamation-circle');
+          return;
+        }
+
         // Handle custom college
         let collegeName = this.studentForm.college;
         if (this.studentForm.college === 'other' && this.studentForm.customCollege) {
           collegeName = this.studentForm.customCollege.trim();
+        }
+
+        // Get full course name from course code
+        let courseName = null;
+        if (this.studentForm.course && this.studentForm.college && this.courseMapping[this.studentForm.college]) {
+          const selectedCourse = this.courseMapping[this.studentForm.college].find(course => course.code === this.studentForm.course);
+          courseName = selectedCourse ? selectedCourse.name : this.studentForm.course;
         }
 
         // Prepare student data
@@ -899,6 +1091,7 @@ export default {
           email: this.studentForm.email.trim(),
           section: this.studentForm.section.trim(),
           college: collegeName,
+          course: courseName,
           id_number: this.studentForm.id_number.trim(),
           year_level: this.studentForm.year_level,
           semester: this.studentForm.semester

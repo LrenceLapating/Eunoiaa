@@ -7,6 +7,13 @@
         <p>View and manage past assessment distributions</p>
       </div>
       <div class="search-container">
+        <div class="filter-dropdown">
+          <select v-model="assessmentTypeFilter" @change="loadAssessments" class="assessment-type-filter">
+            <option value="">All Assessment Types</option>
+            <option value="ryff_42">42-Item Assessments</option>
+            <option value="ryff_84">84-Item Assessments</option>
+          </select>
+        </div>
         <div class="search-box">
           <i class="fas fa-search search-icon"></i>
           <input type="text" placeholder="Search assessments..." v-model="searchQuery" @input="filterAssessments">
@@ -14,7 +21,15 @@
       </div>
     </div>
 
-    <div class="history-table-container">
+    <!-- Loading Indicator -->
+    <div v-if="isLoading" class="loading-container">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p class="loading-text">Loading assessment history...</p>
+    </div>
+
+    <div v-else class="history-table-container">
       <table class="history-table">
         <thead>
           <tr>
@@ -34,12 +49,7 @@
             <td>{{ assessment.date }}</td>
             <td>{{ assessment.recipients }}</td>
             <td>
-              <div class="completion-container">
-                <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: assessment.completion + '%', backgroundColor: getCompletionColor(assessment.completion) }"></div>
-                </div>
-                <span class="completion-percent">{{ assessment.completion }}%</span>
-              </div>
+              <span class="completion-ratio">{{ assessment.totalCompleted }}/{{ assessment.recipients }}</span>
             </td>
             <td>
               <div class="actions-container">
@@ -142,12 +152,15 @@ export default {
       // API configuration - uses environment variable for production
       
       searchQuery: '',
+      assessmentTypeFilter: '',
       showDetailsModal: false,
       selectedAssessment: {},
       selectedCollege: null,
       // Assessment data - will be populated from backend
       assessments: [],
-      filteredAssessments: []
+      filteredAssessments: [],
+      // Loading state
+      isLoading: false
     };
   },
   computed: {
@@ -190,8 +203,14 @@ export default {
   methods: {
     // Load assessment data from backend
     async loadAssessments() {
+      this.isLoading = true;
       try {
-        const response = await fetch(apiUrl('bulk-assessments/history'), {
+        let url = apiUrl('bulk-assessments/history');
+        if (this.assessmentTypeFilter) {
+          url += `?assessment_type=${this.assessmentTypeFilter}`;
+        }
+        
+        const response = await fetch(url, {
           method: 'GET',
           credentials: 'include' // Include session cookies
         });
@@ -223,17 +242,25 @@ export default {
               totalCompleted: assessment.total_completed || 0,
               totalIncomplete: (assessment.total_assigned || 0) - (assessment.total_completed || 0)
             }));
+            
+            // Update filteredAssessments to reflect the backend filtering
+            this.filteredAssessments = [...this.assessments];
           } else {
             console.error('Failed to load assessments:', data.message);
             this.assessments = [];
+            this.filteredAssessments = [];
           }
         } else {
           console.error('Failed to load assessments from backend');
           this.assessments = [];
+          this.filteredAssessments = [];
         }
       } catch (error) {
         console.error('Error loading assessments:', error);
         this.assessments = [];
+        this.filteredAssessments = [];
+      } finally {
+        this.isLoading = false;
       }
     },
     
@@ -285,64 +312,101 @@ export default {
 }
 
 .history-header {
+  background: linear-gradient(135deg, #00B3B0 0%, #00A3A0 100%);
+  color: white;
+  padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
   margin-bottom: 20px;
+  border-radius: 8px 8px 0 0;
 }
 
 .header-title {
-  display: flex;
-  align-items: center;
+  flex: 1;
+  min-width: 250px;
 }
 
 .header-title i {
-  font-size: 20px;
-  margin-right: 10px;
-  color: #00B3B0;
+  font-size: 1.2rem;
+  margin-right: 8px;
 }
 
 .header-title h2 {
-  font-size: 20px;
+  margin: 0 0 5px 0;
+  font-size: 1.5rem;
   font-weight: 600;
-  color: #333;
-  margin: 0 15px 0 0;
 }
 
 .header-title p {
-  font-size: 14px;
-  color: #666;
   margin: 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
 }
 
 .search-container {
-  width: 300px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-dropdown {
+  position: relative;
+}
+
+.assessment-type-filter {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.assessment-type-filter:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.assessment-type-filter option {
+  background-color: white;
+  color: black;
 }
 
 .search-box {
   position: relative;
-  width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .search-icon {
   position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #999;
+  left: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  z-index: 1;
 }
 
 .search-box input {
-  width: 100%;
-  padding: 8px 15px 8px 35px;
-  border: 1px solid #ddd;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 12px 8px 35px;
   border-radius: 4px;
   font-size: 14px;
+  min-width: 200px;
+}
+
+.search-box input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .search-box input:focus {
   outline: none;
-  border-color: #00B3B0;
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .history-table-container {
@@ -403,6 +467,12 @@ export default {
   font-weight: 500;
   min-width: 40px;
   text-align: right;
+}
+
+.completion-ratio {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
 }
 
 .actions-container {
@@ -585,6 +655,31 @@ export default {
   color: #777;
 }
 
+/* Loading Indicator Styles - Apply to all screen sizes */
+.loading-container {
+  display: flex; /* Use flexbox for centering */
+  flex-direction: column; /* Stack spinner and text vertically */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  min-height: 200px; /* Ensure enough height for visibility */
+  padding: 80px 20px;
+  color: #666;
+  margin-top: 50px;
+}
+
+.loading-spinner {
+  font-size: 5rem; /* Further increased font size */
+  color: #00B3B0;
+  margin-bottom: 25px; /* Further increased margin */
+}
+
+.loading-container .loading-text {
+  font-size: 22px; /* Further increased font size */
+  font-weight: bold; /* Make text bold */
+  margin: 0 !important; /* Override default p tag margins */
+  color: #777;
+}
+
 @media (max-width: 768px) {
   .history-header {
     flex-direction: column;
@@ -595,7 +690,7 @@ export default {
   .search-container {
     width: 100%;
   }
-  
+
   .history-table {
     display: block;
     overflow-x: auto;

@@ -59,6 +59,12 @@ create index IF not exists idx_activity_date on public.activity_logs using btree
 
 
 
+
+
+
+
+
+
 create table public.ai_interventions (
   id uuid not null default gen_random_uuid (),
   student_id uuid not null,
@@ -184,6 +190,7 @@ execute FUNCTION update_assessment_analytics_updated_at ();
 
 
 
+
 create table public.assessment_assignments (
   id uuid not null default gen_random_uuid (),
   bulk_assessment_id uuid null,
@@ -195,6 +202,7 @@ create table public.assessment_assignments (
   risk_level character varying(20) null,
   constraint assessment_assignments_pkey primary key (id),
   constraint assessment_assignments_bulk_assessment_id_student_id_key unique (bulk_assessment_id, student_id),
+  constraint assessment_assignments_bulk_assessment_id_fkey foreign KEY (bulk_assessment_id) references bulk_assessments (id) on delete CASCADE,
   constraint assessment_assignments_risk_level_check check (
     (
       (risk_level)::text = any (
@@ -232,7 +240,6 @@ create index IF not exists idx_assessment_assignments_status on public.assessmen
 create index IF not exists idx_assessment_assignments_id_risk_level on public.assessment_assignments using btree (id, risk_level) TABLESPACE pg_default;
 
 create index IF not exists idx_assessment_assignments_student on public.assessment_assignments using btree (student_id) TABLESPACE pg_default;
-
 
 
 
@@ -313,6 +320,9 @@ execute FUNCTION update_updated_at_column ();
 
 
 
+
+
+
 create table public.assessments_42items_history (
   id uuid not null default gen_random_uuid (),
   original_assessment_id uuid not null,
@@ -332,6 +342,9 @@ create index IF not exists idx_assessments_42items_history_original_id on public
 create index IF not exists idx_assessments_42items_history_student_id on public.assessments_42items_history using btree (student_id) TABLESPACE pg_default;
 
 create index IF not exists idx_assessments_42items_history_archived_at on public.assessments_42items_history using btree (archived_at) TABLESPACE pg_default;
+
+
+
 
 
 
@@ -429,12 +442,6 @@ create index IF not exists idx_assessments_84items_history_archived_at on public
 
 
 
-
-
-
-
-
-
 create table public.bulk_assessments (
   id uuid not null default gen_random_uuid (),
   counselor_id uuid null,
@@ -451,8 +458,11 @@ create table public.bulk_assessments (
   target_sections text[] null,
   school_year character varying(20) null,
   semester character varying(50) null,
+  target_student_id uuid null,
+  assessment_source character varying(20) null default 'bulk'::character varying,
   constraint bulk_assessments_pkey primary key (id),
   constraint bulk_assessments_counselor_id_fkey foreign KEY (counselor_id) references counselors (id) on delete CASCADE,
+  constraint bulk_assessments_target_student_id_fkey foreign KEY (target_student_id) references students (id),
   constraint bulk_assessments_status_check check (
     (
       (status)::text = any (
@@ -493,6 +503,8 @@ execute FUNCTION update_updated_at_column ();
 
 
 
+
+
 create table public.college_scores (
   id uuid not null default gen_random_uuid (),
   college_name character varying(255) not null,
@@ -505,6 +517,8 @@ create table public.college_scores (
   last_calculated timestamp with time zone null default now(),
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
+  available_year_levels jsonb null default '[]'::jsonb,
+  available_sections jsonb null default '[]'::jsonb,
   constraint college_scores_pkey primary key (id),
   constraint college_scores_assessment_type_check check (
     (
@@ -552,9 +566,14 @@ create index IF not exists idx_college_scores_college_dimension on public.colleg
 
 create index IF not exists idx_college_scores_last_calculated on public.college_scores using btree (last_calculated) TABLESPACE pg_default;
 
+create index IF not exists idx_college_scores_year_levels on public.college_scores using gin (available_year_levels) TABLESPACE pg_default;
+
+create index IF not exists idx_college_scores_sections on public.college_scores using gin (available_sections) TABLESPACE pg_default;
+
 create trigger trigger_college_scores_updated_at BEFORE
 update on college_scores for EACH row
 execute FUNCTION update_college_scores_updated_at ();
+
 
 
 
@@ -568,7 +587,7 @@ create table public.college_scores_history (
   id uuid not null default gen_random_uuid (),
   college_name character varying(255) not null,
   dimension_name character varying(100) not null,
-  raw_score integer null,
+  raw_score numeric(6, 2) null,
   student_count integer null default 0,
   risk_level character varying(20) null,
   assessment_type character varying(50) not null,
@@ -579,9 +598,11 @@ create table public.college_scores_history (
   archive_reason character varying(255) null default 'student_deactivation'::character varying,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
-  available_year_levels integer[] null,
-  available_sections text[] null,
   student_id uuid null,
+  available_year_levels_backup integer[] null,
+  available_sections_backup text[] null,
+  available_year_levels jsonb null default '[]'::jsonb,
+  available_sections jsonb null default '[]'::jsonb,
   constraint college_scores_history_pkey primary key (id),
   constraint college_scores_history_student_id_fkey foreign KEY (student_id) references students (id) on delete CASCADE,
   constraint college_scores_history_risk_level_check check (
@@ -616,13 +637,13 @@ create index IF not exists idx_college_scores_history_college_archived on public
 
 create index IF not exists idx_college_scores_history_student_id on public.college_scores_history using btree (student_id) TABLESPACE pg_default;
 
+create index IF not exists idx_college_scores_history_year_levels on public.college_scores_history using gin (available_year_levels) TABLESPACE pg_default;
+
+create index IF not exists idx_college_scores_history_sections on public.college_scores_history using gin (available_sections) TABLESPACE pg_default;
+
 create trigger update_college_scores_history_updated_at BEFORE
 update on college_scores_history for EACH row
 execute FUNCTION update_updated_at_column ();
-
-
-
-
 
 
 
@@ -709,9 +730,6 @@ create index IF not exists idx_counselors_college on public.counselors using btr
 
 
 
-
-
-
 create table public.ryff_history (
   id uuid not null default gen_random_uuid (),
   original_id uuid not null,
@@ -741,8 +759,6 @@ create index IF not exists idx_ryff_history_completion_time on public.ryff_histo
 
 create trigger trigger_update_ryff_history_completion_time BEFORE INSERT on ryff_history for EACH row
 execute FUNCTION update_ryff_history_completion_time ();
-
-
 
 
 
@@ -814,7 +830,6 @@ execute FUNCTION update_ryffscoring_updated_at ();
 
 
 
-
 create table public.students (
   id uuid not null default gen_random_uuid (),
   name character varying(255) not null,
@@ -827,6 +842,7 @@ create table public.students (
   status character varying(20) null default 'active'::character varying,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
+  course character varying(255) null,
   constraint students_pkey primary key (id),
   constraint students_email_key unique (email),
   constraint students_id_number_key unique (id_number),
@@ -854,15 +870,13 @@ create index IF not exists idx_students_section on public.students using btree (
 
 create index IF not exists idx_students_college_filters on public.students using btree (college, year_level, section) TABLESPACE pg_default;
 
+create index IF not exists idx_students_course on public.students using btree (course) TABLESPACE pg_default;
+
+create index IF not exists idx_students_college_course_filters on public.students using btree (college, course, year_level, section) TABLESPACE pg_default;
+
 create trigger trigger_students_updated_at BEFORE
 update on students for EACH row
 execute FUNCTION update_updated_at_column ();
-
-
-
-
-
-
 
 
 

@@ -249,6 +249,11 @@ export default {
     filteredDimensions() {
       // Since we're now using API-based filtering, just return the dimensions from historyData
       // The API handles all filtering logic and returns the properly filtered data
+      console.log('📊 Preserved/Reset filters - Year:', this.selectedYear, 'Section:', this.selectedSection);
+      console.log('🔍 filteredDimensions called, historyData:', this.historyData);
+      console.log('🔍 historyData.dimensions:', this.historyData?.dimensions);
+      console.log('🔍 dimensions count:', Object.keys(this.historyData?.dimensions || {}).length);
+      
       return this.historyData?.dimensions || {};
     },
 
@@ -362,24 +367,55 @@ export default {
             
             // If assessmentName is specified, find that specific assessment
             if (this.assessmentName) {
+              console.log('🔍 Looking for assessment:', this.assessmentName);
+              console.log('🔍 Available assessments:', data.history.map(h => h.assessmentName));
+              
               const specificHistory = data.history.find(h => h.assessmentName === this.assessmentName);
               if (specificHistory) {
+                console.log('✅ Found matching assessment:', specificHistory.assessmentName);
+                console.log('🔍 History structure:', specificHistory);
+                console.log('🔍 Colleges in history:', specificHistory.colleges);
+                
+                // Extract dimensions from the first college in the history
+                const firstCollege = specificHistory.colleges && specificHistory.colleges.length > 0 ? specificHistory.colleges[0] : null;
+                const dimensions = firstCollege ? firstCollege.dimensions : {};
+                
+                console.log('🔍 Extracted dimensions:', dimensions);
+                console.log('🔍 Dimensions count:', Object.keys(dimensions).length);
+                
                 this.historyData = {
                   ...specificHistory,
                   date: specificHistory.archivedAt,
                   completionRate: '100%',
+                  dimensions: dimensions, // Extract dimensions from college data
                   filteringMetadata: data.filteringMetadata
                 };
               } else {
+                console.log('❌ Assessment not found in history');
+                console.log('🔍 Exact comparison results:');
+                data.history.forEach((h, index) => {
+                  console.log(`${index}: "${h.assessmentName}" === "${this.assessmentName}" = ${h.assessmentName === this.assessmentName}`);
+                });
                 this.error = 'Assessment not found in history';
               }
             } else {
               // Take the first (most recent) history item
               const latestHistory = data.history[0];
+              console.log('🔍 Using latest history:', latestHistory);
+              console.log('🔍 Latest history colleges:', latestHistory.colleges);
+              
+              // Extract dimensions from the first college in the history
+              const firstCollege = latestHistory.colleges && latestHistory.colleges.length > 0 ? latestHistory.colleges[0] : null;
+              const dimensions = firstCollege ? firstCollege.dimensions : {};
+              
+              console.log('🔍 Latest extracted dimensions:', dimensions);
+              console.log('🔍 Latest dimensions count:', Object.keys(dimensions).length);
+              
               this.historyData = {
                 ...latestHistory,
                 date: latestHistory.archivedAt,
                 completionRate: '100%',
+                dimensions: dimensions, // Extract dimensions from college data
                 filteringMetadata: data.filteringMetadata
               };
             }
@@ -446,7 +482,7 @@ export default {
       return this.formatScore(totalScore);
     },
     getRiskDistribution() {
-      if (!this.currentHistoryData || !this.currentHistoryData.totalStudents) {
+      if (!this.currentHistoryData) {
         return {
           atRisk: 0,
           moderate: 0,
@@ -454,38 +490,21 @@ export default {
         };
       }
       
-      // For historical data, we need to calculate student distribution based on overall college performance
-      // Since this is archived data, we can estimate distribution based on the overall score
-      const totalStudents = this.currentHistoryData.totalStudents;
-      const overallScore = this.getOverallScore();
-      
-      // Determine the primary risk category based on overall score
-      let primaryRisk = 'moderate'; // default
-      if (overallScore >= 4.5) {
-        primaryRisk = 'healthy';
-      } else if (overallScore <= 3.0) {
-        primaryRisk = 'atRisk';
+      // Use the actual risk distribution calculated by the backend
+      if (this.currentHistoryData.riskDistribution) {
+        return {
+          atRisk: this.currentHistoryData.riskDistribution.at_risk || 0,
+          moderate: this.currentHistoryData.riskDistribution.moderate || 0,
+          healthy: this.currentHistoryData.riskDistribution.healthy || 0
+        };
       }
       
-      // For historical data with limited information, we'll assign most students to the primary category
-      // with some distribution to show realistic variance
-      let atRisk = 0, moderate = 0, healthy = 0;
-      
-      if (primaryRisk === 'healthy') {
-        healthy = Math.max(1, Math.floor(totalStudents * 0.7));
-        moderate = Math.max(0, Math.floor(totalStudents * 0.25));
-        atRisk = Math.max(0, totalStudents - healthy - moderate);
-      } else if (primaryRisk === 'atRisk') {
-        atRisk = Math.max(1, Math.floor(totalStudents * 0.6));
-        moderate = Math.max(0, Math.floor(totalStudents * 0.3));
-        healthy = Math.max(0, totalStudents - atRisk - moderate);
-      } else {
-        moderate = Math.max(1, Math.floor(totalStudents * 0.6));
-        healthy = Math.max(0, Math.floor(totalStudents * 0.25));
-        atRisk = Math.max(0, totalStudents - moderate - healthy);
-      }
-      
-      return { atRisk, moderate, healthy };
+      // Fallback to zero if no risk distribution data available
+      return {
+        atRisk: 0,
+        moderate: 0,
+        healthy: 0
+      };
     },
     getDimensionName(key) {
       const dimensionNames = {

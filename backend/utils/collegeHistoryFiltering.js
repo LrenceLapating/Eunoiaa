@@ -19,6 +19,21 @@ async function getFilteredCollegeHistory(collegeName = null, assessmentType = nu
       section
     });
 
+    // College name mapping - convert full names to codes for database queries
+    const collegeNameMapping = {
+      'College of Computing and Information Sciences': 'CCS',
+      'College of Architecture and Built Environment': 'CABE',
+      'College of Engineering and Architecture': 'CEA',
+      'College of Nursing': 'CN'
+    };
+
+    // Convert college name to code if it's a full name
+    let collegeCode = collegeName;
+    if (collegeName && collegeNameMapping[collegeName]) {
+      collegeCode = collegeNameMapping[collegeName];
+      console.log(`🔄 Mapped college name "${collegeName}" to code "${collegeCode}"`);
+    }
+
     // Build the base query
     let query = supabaseAdmin
       .from('college_scores_history')
@@ -40,9 +55,9 @@ async function getFilteredCollegeHistory(collegeName = null, assessmentType = nu
       .order('archived_at', { ascending: false })
       .order('dimension_name');
 
-    // Apply basic filters
-    if (collegeName) {
-      query = query.eq('college_name', collegeName);
+    // Apply basic filters using the college code
+    if (collegeCode) {
+      query = query.eq('college_name', collegeCode);
     }
     
     if (assessmentType) {
@@ -162,9 +177,16 @@ async function getFilteredCollegeHistory(collegeName = null, assessmentType = nu
       }
     });
 
-    // Calculate risk distribution for each assessment
+    // Calculate risk distribution and overall score for each assessment
     Object.values(historyByAssessment).forEach(assessment => {
       const dimensions = Object.values(assessment.dimensions);
+      
+      // Calculate overall score by summing all dimension scores
+      let overallScore = 0;
+      dimensions.forEach(dim => {
+        overallScore += dim.score || 0;
+      });
+      assessment.overallScore = Math.round(overallScore * 100) / 100;
       
       // Initialize risk distribution
       const riskDistribution = {

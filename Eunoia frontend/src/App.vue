@@ -31,32 +31,35 @@ export default {
   },
   methods: {
     async initializeAuth() {
-      try {
+    try {
+      const currentPath = this.$route.path;
+      
+      // Only initialize auth and potentially redirect if user is on landing page or login page
+      // For users already on authenticated routes (/student, /counselor), do nothing
+      if (currentPath === '/' || currentPath === '/login') {
         const authState = await authService.initialize();
-        const currentPath = this.$route.path;
         
-        // Only redirect if user is on landing page or login page
-        if (currentPath === '/' || currentPath === '/login') {
-          if (authState.userType === 'student') {
-            this.$router.push('/student');
-          } else if (authState.userType === 'counselor') {
-            this.$router.push('/counselor');
-          } else if (currentPath !== '/') {
-            this.$router.push('/');
-          }
-        }
-        // For users already on authenticated routes, do nothing - let them stay
-        // The navigation guard will handle any authentication issues
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        // Only redirect to home if user is on landing/login page
-        if (this.$route.path === '/' || this.$route.path === '/login') {
+        if (authState.userType === 'student') {
+          this.$router.push('/student');
+        } else if (authState.userType === 'counselor') {
+          this.$router.push('/counselor');
+        } else if (currentPath !== '/') {
           this.$router.push('/');
         }
-      } finally {
-        this.isLoading = false;
+      } else {
+        // For users already on authenticated routes, just initialize auth state without redirecting
+        await authService.initialize();
       }
-    },
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      // Only redirect to home if user is on landing/login page
+      if (this.$route.path === '/' || this.$route.path === '/login') {
+        this.$router.push('/');
+      }
+    } finally {
+      this.isLoading = false;
+    }
+  },
      handleAuthEvent(event) {
        const { type, data } = event.detail;
        

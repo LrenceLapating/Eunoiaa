@@ -10,6 +10,7 @@ import AccountManagement from '../components/Counselor/AccountManagement.vue'
 import AssessmentHistory from '../components/Counselor/AssessmentHistory.vue'
 import AutoReminders from '../components/Counselor/AutoReminders.vue'
 import BulkAssessment from '../components/Counselor/BulkAssessment.vue'
+import IndividualAssessment from '../components/Counselor/IndividualAssessment.vue'
 import CollegeDetail from '../components/Counselor/CollegeDetail.vue'
 import CollegeFilter from '../components/Counselor/CollegeFilter.vue'
 import CollegeHistoryDetail from '../components/Counselor/CollegeHistoryDetail.vue'
@@ -73,6 +74,12 @@ const routes = [
         meta: { view: 'autoReminders' }
       },
       {
+        path: 'individual-assessment',
+        name: 'IndividualAssessment',
+        component: IndividualAssessment,
+        meta: { view: 'individualAssessment' }
+      },
+      {
         path: 'ryff-scoring',
         name: 'RyffScoring',
         component: RyffScoring,
@@ -97,7 +104,7 @@ const routes = [
         meta: { view: 'collegeHistoryDetail' },
         props: route => ({
           collegeName: decodeURIComponent(route.params.collegeId),
-          assessmentName: route.params.assessmentName ? decodeURIComponent(route.params.assessmentName) : null,
+          assessmentName: route.params.assessmentName ? decodeURIComponent(decodeURIComponent(route.params.assessmentName)) : null,
           assessmentType: route.query.assessmentType || '42-item'
         })
       },
@@ -182,13 +189,14 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
-  if (to.meta.requiresAuth) {
+  if (to.matched.some(record => record.meta.requiresAuth)) {
     // Check if we already have auth state to avoid unnecessary API calls
     const currentAuthState = authService.getAuthState();
     
     if (currentAuthState.isAuthenticated) {
       // User is already authenticated, just check role
-      if (to.meta.role && currentAuthState.userType !== to.meta.role) {
+      const requiredRole = to.matched.find(record => record.meta.role)?.meta.role;
+      if (requiredRole && currentAuthState.userType !== requiredRole) {
         next('/');
       } else {
         next();
@@ -198,10 +206,13 @@ router.beforeEach(async (to, from, next) => {
       const authStatus = await authService.checkAuthStatus();
       if (!authStatus.isAuthenticated) {
         next('/login');
-      } else if (to.meta.role && authStatus.userType !== to.meta.role) {
-        next('/');
       } else {
-        next();
+        const requiredRole = to.matched.find(record => record.meta.role)?.meta.role;
+        if (requiredRole && authStatus.userType !== requiredRole) {
+          next('/');
+        } else {
+          next();
+        }
       }
     }
   } else {

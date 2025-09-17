@@ -8,7 +8,7 @@ const validator = require('validator');
  */
 const validateStudentData = (row, rowNumber) => {
   const errors = [];
-  const requiredFields = ['Name', 'Section', 'College', 'ID Number', 'Email', 'Year Level'];
+  const requiredFields = ['Name', 'Section', 'College', 'Course', 'ID Number', 'Email', 'Year Level'];
   
   // Check for required fields
   for (const field of requiredFields) {
@@ -94,6 +94,7 @@ const sanitizeStudentData = (row) => {
     name: validator.escape(row['Name'].toString().trim()),
     email: validator.normalizeEmail(row['Email'].toString().trim()),
     section: validator.escape(section),
+    course: validator.escape(row['Course'].toString().trim()),
     id_number: validator.escape(row['ID Number'].toString().trim()),
     year_level: parseInt(row['Year Level']),
     college: finalCollege,

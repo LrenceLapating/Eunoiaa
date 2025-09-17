@@ -93,6 +93,48 @@
             </div>
           </div>
 
+          <!-- Assessment Type Selector -->
+          <div v-if="hasAssignedAssessments" class="assessment-type-selector">
+            <div class="selector-header">
+              <h3>Choose Assessment Type</h3>
+              <p>Select the type of assessment you want to view and complete</p>
+            </div>
+            <div class="type-buttons">
+              <button 
+                class="type-button" 
+                :class="{ 'active': selectedAssessmentType === 'ryff_42' }"
+                @click="selectAssessmentType('ryff_42')"
+                :disabled="!hasAssessmentType('ryff_42')"
+              >
+                <div class="type-icon">
+                  <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="type-info">
+                  <h4>42-Item Assessment</h4>
+                  <p>Quick comprehensive evaluation (15-20 min)</p>
+                  <span class="type-status" v-if="hasAssessmentType('ryff_42')">Available</span>
+                  <span class="type-status unavailable" v-else>Not Assigned</span>
+                </div>
+              </button>
+              <button 
+                class="type-button" 
+                :class="{ 'active': selectedAssessmentType === 'ryff_84' }"
+                @click="selectAssessmentType('ryff_84')"
+                :disabled="!hasAssessmentType('ryff_84')"
+              >
+                <div class="type-icon">
+                  <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div class="type-info">
+                  <h4>84-Item Assessment</h4>
+                  <p>Detailed comprehensive evaluation (25-30 min)</p>
+                  <span class="type-status" v-if="hasAssessmentType('ryff_84')">Available</span>
+                  <span class="type-status unavailable" v-else>Not Assigned</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <!-- No Assessment State -->
           <div v-if="!hasAssignedAssessments" class="no-assessment-state">
             <div class="no-assessment-card">
@@ -111,7 +153,7 @@
           </div>
 
           <!-- Assessment Cards Grid (when assessments are available) -->
-          <div v-if="hasAssignedAssessments" class="assessment-grid">
+          <div v-if="hasAssignedAssessments && filteredAssessments.length > 0" class="assessment-grid">
             <!-- Main Assessment Card -->
             <div class="main-assessment-card">
               <div class="card-header">
@@ -603,6 +645,7 @@ export default {
       isLoading: false,
       hasAssignedAssessments: false,
       assignedAssessments: [],
+      selectedAssessmentType: 'ryff_42', // Default to 42-item
       currentAssessment: null,
       completionData: null, // Store timing data from assessment completion
       loadingInterventions: false,
@@ -635,30 +678,29 @@ export default {
     };
   },
   computed: {
+    filteredAssessments() {
+      return this.assignedAssessments.filter(assessment => 
+        assessment.bulk_assessment?.assessment_type === this.selectedAssessmentType
+      );
+    },
     getAssessmentTitle() {
-      if (this.assignedAssessments.length > 0) {
-        return this.assignedAssessments[0].bulk_assessment?.assessment_name || 'Ryff Psychological Well-being Scale';
+      const filtered = this.filteredAssessments;
+      if (filtered.length > 0) {
+        return filtered[0].bulk_assessment?.assessment_name || 'Ryff Psychological Well-being Scale';
       }
       return 'Ryff Psychological Well-being Scale';
     },
     getAssessmentDescription() {
-      if (this.assignedAssessments.length > 0) {
-        const assessmentType = this.assignedAssessments[0].bulk_assessment?.assessment_type || 'ryff_42';
-        const itemCount = assessmentType === 'ryff_84' ? '84' : '42';
-        return `${itemCount}-Item Comprehensive Assessment`;
-      }
-      return '42-Item Comprehensive Assessment';
+      const itemCount = this.selectedAssessmentType === 'ryff_84' ? '84' : '42';
+      return `${itemCount}-Item Comprehensive Assessment`;
     },
     getEstimatedDuration() {
-      if (this.assignedAssessments.length > 0) {
-        const assessmentType = this.assignedAssessments[0].bulk_assessment?.assessment_type || 'ryff_42';
-        return assessmentType === 'ryff_84' ? '25-30 minutes' : '15-20 minutes';
-      }
-      return '15-20 minutes';
+      return this.selectedAssessmentType === 'ryff_84' ? '25-30 minutes' : '15-20 minutes';
     },
     getCustomMessage() {
-      if (this.assignedAssessments.length > 0) {
-        const customMessage = this.assignedAssessments[0].bulk_assessment?.custom_message;
+      const filtered = this.filteredAssessments;
+      if (filtered.length > 0) {
+        const customMessage = filtered[0].bulk_assessment?.custom_message;
         if (customMessage && customMessage.trim()) {
           return customMessage;
         }
@@ -856,10 +898,21 @@ export default {
       }
     },
     
+    // Assessment Type Selection Methods
+    selectAssessmentType(type) {
+      this.selectedAssessmentType = type;
+    },
+    
+    hasAssessmentType(type) {
+      return this.assignedAssessments.some(assessment => 
+        assessment.bulk_assessment?.assessment_type === type
+      );
+    },
+    
     startAssessment() {
-      if (this.assignedAssessments.length > 0) {
-        // Navigate to the first assigned assessment
-        const firstAssessment = this.assignedAssessments[0];
+      if (this.filteredAssessments.length > 0) {
+        // Navigate to the first assigned assessment of the selected type
+        const firstAssessment = this.filteredAssessments[0];
         console.log('Starting assessment:', firstAssessment);
         console.log('First assessment ID:', firstAssessment.id);
         
@@ -1521,6 +1574,120 @@ export default {
 .element-3 {
   bottom: 10px;
   left: 40px;
+}
+
+/* Assessment Type Selector */
+.assessment-type-selector {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.selector-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.selector-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a2e35;
+  margin: 0 0 8px 0;
+}
+
+.selector-header p {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.type-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.type-button {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.type-button:hover:not(:disabled) {
+  border-color: #00b3b0;
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.15);
+  transform: translateY(-2px);
+}
+
+.type-button.active {
+  border-color: #00b3b0;
+  background: #f0fffe;
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.2);
+}
+
+.type-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.type-icon {
+  width: 48px;
+  height: 48px;
+  background: #00b3b0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.type-button:disabled .type-icon {
+  background: #94a3b8;
+}
+
+.type-info {
+  flex: 1;
+}
+
+.type-info h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a2e35;
+  margin: 0 0 4px 0;
+}
+
+.type-info p {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 8px 0;
+}
+
+.type-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: #00b3b0;
+  background: #f0fffe;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.type-status.unavailable {
+  color: #94a3b8;
+  background: #f1f5f9;
 }
 
 /* Assessment Grid */
@@ -3846,6 +4013,34 @@ export default {
   }
   
   .welcome-subtitle {
+    font-size: 13px;
+  }
+  
+  .assessment-type-selector {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .type-buttons {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .type-button {
+    padding: 16px;
+  }
+  
+  .type-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .type-info h4 {
+    font-size: 15px;
+  }
+  
+  .type-info p {
     font-size: 13px;
   }
   

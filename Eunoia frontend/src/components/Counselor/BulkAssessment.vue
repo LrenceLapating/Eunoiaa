@@ -408,10 +408,10 @@
       </div>
     </div>
 
-    <!-- Success Toast -->
-    <div class="toast" v-if="showToast" :class="{ 'show': showToast }">
+    <!-- Toast Notification -->
+    <div class="toast" v-if="showToast" :class="{ 'show': showToast, 'error': toastIsError }">
       <div class="toast-content">
-        <i class="fas fa-check-circle"></i>
+        <i :class="toastIsError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'"></i>
         <span>{{ toastMessage }}</span>
       </div>
     </div>
@@ -466,6 +466,7 @@ export default {
       showVersionsModal: false,
       showToast: false,
       toastMessage: '',
+      toastIsError: false,
       isSending: false,
       validationErrors: {
         assessmentName: '',
@@ -563,13 +564,25 @@ export default {
           };
           
           if (filters.programs && filters.selectedSections) {
+            // Use a Set to track unique sections and avoid duplicates
+            const addedSections = new Set();
+            
             filters.programs.forEach(program => {
               program.yearLevels.forEach(yearLevel => {
                 const yearKey = this.getYearKey(yearLevel.year);
                 if (yearKey) {
                   yearLevel.sections.forEach(section => {
                     if (filters.selectedSections.includes(section.id)) {
-                      sectionsByYear[yearKey].push(`${program.name}-${section.name}`);
+                      // Create unique identifier to prevent duplicates
+                      const sectionKey = `${yearKey}-${section.name}`;
+                      
+                      if (!addedSections.has(sectionKey)) {
+                        // Extract section part from section name (e.g., "BSCS-3A" -> "3A")
+                        const sectionPart = section.name.split('-').pop() || section.name;
+                        // Format: "Course - Section" (e.g., "BSIS - 2A")
+                        sectionsByYear[yearKey].push(`${program.name} - ${sectionPart}`);
+                        addedSections.add(sectionKey);
+                      }
                     }
                   });
                 }
@@ -812,6 +825,7 @@ export default {
           this.isSending = false;
           this.showPreview = false;
           this.showToast = true;
+          this.toastIsError = false;
           
           // Show detailed success message with assignment info
           let successMessage = `Assessment "${this.fullAssessmentName}" has been successfully created and sent to ${data.data.assignedStudents} students`;
@@ -839,6 +853,20 @@ export default {
             };
             this.isSending = false;
             return; // Don't throw error, just show modal
+          } else if (response.status === 400 && data.data?.errorType === 'all_students_skipped') {
+            // Handle case where all students were skipped due to existing assessments
+            this.isSending = false;
+            this.showPreview = false;
+            this.showToast = true;
+            this.toastIsError = true;
+            this.toastMessage = data.message;
+            
+            // Hide toast after 5 seconds
+            setTimeout(() => {
+              this.showToast = false;
+              this.toastIsError = false;
+            }, 5000);
+            return; // Don't throw error, just show error toast
           } else {
             throw new Error(data.message || 'Failed to create assessment');
           }
@@ -850,10 +878,12 @@ export default {
         
         // Show error toast
         this.showToast = true;
+        this.toastIsError = true;
         this.toastMessage = 'Error: ' + (error.message || 'Failed to create assessment');
         
         setTimeout(() => {
           this.showToast = false;
+          this.toastIsError = false;
         }, 5000);
       }
     },
@@ -1552,6 +1582,10 @@ textarea.form-control {
 .toast.show {
   transform: translateY(0);
   opacity: 1;
+}
+
+.toast.error {
+  background-color: #dc3545; /* Red background for errors */
 }
 
 .toast-content {

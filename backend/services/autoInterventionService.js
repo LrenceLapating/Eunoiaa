@@ -18,18 +18,37 @@ class AutoInterventionService {
     try {
       // First ensure all completed assessments have risk levels
       console.log('🎯 Calculating missing risk levels...');
-      await riskLevelService.initialize();
+      const riskLevelResult = await riskLevelService.initialize();
+      
+      // Check if risk level calculation had network issues
+      if (riskLevelResult && !riskLevelResult.success && riskLevelResult.message.includes('Network connectivity')) {
+        console.warn('⚠️ Risk level calculation had network issues, but continuing with intervention service...');
+      }
       
       // Generate interventions for students who need them
       console.log('🧠 Generating missing AI interventions...');
-      await this.generateMissingInterventions();
+      try {
+        await this.generateMissingInterventions();
+      } catch (interventionError) {
+        console.error('❌ Failed to generate missing interventions:', interventionError.message);
+        console.log('🔄 Intervention generation will be retried during periodic checks');
+      }
       
-      // Start periodic checks for new assessments
+      // Start periodic checks for new assessments (always start this)
       this.startPeriodicCheck();
       
       console.log('✅ Auto intervention service initialized successfully');
     } catch (error) {
       console.error('❌ Failed to initialize auto intervention service:', error);
+      
+      // Even if initialization fails, try to start periodic checks
+      try {
+        console.log('🔄 Attempting to start periodic checks despite initialization failure...');
+        this.startPeriodicCheck();
+        console.log('✅ Periodic checks started successfully');
+      } catch (periodicError) {
+        console.error('❌ Failed to start periodic checks:', periodicError);
+      }
     }
   }
 

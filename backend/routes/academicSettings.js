@@ -96,32 +96,34 @@ router.get('/current', async (req, res) => {
         assessment_name_format: `${semester.school_year} ${semester.semester_name}`
       };
     } else {
-      // No semester found, try to find school year only
-      const currentYear = new Date(checkDate).getFullYear();
-      const { data: yearData, error: yearError } = await supabase
+      // No semester found for current date, get the most recent active academic setting
+      const { data: recentData, error: recentError } = await supabase
         .from('academic_settings')
-        .select('school_year')
+        .select('school_year, semester_name, start_date')
         .eq('is_active', true)
-        .or(`school_year.like.${currentYear}-%,school_year.like.%-${currentYear}`)
         .order('start_date', { ascending: false })
         .limit(1);
         
-      if (yearError) {
-        console.error('Error getting year data:', yearError);
+      if (recentError) {
+        console.error('Error getting recent academic data:', recentError);
         return res.status(500).json({
           success: false,
           message: 'Failed to get current academic period'
         });
       }
       
-      if (yearData && yearData.length > 0) {
+      if (recentData && recentData.length > 0) {
+        const recent = recentData[0];
         currentPeriod = {
-          school_year: yearData[0].school_year,
-          semester_name: null,
-          assessment_name_format: yearData[0].school_year
+          school_year: recent.school_year,
+          semester_name: recent.semester_name,
+          assessment_name_format: recent.semester_name ? 
+            `${recent.school_year} ${recent.semester_name}` : 
+            recent.school_year
         };
       } else {
-        // Fallback to current year format
+        // Final fallback to current year format if no data exists
+        const currentYear = new Date(checkDate).getFullYear();
         const fallbackYear = `${currentYear}-${currentYear + 1}`;
         currentPeriod = {
           school_year: fallbackYear,
@@ -182,48 +184,37 @@ router.post('/', requireCounselorAuth, async (req, res) => {
       }
     }
 
-    // Start transaction
-    const { data: existingSettings, error: fetchError } = await supabase
+    // Delete existing records with the same semester names to ensure global uniqueness
+    const semesterNames = semesters.map(semester => semester.name);
+    const { error: deleteError } = await supabase
       .from('academic_settings')
-      .select('id')
-      .eq('school_year', schoolYear);
+      .delete()
+      .in('semester_name', semesterNames);
 
-    if (fetchError) {
-      console.error('Error fetching existing settings:', fetchError);
+    if (deleteError) {
+      console.error('Error deleting existing semester records:', deleteError);
       return res.status(500).json({
         success: false,
-        message: 'Failed to check existing settings'
+        message: 'Failed to clear existing semester records: ' + deleteError.message
       });
     }
 
-    // Delete existing settings for this school year
-    if (existingSettings && existingSettings.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('academic_settings')
-        .delete()
-        .eq('school_year', schoolYear);
-
-      if (deleteError) {
-        console.error('Error deleting existing settings:', deleteError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to update existing settings'
-        });
-      }
-    }
-
-    // Insert new settings
-    const settingsToInsert = semesters.map(semester => ({
+    // Prepare all semester records for insertion
+    const semesterRecords = semesters.map(semester => ({
       school_year: schoolYear,
       semester_name: semester.name,
       start_date: semester.startDate,
       end_date: semester.endDate,
-      created_by: req.user.userId
+      created_by: req.user.userId,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }));
 
-    const { data: insertedSettings, error: insertError } = await supabase
+    // Insert all records in a single operation
+    const { data: insertedData, error: insertError } = await supabase
       .from('academic_settings')
-      .insert(settingsToInsert)
+      .insert(semesterRecords)
       .select();
 
     if (insertError) {
@@ -237,7 +228,7 @@ router.post('/', requireCounselorAuth, async (req, res) => {
     res.json({
       success: true,
       message: 'Academic settings saved successfully',
-      data: insertedSettings
+      data: insertedData
     });
   } catch (error) {
     console.error('Error in POST /academic-settings:', error);

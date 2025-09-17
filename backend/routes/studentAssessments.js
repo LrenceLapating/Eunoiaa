@@ -10,7 +10,8 @@ const riskLevelSyncService = require('../services/riskLevelSyncService');
 router.get('/assigned', verifyStudentSession, async (req, res) => {
   try {
     const studentId = req.user.id;
-    console.log(`Fetching assigned assessments for student: ${studentId}`);
+    const { assessment_type } = req.query; // Optional filter parameter
+    console.log(`Fetching assigned assessments for student: ${studentId}${assessment_type ? ` (type: ${assessment_type})` : ''}`);
 
     // Get assigned assessments that are not completed or expired
     const { data: assignments, error } = await supabase
@@ -57,6 +58,13 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
         ...assignment,
         bulk_assessment: bulkAssessmentMap[assignment.bulk_assessment_id] || null
       }));
+
+      // Apply assessment_type filter if provided
+      if (assessment_type) {
+        enrichedAssignments = enrichedAssignments.filter(assignment => 
+          assignment.bulk_assessment?.assessment_type === assessment_type
+        );
+      }
     }
 
     console.log(`Found ${enrichedAssignments?.length || 0} assigned assessments for student ${studentId}`);

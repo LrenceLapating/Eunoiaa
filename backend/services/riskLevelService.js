@@ -22,29 +22,33 @@ class RiskLevelService {
       // Get all completed assessments from both assessment tables
       const assessments = [];
       
-      // Fetch from assessments_42items
-      const { data: assessments42, error: error42 } = await supabaseAdmin
-        .from('assessments_42items')
-        .select('id, scores, overall_score, assignment_id, student_id')
-        .not('scores', 'is', null)
-        .not('overall_score', 'is', null);
+      // Fetch from assessments_42items with retry logic
+      const assessments42 = await this.fetchWithRetry(async () => {
+        const { data, error } = await supabaseAdmin
+          .from('assessments_42items')
+          .select('id, scores, overall_score, assignment_id, student_id')
+          .not('scores', 'is', null)
+          .not('overall_score', 'is', null);
 
-      if (error42) {
-        console.error('Error fetching 42-item assessments:', error42);
-        throw new Error(`Failed to fetch 42-item assessments: ${error42.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch 42-item assessments: ${error.message}`);
+        }
+        return data;
+      }, '42-item assessments');
       
-      // Fetch from assessments_84items
-      const { data: assessments84, error: error84 } = await supabaseAdmin
-        .from('assessments_84items')
-        .select('id, scores, overall_score, assignment_id, student_id')
-        .not('scores', 'is', null)
-        .not('overall_score', 'is', null);
+      // Fetch from assessments_84items with retry logic
+      const assessments84 = await this.fetchWithRetry(async () => {
+        const { data, error } = await supabaseAdmin
+          .from('assessments_84items')
+          .select('id, scores, overall_score, assignment_id, student_id')
+          .not('scores', 'is', null)
+          .not('overall_score', 'is', null);
 
-      if (error84) {
-        console.error('Error fetching 84-item assessments:', error84);
-        throw new Error(`Failed to fetch 84-item assessments: ${error84.message}`);
-      }
+        if (error) {
+          throw new Error(`Failed to fetch 84-item assessments: ${error.message}`);
+        }
+        return data;
+      }, '84-item assessments');
       
       // Combine assessments with their types
       if (assessments42) {
@@ -100,6 +104,13 @@ class RiskLevelService {
       };
     } catch (error) {
       console.error('Error in updateMissingRiskLevels:', error);
+      
+      // If it's a network/connection error, don't throw - just log and continue
+      if (error.message.includes('fetch failed') || error.message.includes('network') || error.message.includes('ECONNRESET')) {
+        console.warn('⚠️ Network connectivity issue detected. Risk level calculation will be retried later.');
+        return { success: false, message: 'Network connectivity issue - will retry later', error: error.message };
+      }
+      
       return {
         success: false,
         message: error.message,
@@ -108,6 +119,32 @@ class RiskLevelService {
       };
     } finally {
       this.isRunning = false;
+    }
+  }
+
+  /**
+   * Fetch data with retry logic for network resilience
+   */
+  async fetchWithRetry(fetchFunction, description, maxRetries = 3, delay = 1000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Attempting to fetch ${description} (attempt ${attempt}/${maxRetries})`);
+        const result = await fetchFunction();
+        console.log(`✅ Successfully fetched ${description}`);
+        return result;
+      } catch (error) {
+        console.error(`❌ Attempt ${attempt} failed for ${description}:`, error.message);
+        
+        if (attempt === maxRetries) {
+          console.error(`🚫 All ${maxRetries} attempts failed for ${description}`);
+          throw error;
+        }
+        
+        // Wait before retrying
+        console.log(`⏳ Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+      }
     }
   }
 

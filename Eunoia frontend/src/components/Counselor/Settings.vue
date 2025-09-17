@@ -310,6 +310,31 @@ export default {
     await this.loadCounselorProfile();
     await this.loadAcademicSettings();
   },
+  
+  watch: {
+    'academicSettings.selectedSchoolYear'(newSchoolYear) {
+      if (newSchoolYear && this.academicSettings.groupedSettings) {
+        // Load semesters for the selected school year
+        const yearSettings = this.academicSettings.groupedSettings[newSchoolYear];
+        if (yearSettings && yearSettings.semesters) {
+          // Normalize semester names to always be 1st and 2nd Semester
+          this.academicSettings.semesters = yearSettings.semesters.map((semester, index) => ({
+            ...semester,
+            name: `${this.getOrdinalNumber(index + 1)} Semester`
+          }));
+          this.semesterCounter = this.academicSettings.semesters.length;
+        } else {
+          // No semesters for this year, use defaults
+          this.academicSettings.semesters = [
+            { name: '1st Semester', startDate: '', endDate: '' },
+            { name: '2nd Semester', startDate: '', endDate: '' }
+          ];
+          this.semesterCounter = this.academicSettings.semesters.length;
+        }
+      }
+    }
+  },
+  
   methods: {
     setActiveTab(tab) {
       this.activeTab = tab;
@@ -349,7 +374,24 @@ export default {
            
            this.academicSettings.schoolYears = settings.schoolYears || [];
            this.academicSettings.selectedSchoolYear = settings.selectedSchoolYear || '';
-           this.academicSettings.semesters = settings.semesters || [];
+           
+           // Store grouped settings for the watcher
+           this.academicSettings.groupedSettings = response.data.groupedSettings || {};
+           
+           // Normalize semester names to always be 1st and 2nd Semester
+           if (settings.semesters && settings.semesters.length > 0) {
+             this.academicSettings.semesters = settings.semesters.map((semester, index) => ({
+               ...semester,
+               name: `${this.getOrdinalNumber(index + 1)} Semester`
+             }));
+           } else {
+             this.academicSettings.semesters = [];
+           }
+           
+           // Update semesterCounter based on loaded semesters
+           if (this.academicSettings.semesters.length > 0) {
+             this.semesterCounter = this.academicSettings.semesters.length;
+           }
          } else {
            // No existing settings, keep defaults
            console.log('No existing academic settings found, using defaults');
@@ -463,17 +505,26 @@ export default {
     
     // Academic Settings Methods
     addSemester() {
-      this.semesterCounter++;
+      // Calculate the next semester number based on existing semesters
+      const nextSemesterNumber = this.academicSettings.semesters.length + 1;
       this.academicSettings.semesters.push({
-        name: `${this.getOrdinalNumber(this.semesterCounter)} Semester`,
+        name: `${this.getOrdinalNumber(nextSemesterNumber)} Semester`,
         startDate: '',
         endDate: ''
       });
+      // Update counter to match the new length
+      this.semesterCounter = this.academicSettings.semesters.length;
     },
     
     removeSemester(index) {
       if (this.academicSettings.semesters.length > 1) {
         this.academicSettings.semesters.splice(index, 1);
+        // Renumber remaining semesters to maintain proper sequence
+        this.academicSettings.semesters.forEach((semester, idx) => {
+          semester.name = `${this.getOrdinalNumber(idx + 1)} Semester`;
+        });
+        // Update counter to match the new length
+        this.semesterCounter = this.academicSettings.semesters.length;
       } else {
         this.showError('At least one semester must be configured');
       }

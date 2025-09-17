@@ -22,7 +22,8 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `students-${uniqueSuffix}.csv`);
+    const extension = file.originalname.endsWith('.xlsx') ? '.xlsx' : '.csv';
+    cb(null, `students-${uniqueSuffix}${extension}`);
   }
 });
 
@@ -32,10 +33,13 @@ const upload = multer({
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 // 10MB
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+    const isCSV = file.mimetype === 'text/csv' || file.originalname.endsWith('.csv');
+    const isXLSX = file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.originalname.endsWith('.xlsx');
+    
+    if (isCSV || isXLSX) {
       cb(null, true);
     } else {
-      cb(new Error('Only CSV files are allowed'), false);
+      cb(new Error('Only CSV and XLSX files are allowed'), false);
     }
   }
 });
@@ -51,6 +55,14 @@ router.get('/colleges', async (req, res) => {
 
     if (error) throw error;
 
+    // College code to full name mapping
+    const collegeMapping = {
+      'CCS': 'College of Computing and Information Sciences',
+      'CABE': 'College of Architecture and Built Environment',
+      'CEA': 'College of Engineering and Architecture',
+      'CN': 'College of Nursing'
+    };
+
     // Count students by college
     const collegeStats = data.reduce((acc, student) => {
       const college = student.college;
@@ -58,8 +70,10 @@ router.get('/colleges', async (req, res) => {
       return acc;
     }, {});
 
-    const colleges = Object.entries(collegeStats).map(([name, totalUsers]) => ({
-      name,
+    const colleges = Object.entries(collegeStats).map(([code, totalUsers]) => ({
+      name: code, // Use college code (abbreviation) for display
+      code: code, // Keep the original code for backend operations
+      fullName: collegeMapping[code] || code, // Keep full name for reference if needed
       totalUsers
     }));
 
@@ -398,8 +412,18 @@ router.post('/deactivate-students', async (req, res) => {
 // POST /api/accounts/upload-csv - Upload and process CSV file
 router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
   try {
+    console.log('Upload request received:', {
+      file: req.file ? {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      } : null,
+      body: req.body
+    });
+
     if (!req.file) {
-      return res.status(400).json({ error: 'No CSV file uploaded' });
+      console.log('No file uploaded in request');
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
     // Check if deactivatePrevious option is enabled
@@ -463,48 +487,129 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
     const errors = [];
     let rowNumber = 1;
 
-    // Parse CSV file
-    const parsePromise = new Promise((resolve, reject) => {
-      fs.createReadStream(filePath)
-        .pipe(csv())
-        .on('data', (row) => {
-          rowNumber++;
-          try {
-            // Validate and sanitize data
-            const validationResult = validateStudentData(row, rowNumber);
-            if (validationResult.isValid) {
-              const sanitizedData = sanitizeStudentData(row);
-              students.push(sanitizedData);
-            } else {
-              errors.push(...validationResult.errors);
-            }
-          } catch (error) {
-            errors.push(`Row ${rowNumber}: ${error.message}`);
+    // Determine file type and parse accordingly
+    const isXLSX = req.file.originalname.endsWith('.xlsx');
+    
+    let parsePromise;
+    
+    if (isXLSX) {
+      // Parse XLSX file
+      parsePromise = new Promise(async (resolve, reject) => {
+        try {
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.readFile(filePath);
+          
+          // Try to get the 'Student Template' worksheet first, then fall back to first worksheet
+          let worksheet = workbook.getWorksheet('Student Template');
+          if (!worksheet) {
+            worksheet = workbook.getWorksheet(1); // Fall back to first worksheet
           }
-        })
-        .on('end', () => {
+          if (!worksheet) {
+            reject(new Error('No worksheet found in Excel file'));
+            return;
+          }
+          
+          // Get headers from first row
+          const headerRow = worksheet.getRow(1);
+          const headers = [];
+          headerRow.eachCell((cell, colNumber) => {
+            headers[colNumber - 1] = cell.value ? cell.value.toString().trim() : '';
+          });
+          
+          // Debug: Log the headers found in the Excel file
+          console.log('Excel headers found:', headers);
+          console.log('Worksheet name:', worksheet.name);
+          
+          // Process data rows
+          worksheet.eachRow((row, rowIndex) => {
+            if (rowIndex === 1) return; // Skip header row
+            
+            rowNumber = rowIndex;
+            try {
+              const rowData = {};
+              row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const header = headers[colNumber - 1];
+                if (header) {
+                  let cellValue = '';
+                  if (cell.value !== null && cell.value !== undefined) {
+                    // Handle different cell value types
+                    if (typeof cell.value === 'object' && cell.value.text) {
+                      cellValue = cell.value.text.toString().trim();
+                    } else {
+                      cellValue = cell.value.toString().trim();
+                    }
+                  }
+                  rowData[header] = cellValue;
+                }
+              });
+              
+              // Skip empty rows
+              if (Object.values(rowData).every(val => !val)) return;
+              
+              // Validate and sanitize data
+              const validationResult = validateStudentData(rowData, rowNumber);
+              if (validationResult.isValid) {
+                const sanitizedData = sanitizeStudentData(rowData);
+                students.push(sanitizedData);
+              } else {
+                errors.push(...validationResult.errors);
+              }
+            } catch (error) {
+              errors.push(`Row ${rowNumber}: ${error.message}`);
+            }
+          });
+          
           resolve();
-        })
-        .on('error', (error) => {
+        } catch (error) {
           reject(error);
-        });
-    });
+        }
+      });
+    } else {
+      // Parse CSV file
+      parsePromise = new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on('data', (row) => {
+            rowNumber++;
+            try {
+              // Validate and sanitize data
+              const validationResult = validateStudentData(row, rowNumber);
+              if (validationResult.isValid) {
+                const sanitizedData = sanitizeStudentData(row);
+                students.push(sanitizedData);
+              } else {
+                errors.push(...validationResult.errors);
+              }
+            } catch (error) {
+              errors.push(`Row ${rowNumber}: ${error.message}`);
+            }
+          })
+          .on('end', () => {
+            resolve();
+          })
+          .on('error', (error) => {
+            reject(error);
+          });
+      });
+    }
 
     await parsePromise;
+
+    console.log(`Parsing completed. Found ${students.length} valid students, ${errors.length} errors`);
 
     // Clean up uploaded file
     fs.unlinkSync(filePath);
 
     if (errors.length > 0) {
       return res.status(400).json({
-        error: 'CSV validation failed',
+        error: 'File validation failed',
         errors: errors,
         validStudents: students.length
       });
     }
 
     if (students.length === 0) {
-      return res.status(400).json({ error: 'No valid student data found in CSV' });
+      return res.status(400).json({ error: 'No valid student data found in file' });
     }
 
     // Use upsert logic to update existing students or insert new ones
@@ -514,17 +619,25 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
     
     for (const student of students) {
       try {
+        // Use direct database upsert to include course field (same approach as Add New Student)
         const { data, error } = await supabase
-          .rpc('upsert_student', {
-            p_name: student.name,
-            p_email: student.email,
-            p_section: student.section,
-            p_department: student.college, // Use college for department field for backward compatibility
-            p_id_number: student.id_number,
-            p_year_level: student.year_level,
-            p_college: student.college,
-            p_semester: student.semester
-          });
+          .from('students')
+          .upsert({
+            name: student.name,
+            email: student.email,
+            section: student.section,
+            course: student.course, // Include the course field
+            id_number: student.id_number,
+            year_level: student.year_level,
+            college: student.college,
+            semester: student.semester,
+            status: 'active',
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id_number',
+            ignoreDuplicates: false
+          })
+          .select();
         
         if (error) {
           console.error('Error upserting student:', error);
@@ -548,7 +661,7 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
 
     if (errors.length > 0) {
       const partialResponse = { 
-        message: 'CSV processed with some errors',
+        message: 'File processed with some errors',
         studentsProcessed: processedCount,
         studentsInserted: insertedCount,
         studentsUpdated: updatedCount,
@@ -558,14 +671,14 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
       // Include deactivation info if applicable
       if (deactivatePrevious) {
         partialResponse.studentsDeactivated = deactivatedCount;
-        partialResponse.message = `CSV processed with some errors. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
+        partialResponse.message = `File processed with some errors. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
       }
       
       return res.status(207).json(partialResponse);
     }
 
     const response = {
-      message: 'CSV uploaded and processed successfully',
+      message: 'File uploaded and processed successfully',
       studentsProcessed: processedCount,
       studentsInserted: insertedCount,
       studentsUpdated: updatedCount
@@ -574,7 +687,7 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
     // Include deactivation info if applicable
     if (deactivatePrevious) {
       response.studentsDeactivated = deactivatedCount;
-      response.message = `CSV uploaded successfully. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
+      response.message = `File uploaded successfully. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
     }
     
     res.json(response);
@@ -587,14 +700,14 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
     
-    res.status(500).json({ error: 'Failed to process CSV file' });
+    res.status(500).json({ error: 'Failed to process file' });
   }
 });
 
 // POST /api/accounts/students - Create a new student
 router.post('/students', async (req, res) => {
   try {
-    const { name, email, section, college, id_number, year_level, semester } = req.body;
+    const { name, email, section, college, course, id_number, year_level, semester } = req.body;
 
     // Validate required fields
     if (!name || !email || !id_number || !college || !year_level) {
@@ -623,6 +736,7 @@ router.post('/students', async (req, res) => {
       email: email.trim().toLowerCase(),
       section: section ? section.trim() : null,
       college: college.trim(),
+      course: course ? course.trim() : null,
       id_number: id_number.trim(),
       year_level: year_level,
       semester: semester || '1st',
@@ -656,7 +770,7 @@ router.put('/students/:id', async (req, res) => {
     const updates = req.body;
 
     // Validate update data
-    const allowedFields = ['name', 'email', 'section', 'year_level', 'college'];
+    const allowedFields = ['name', 'email', 'section', 'year_level', 'college', 'course'];
     const filteredUpdates = {};
     
     for (const field of allowedFields) {
@@ -719,23 +833,103 @@ router.get('/csv-template', async (req, res) => {
     // Define college options
     const colleges = ['CABE', 'CAH', 'CCS', 'CEA', 'CHESFS', 'CMBS', 'CM', 'CN', 'CPC', 'CTE'];
     
+    // Define course mapping with course codes for section generation
+    const courseMapping = {
+      'CABE': [
+        { name: 'Bachelor of Science in Accountancy', code: 'BSA' },
+        { name: 'Bachelor of Science in Management Accounting', code: 'BSMA' },
+        { name: 'Bachelor of Science in Accounting Information System', code: 'BSAIS' },
+        { name: 'Bachelor of Science in Real Estate Management', code: 'BSREM' },
+        { name: 'BSBA Major in Marketing Management', code: 'BSBA-MM' },
+        { name: 'BSBA Major in Financial Management', code: 'BSBA-FM' },
+        { name: 'BSBA Major in Human Resource Management', code: 'BSBA-HRM' }
+      ],
+      'CAH': [
+        { name: 'BA Communication', code: 'ABComm' },
+        { name: 'BA English Language Studies', code: 'ABELS' },
+        { name: 'BA Philosophy (Law, Management, Research)', code: 'ABPhilo' },
+        { name: 'BA Psychology', code: 'ABPsy' },
+        { name: 'BS Psychology', code: 'BSPsy' }
+      ],
+      'CCS': [
+        { name: 'BS Information Technology', code: 'BSIT' },
+        { name: 'BS Information Systems', code: 'BSIS' },
+        { name: 'BS Computer Science', code: 'BSCS' }
+      ],
+      'CEA': [
+        { name: 'BS Architecture', code: 'BArch' },
+        { name: 'BS Civil Engineering', code: 'BSCE' },
+        { name: 'BS Computer Engineering', code: 'BSCpE' },
+        { name: 'BS Electronics Engineering', code: 'BSECE' }
+      ],
+      'CHESFS': [
+        { name: 'BS Nutrition and Dietetics', code: 'BSND' },
+        { name: 'BS Hotel, Restaurant & Institutional Management', code: 'BSHRIM' },
+        { name: 'BS Tourism Management', code: 'BSTour' }
+      ],
+      'CM': [
+        { name: 'Bachelor of Music in Music Education', code: 'BMME' }
+      ],
+      'CMBS': [
+        { name: 'BS Medical Technology / Medical Laboratory Science', code: 'BSMT' },
+        { name: 'BS Biology', code: 'BSBio' }
+      ],
+      'CN': [
+        { name: 'BS Nursing', code: 'BSN' }
+      ],
+      'CPC': [
+        { name: 'BS Chemistry', code: 'BSChem' },
+        { name: 'BS Pharmacy', code: 'BSPharma' },
+        { name: 'BS Pharmacy Major in Clinical Pharmacy', code: 'BSPharmaClin' }
+      ],
+      'CTE': [
+        { name: 'Bachelor of Early Childhood Education', code: 'BECEd' },
+        { name: 'Bachelor of Elementary Education', code: 'BEEd' },
+        { name: 'Bachelor of Special Needs Education', code: 'BSNEd' },
+        { name: 'Bachelor of Physical Education', code: 'BPED' },
+        { name: 'BSEd Major in English', code: 'BSEd-Eng' },
+        { name: 'BSEd Major in Filipino', code: 'BSEd-Fil' },
+        { name: 'BSEd Major in Sciences', code: 'BSEd-Sci' },
+        { name: 'BSEd Major in Mathematics (Specialized in Business & Computing Education)', code: 'BSEd-Math' }
+      ]
+    };
+    
     // Create a hidden worksheet for dropdown values
     const dropdownSheet = workbook.addWorksheet('DropdownValues');
     dropdownSheet.state = 'hidden';
     
-    // Add college values to the hidden sheet
+    // Add college values to the hidden sheet (column A)
     colleges.forEach((college, index) => {
       dropdownSheet.getCell(`A${index + 1}`).value = college;
     });
     
-    // Set up headers
+    // Create separate columns for each college's courses
+    let currentColumn = 2; // Start from column B
+    const collegeColumns = {};
+    
+    colleges.forEach(college => {
+      const courses = courseMapping[college] || [];
+      const columnLetter = String.fromCharCode(64 + currentColumn); // Convert to letter (B, C, D, etc.)
+      
+      // Add courses for this college to the current column
+      courses.forEach((course, index) => {
+        dropdownSheet.getCell(`${columnLetter}${index + 1}`).value = course.name;
+      });
+      
+      // Store the column range for this college
+      collegeColumns[college] = `DropdownValues!$${columnLetter}$1:$${columnLetter}$${courses.length}`;
+      currentColumn++;
+    });
+    
+    // Set up headers in the requested order: Name, College, Course, Year Level, Section, ID Number, Email, Semester
     worksheet.columns = [
       { header: 'Name', key: 'name', width: 20 },
-      { header: 'Section', key: 'section', width: 15 },
       { header: 'College', key: 'college', width: 15 },
+      { header: 'Course', key: 'course', width: 35 },
+      { header: 'Year Level', key: 'yearLevel', width: 12 },
+      { header: 'Section', key: 'section', width: 15 },
       { header: 'ID Number', key: 'idNumber', width: 15 },
       { header: 'Email', key: 'email', width: 25 },
-      { header: 'Year Level', key: 'yearLevel', width: 12 },
       { header: 'Semester', key: 'semester', width: 15 }
     ];
     
@@ -743,53 +937,58 @@ router.get('/csv-template', async (req, res) => {
     worksheet.addRows([
       {
         name: 'John Doe',
-        section: 'BSIT-4A',
         college: 'CCS',
+        course: 'BS Information Technology',
+        yearLevel: '4',
+        section: 'BSIT-4A',
         idNumber: '2020-12345',
         email: 'john.doe@student.edu',
-        yearLevel: '4',
         semester: '1st Semester'
       },
       {
         name: 'Jane Smith',
-        section: 'BSCS-3B',
         college: 'CCS',
+        course: 'BS Computer Science',
+        yearLevel: '3',
+        section: 'BSCS-3B',
         idNumber: '2021-67890',
         email: 'jane.smith@student.edu',
-        yearLevel: '3',
         semester: '1st Semester'
       },
       {
         name: 'Mike Johnson',
-        section: 'BSENG-2A',
         college: 'CEA',
+        course: 'BS Civil Engineering',
+        yearLevel: '2',
+        section: 'BSCE-2A',
         idNumber: '2022-11111',
         email: 'mike.johnson@student.edu',
-        yearLevel: '2',
         semester: '1st Semester'
       },
       {
         name: 'Sarah Wilson',
-        section: 'BSBA-1A',
         college: 'CABE',
+        course: 'Bachelor of Science in Accountancy',
+        yearLevel: '1',
+        section: 'BSA-1A',
         idNumber: '2023-22222',
         email: 'sarah.wilson@student.edu',
-        yearLevel: '1',
         semester: '1st Semester'
       },
       {
         name: 'Alex Brown',
-        section: 'BSN-2B',
         college: 'CN',
+        course: 'BS Nursing',
+        yearLevel: '2',
+        section: 'BSN-2B',
         idNumber: '2022-33333',
         email: 'alex.brown@student.edu',
-        yearLevel: '2',
         semester: '1st Semester'
       }
     ]);
     
-    // Add data validation for college column (column C) using reference to hidden sheet
-    worksheet.dataValidations.add('C2:C1000', {
+    // Add data validation for college column (column B) using reference to hidden sheet
+    worksheet.dataValidations.add('B2:B1000', {
       type: 'list',
       allowBlank: false,
       formulae: [`DropdownValues!$A$1:$A$${colleges.length}`],
@@ -799,6 +998,106 @@ router.get('/csv-template', async (req, res) => {
       error: 'Please select a valid college from the dropdown list.'
     });
     
+    // Create a mapping sheet for college-to-column lookup
+    const mappingSheet = workbook.addWorksheet('CollegeMapping');
+    mappingSheet.state = 'hidden';
+    
+    // Add college-to-column mapping
+    const collegeToColumn = {
+      'CABE': 'B', 'CAH': 'C', 'CCS': 'D', 'CEA': 'E', 
+      'CHESFS': 'F', 'CM': 'G', 'CMBS': 'H', 'CN': 'I', 
+      'CPC': 'J', 'CTE': 'K'
+    };
+    
+    let mappingRow = 1;
+    Object.entries(collegeToColumn).forEach(([college, column]) => {
+      mappingSheet.getCell(`A${mappingRow}`).value = college;
+      mappingSheet.getCell(`B${mappingRow}`).value = column;
+      mappingRow++;
+    });
+    
+    // Add validation for course column (column C) - using dynamic INDIRECT
+    worksheet.dataValidations.add('C2:C1000', {
+      type: 'list',
+      allowBlank: false,
+      formulae: [`INDIRECT("DropdownValues!"&VLOOKUP(B2,CollegeMapping!$A$1:$B$10,2,FALSE)&"$1:"&VLOOKUP(B2,CollegeMapping!$A$1:$B$10,2,FALSE)&"$50")`],
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: 'Invalid Course',
+      error: 'Please select a valid course for your chosen college. Make sure to select a college first.'
+    });
+    
+    // Add validation for year level (column D)
+    worksheet.dataValidations.add('D2:D1000', {
+      type: 'list',
+      allowBlank: false,
+      formulae: ['"1,2,3,4"'],
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: 'Invalid Year Level',
+      error: 'Please select a valid year level (1-4).'
+    });
+    
+    // Add validation for semester (column H)
+    worksheet.dataValidations.add('H2:H1000', {
+      type: 'list',
+      allowBlank: false,
+      formulae: ['"1st Semester,2nd Semester,Summer"'],
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: 'Invalid Semester',
+      error: 'Please select a valid semester.'
+    });
+
+    // Add a helper worksheet for section lookup
+    const sectionHelperSheet = workbook.addWorksheet('SectionHelper');
+    sectionHelperSheet.state = 'hidden';
+    
+    // Create a lookup table for sections based on course codes
+    const courseCodes = {};
+    colleges.forEach(college => {
+      const courses = courseMapping[college] || [];
+      courses.forEach(course => {
+        courseCodes[course.name] = course.code;
+      });
+    });
+    
+    // Add course codes to helper sheet for lookup (Column A: Course Name, Column B: Course Code)
+    let helperRow = 1;
+    Object.entries(courseCodes).forEach(([courseName, courseCode]) => {
+      sectionHelperSheet.getCell(`A${helperRow}`).value = courseName;
+      sectionHelperSheet.getCell(`B${helperRow}`).value = courseCode;
+      helperRow++;
+    });
+    
+    // Create section combinations for all course codes and year levels
+    // Columns C-F will contain sections for years 1-4 respectively
+    const yearColumns = ['C', 'D', 'E', 'F']; // Years 1, 2, 3, 4
+    const sections = ['A', 'B', 'C'];
+    
+    Object.values(courseCodes).forEach((courseCode, courseIndex) => {
+      yearColumns.forEach((column, yearIndex) => {
+        const yearLevel = yearIndex + 1;
+        let sectionRow = courseIndex * 3 + 1; // Each course gets 3 rows (A, B, C sections)
+        
+        sections.forEach((section, sectionIndex) => {
+          const sectionCode = `${courseCode}-${yearLevel}${section}`;
+          sectionHelperSheet.getCell(`${column}${sectionRow + sectionIndex}`).value = sectionCode;
+        });
+      });
+    });
+    
+    // Add validation for section column (column E) - dynamic based on course and year level
+    worksheet.dataValidations.add('E2:E1000', {
+      type: 'list',
+      allowBlank: false,
+      formulae: [`INDIRECT("SectionHelper!"&CHAR(67+D2-1)&(MATCH(C2,SectionHelper!$A:$A,0)-1)*3+1&":"&CHAR(67+D2-1)&(MATCH(C2,SectionHelper!$A:$A,0)-1)*3+3)`],
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: 'Invalid Section',
+      error: 'Please select a valid section. Make sure to select Course and Year Level first.'
+    });
+    
     // Style the header row
     worksheet.getRow(1).font = { bold: true };
     worksheet.getRow(1).fill = {
@@ -806,6 +1105,86 @@ router.get('/csv-template', async (req, res) => {
       pattern: 'solid',
       fgColor: { argb: 'FFE0E0E0' }
     };
+    
+    // Add borders to all cells with data
+    const borderStyle = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' }
+    };
+    
+    // Apply borders to the header row and sample data rows
+    for (let row = 1; row <= worksheet.rowCount; row++) {
+      for (let col = 1; col <= 8; col++) { // A to H columns
+        worksheet.getCell(row, col).border = borderStyle;
+      }
+    }
+    
+    // Add instructions worksheet
+    const instructionsSheet = workbook.addWorksheet('Instructions');
+    instructionsSheet.addRows([
+      ['STUDENT TEMPLATE INSTRUCTIONS'],
+      [''],
+      ['Column Order: Name | College | Course | Year Level | Section | ID Number | Email | Semester'],
+      [''],
+      ['How to use this template:'],
+      ['1. Fill in student information in the "Student Template" sheet'],
+      ['2. College column (B) has a dropdown - select from the available options'],
+      ['3. Course column (C) has a DYNAMIC dropdown - automatically shows only courses for your selected college'],
+      ['4. Year Level column (D) has a dropdown - select 1, 2, 3, or 4'],
+      ['5. Section column (E) has a DYNAMIC dropdown - automatically shows sections for your selected course and year'],
+      ['   Examples: Select BSIT + Year 1 → shows BSIT-1A, BSIT-1B, BSIT-1C'],
+      ['6. ID Number column (F) - Enter unique student ID'],
+      ['7. Email column (G) - Enter valid email address'],
+      ['8. Semester column (H) has a dropdown - select from available options'],
+      [''],
+      ['Dynamic Section Examples:'],
+      ['• Select "BS Information Technology" + "1" → Dropdown shows: BSIT-1A, BSIT-1B, BSIT-1C'],
+      ['• Select "Bachelor of Science in Accountancy" + "2" → Dropdown shows: BSA-2A, BSA-2B, BSA-2C'],
+      ['• Select "BS Nursing" + "3" → Dropdown shows: BSN-3A, BSN-3B, BSN-3C'],
+      ['• Select "BS Computer Science" + "4" → Dropdown shows: BSCS-4A, BSCS-4B, BSCS-4C'],
+      [''],
+      ['Important Notes:'],
+      ['• Do not modify the hidden sheets (DropdownValues, CollegeMapping, SectionHelper)'],
+      ['• IMPORTANT: Select College → Course → Year Level → Section (in this order)'],
+      ['• Course dropdown filters based on selected college'],
+      ['• Section dropdown filters based on selected course AND year level'],
+      ['• ID Numbers must be unique'],
+      ['• Email addresses must be valid and unique'],
+      ['• All fields are required'],
+      [''],
+      ['College Abbreviations:'],
+      ['CABE - College of Accountancy and Business Education'],
+      ['CAH - College of Arts and Humanities'],
+      ['CCS - College of Computer Studies'],
+      ['CEA - College of Engineering and Architecture'],
+      ['CHESFS - College of Home Economics, Sports and Food Science'],
+      ['CM - College of Music'],
+      ['CMBS - College of Mathematics and Biological Sciences'],
+      ['CN - College of Nursing'],
+      ['CPC - College of Pharmacy and Chemistry'],
+      ['CTE - College of Teacher Education'],
+      [''],
+      ['Course Code Reference:'],
+      ['CABE: BSA, BSMA, BSAIS, BSREM, BSBA-MM, BSBA-FM, BSBA-HRM'],
+      ['CAH: ABComm, ABELS, ABPhilo, ABPsy, BSPsy'],
+      ['CCS: BSIT, BSIS, BSCS'],
+      ['CEA: BArch, BSCE, BSCpE, BSECE'],
+      ['CHESFS: BSND, BSHRIM, BSTour'],
+      ['CM: BMME'],
+      ['CMBS: BSMT, BSBio'],
+      ['CN: BSN'],
+      ['CPC: BSChem, BSPharma, BSPharmaClin'],
+      ['CTE: BECEd, BEEd, BSNEd, BPED, BSEd-Eng, BSEd-Fil, BSEd-Sci, BSEd-Math']
+    ]);
+    
+    // Style instructions sheet
+    instructionsSheet.getRow(1).font = { bold: true, size: 14 };
+    instructionsSheet.getRow(3).font = { bold: true };
+    instructionsSheet.getRow(10).font = { bold: true };
+    instructionsSheet.getRow(17).font = { bold: true };
+    instructionsSheet.getColumn(1).width = 60;
     
     // Generate buffer
     const buffer = await workbook.xlsx.writeBuffer();
@@ -971,7 +1350,23 @@ router.get('/colleges/scores', async (req, res) => {
 // GET /api/accounts/colleges/history - Get historical college scores from college_scores_history
 router.get('/colleges/history', async (req, res) => {
   try {
-    const { college, assessmentType, assessmentName, yearLevel, section } = req.query;
+    let { college, assessmentType, assessmentName, yearLevel, section } = req.query;
+    
+    // Decode assessmentName if it's URL encoded
+    if (assessmentName) {
+      try {
+        // Try to decode multiple times in case of double encoding
+        let decodedName = assessmentName;
+        let previousName = '';
+        while (decodedName !== previousName && decodedName.includes('%')) {
+          previousName = decodedName;
+          decodedName = decodeURIComponent(decodedName);
+        }
+        assessmentName = decodedName;
+      } catch (error) {
+        console.log('⚠️ Could not decode assessmentName:', assessmentName);
+      }
+    }
     
     console.log('📊 College History Request:', {
       college,
@@ -981,68 +1376,16 @@ router.get('/colleges/history', async (req, res) => {
       section
     });
 
-    // Validate required parameters
-    if (!college) {
-      return res.status(400).json({
-        success: false,
-        error: 'College parameter is required'
-      });
-    }
-
-    if (!assessmentType) {
-      return res.status(400).json({
-        success: false,
-        error: 'Assessment type parameter is required'
-      });
-    }
-
-    let result;
+    // Use the new historical college scoring function that works like getCollegeScores
+    const { getHistoricalCollegeScores } = require('../utils/collegeHistoryScoring');
     
-    // Check if we need dynamic computation (when filters are applied)
-    if (yearLevel || section) {
-      console.log('🔄 Using dynamic computation for filtered college history');
-      const { computeDynamicCollegeHistoryScores } = require('../utils/collegeHistoryDynamicScoring');
-      
-      const dynamicResult = await computeDynamicCollegeHistoryScores(supabase, {
-        collegeName: college,
-        yearLevel,
-        section
-      });
-      
-      if (!dynamicResult.success) {
-        return res.status(500).json({
-          success: false,
-          error: dynamicResult.error || 'Failed to compute dynamic college history scores'
-        });
-      }
-      
-      // Format the response to match the expected structure
-      result = {
-        success: true,
-        college: college,
-        assessmentType: assessmentType,
-        history: dynamicResult.history,
-        filteringMetadata: {
-          ...dynamicResult.filteringMetadata,
-          filtersApplied: {
-            yearLevel: yearLevel || null,
-            section: section || null,
-            assessmentName: assessmentName || null
-          }
-        }
-      };
-    } else {
-      console.log('📋 Using standard filtering for college history');
-      // Use the existing filtering function for non-filtered requests
-      const { getFilteredCollegeHistory } = require('../utils/collegeHistoryFiltering');
-      result = await getFilteredCollegeHistory(
-        college,
-        assessmentType,
-        assessmentName,
-        yearLevel,
-        section
-      );
-    }
+    const result = await getHistoricalCollegeScores(
+      college,
+      assessmentType,
+      assessmentName,
+      yearLevel,
+      section
+    );
 
     if (!result.success) {
       return res.status(500).json({
@@ -1051,16 +1394,30 @@ router.get('/colleges/history', async (req, res) => {
       });
     }
 
+    // Format response to match the expected structure for the frontend
+    const response = {
+      success: true,
+      college: college,
+      assessmentType: assessmentType,
+      assessmentName: assessmentName,
+      yearLevel: yearLevel,
+      section: section,
+      history: result.history,
+      colleges: result.colleges, // For compatibility with college summary format
+      filteringMetadata: result.filteringMetadata
+    };
+
     console.log('📊 College History Response:', {
-      college: result.college,
-      assessmentType: result.assessmentType,
+      college: college,
+      assessmentType: assessmentType,
       historyCount: result.history.length,
+      collegesCount: result.colleges.length,
       availableYearLevels: result.filteringMetadata.availableYearLevels,
       availableSections: result.filteringMetadata.availableSections,
       filtersApplied: result.filteringMetadata.filtersApplied
     });
 
-    res.json(result);
+    res.json(response);
 
   } catch (error) {
     console.error('Error in college history endpoint:', error);

@@ -6,13 +6,14 @@ const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Import database and Redis for graceful shutdown
-const { closeConnections } = require('./config/database');
+const { closeConnections, testConnection } = require('./config/database');
 const { redis } = require('./config/redis');
 const logger = require('./config/logger');
 
 const accountRoutes = require('./routes/accounts');
 const { router: authRoutes } = require('./routes/auth');
 const bulkAssessmentRoutes = require('./routes/bulkAssessments');
+const individualAssessmentRoutes = require('./routes/individualAssessments');
 const studentAssessmentRoutes = require('./routes/studentAssessments');
 const counselorAssessmentRoutes = require('./routes/counselorAssessments');
 const dataCleanupRoutes = require('./routes/dataCleanup');
@@ -170,6 +171,7 @@ app.set('trust proxy', 1);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bulk-assessments', bulkAssessmentRoutes);
+app.use('/api/individual-assessments', individualAssessmentRoutes);
 app.use('/api/student-assessments', studentAssessmentRoutes);
 app.use('/api/counselor-assessments', counselorAssessmentRoutes);
 app.use('/api/data-cleanup', dataCleanupRoutes);
@@ -244,6 +246,16 @@ server = app.listen(PORT, async () => {
   console.log(`🛡️ Crash prevention handlers enabled`);
   console.log(`📊 Memory monitoring active`);
   
+  // Test database connection before initializing services
+  console.log('🔍 Testing database connection...');
+  try {
+    await testConnection();
+    console.log('✅ Database connection verified');
+  } catch (dbError) {
+    console.error('❌ Database connection failed:', dbError.message);
+    console.warn('⚠️ Services will start but may have limited functionality');
+  }
+
   // Initialize auto intervention service for automatic AI intervention generation
   console.log(`🤖 AI Intervention Service: Automatic mode enabled`);
   

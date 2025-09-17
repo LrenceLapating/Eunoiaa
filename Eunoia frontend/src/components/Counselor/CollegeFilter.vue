@@ -23,7 +23,29 @@
           <p class="no-sections-text">No sections available for this college.</p>
         </div>
         
-        <div v-else class="year-sections">
+        <div v-else class="filter-sections">
+          <!-- Course/Program Filter Section -->
+          <div class="course-filter-section">
+            <div class="course-filter-header">
+              <h4 class="course-filter-title">Filter by Course/Program</h4>
+              <span class="course-selection-count">{{ getSelectedCoursesCount }} selected</span>
+            </div>
+            
+            <div class="course-checkboxes">
+              <div class="course-option" v-for="course in availableCourses" :key="course">
+                <input type="checkbox" :id="'course-' + course" v-model="selectedCourses[course]" @change="onCourseSelectionChange(course)">
+                <label :for="'course-' + course">{{ course }}</label>
+              </div>
+            </div>
+            
+            <div class="course-select-actions">
+              <button class="course-select-btn" @click="selectAllCourses">Select All</button>
+              <button class="course-select-btn" @click="deselectAllCourses">Deselect All</button>
+            </div>
+          </div>
+
+          <!-- Year Sections (filtered by selected courses) -->
+          <div class="year-sections">
           <!-- 1st Year -->
           <div class="year-container">
             <div class="year-header" @click="toggleYear('first')">
@@ -144,6 +166,7 @@
             </transition>
           </div>
         </div>
+        </div>
         
         <!-- Selected Sections Summary -->
         <transition name="fade">
@@ -231,14 +254,17 @@ export default {
     return {
       // API configuration - uses environment variable for production
       
-      firstYearOpen: true,
+      firstYearOpen: false,
       secondYearOpen: false,
       thirdYearOpen: false,
-      fourthYearOpen: true,
+      fourthYearOpen: false,
       // Programs will be populated dynamically from backend
       programs: {},
       sectionsData: null, // Store original sections data
-      loading: false
+      loading: false,
+      // Course filtering properties
+      selectedCourses: {}, // Track which courses are selected
+      availableCourses: [] // List of available courses
     };
   },
   computed: {
@@ -249,12 +275,16 @@ export default {
              this.getSelectedSections('fourth').length > 0;
     },
     
-    // Get unique program names for each year level
+    // Get unique program names for each year level, filtered by selected courses
     firstYearPrograms() {
       const programs = {};
       Object.keys(this.programs).forEach(programKey => {
         if (!programKey.includes('2') && !programKey.includes('3') && !programKey.includes('4')) {
           const programName = programKey;
+          // Filter by selected courses if any are selected
+          if (this.hasSelectedCourses && !this.selectedCourses[programName]) {
+            return;
+          }
           programs[programName] = this.programs[programKey];
         }
       });
@@ -266,6 +296,10 @@ export default {
       Object.keys(this.programs).forEach(programKey => {
         if (programKey.includes('2')) {
           const programName = programKey.replace('2', '');
+          // Filter by selected courses if any are selected
+          if (this.hasSelectedCourses && !this.selectedCourses[programName]) {
+            return;
+          }
           programs[programName] = this.programs[programKey];
         }
       });
@@ -277,6 +311,10 @@ export default {
       Object.keys(this.programs).forEach(programKey => {
         if (programKey.includes('3')) {
           const programName = programKey.replace('3', '');
+          // Filter by selected courses if any are selected
+          if (this.hasSelectedCourses && !this.selectedCourses[programName]) {
+            return;
+          }
           programs[programName] = this.programs[programKey];
         }
       });
@@ -288,10 +326,24 @@ export default {
       Object.keys(this.programs).forEach(programKey => {
         if (programKey.includes('4')) {
           const programName = programKey.replace('4', '');
+          // Filter by selected courses if any are selected
+          if (this.hasSelectedCourses && !this.selectedCourses[programName]) {
+            return;
+          }
           programs[programName] = this.programs[programKey];
         }
       });
       return programs;
+    },
+    
+    // Check if any courses are selected
+    hasSelectedCourses() {
+      return Object.values(this.selectedCourses).some(selected => selected);
+    },
+    
+    // Get count of selected courses
+    getSelectedCoursesCount() {
+      return Object.values(this.selectedCourses).filter(selected => selected).length;
     }
   },
   watch: {
@@ -342,7 +394,12 @@ export default {
       const transformedPrograms = {};
       
       if (sectionsData && sectionsData.programs) {
+        // Extract unique course names for the course filter
+        const uniqueCourses = new Set();
+        
         sectionsData.programs.forEach(program => {
+          uniqueCourses.add(program.name);
+          
           program.yearLevels.forEach(yearLevel => {
             const suffix = yearLevel.year === 1 ? '' : yearLevel.year.toString();
             const programKey = program.name + suffix;
@@ -354,6 +411,13 @@ export default {
               selected: true // Default to selected
             }));
           });
+        });
+        
+        // Update available courses and initialize selectedCourses
+        this.availableCourses = Array.from(uniqueCourses).sort();
+        this.selectedCourses = {};
+        this.availableCourses.forEach(course => {
+          this.selectedCourses[course] = true; // Default all courses selected
         });
       }
       
@@ -458,6 +522,65 @@ export default {
           section.selected = false;
         });
       });
+      // Also clear course selections
+      Object.keys(this.selectedCourses).forEach(course => {
+        this.selectedCourses[course] = false;
+      });
+    },
+    
+    // Course filtering methods
+    onCourseSelectionChange(course) {
+      // The checkbox value is already updated by v-model, so we just need to handle the side effects
+      const isSelected = this.selectedCourses[course];
+      
+      // Toggle all sections under this course based on course selection
+      if (isSelected) {
+        // If course is selected, automatically select all sections under that course
+        this.selectSectionsForCourse(course);
+      } else {
+        // If course is deselected, automatically deselect all sections under that course
+        this.deselectSectionsForCourse(course);
+      }
+    },
+    
+    selectSectionsForCourse(courseName) {
+      // Select all sections that belong to the specified course
+      Object.keys(this.programs).forEach(programKey => {
+        // Extract the base program name (without year suffix)
+        const baseProgramName = programKey.replace(/[234]$/, '');
+        
+        if (baseProgramName === courseName) {
+          this.programs[programKey].forEach(section => {
+            section.selected = true;
+          });
+        }
+      });
+    },
+    
+    deselectSectionsForCourse(courseName) {
+      // Deselect all sections that belong to the specified course
+      Object.keys(this.programs).forEach(programKey => {
+        // Extract the base program name (without year suffix)
+        const baseProgramName = programKey.replace(/[234]$/, '');
+        
+        if (baseProgramName === courseName) {
+          this.programs[programKey].forEach(section => {
+            section.selected = false;
+          });
+        }
+      });
+    },
+    
+    selectAllCourses() {
+      Object.keys(this.selectedCourses).forEach(course => {
+        this.selectedCourses[course] = true;
+      });
+    },
+    
+    deselectAllCourses() {
+      Object.keys(this.selectedCourses).forEach(course => {
+        this.selectedCourses[course] = false;
+      });
     },
     applyFilters() {
       const yearCounts = {
@@ -477,6 +600,9 @@ export default {
         });
       });
       
+      // Get selected courses
+      const selectedCourses = Object.keys(this.selectedCourses).filter(course => this.selectedCourses[course]);
+      
       const summary = {
         college: this.collegeName,
         customized: true,
@@ -484,6 +610,7 @@ export default {
         totalSections: yearCounts.first + yearCounts.second + yearCounts.third + yearCounts.fourth,
         totalStudents: this.calculateTotalStudents(),
         selectedSections: selectedSections,
+        selectedCourses: selectedCourses,
         programs: this.sectionsData?.programs || []
       };
       
@@ -597,6 +724,91 @@ export default {
   margin: 0;
   padding: 0 20px 15px;
   border-bottom: 1px solid #f0f0f0;
+}
+
+/* Course filtering styles */
+.course-filter-section {
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #fafafa;
+}
+
+.course-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.course-filter-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dark);
+  margin: 0;
+}
+
+.course-selection-count {
+  font-size: 14px;
+  color: var(--text-light);
+}
+
+.course-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.course-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.course-option:hover {
+  border-color: var(--primary);
+  background-color: #f8f9ff;
+}
+
+.course-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.course-option label {
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.course-select-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.course-select-btn {
+  background: none;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.course-select-btn:hover {
+  background-color: var(--primary);
+  color: white;
 }
 
 .year-sections {
