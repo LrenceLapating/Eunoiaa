@@ -131,7 +131,9 @@ const allowedOrigins = [
   // Add common Vercel deployment patterns
   'https://eunoia-frontend.vercel.app',
   'https://eunoia.vercel.app',
-  // Allow any Vercel preview deployments for this project
+  // Allow any Vercel preview deployments for this project (more flexible pattern)
+  /^https:\/\/eunoiaafrontend.*\.vercel\.app$/,
+  // Allow any deployment with the project owner pattern
   /^https:\/\/.*-lrencelapatings-projects\.vercel\.app$/,
   process.env.FRONTEND_URL
 ].filter(Boolean); // Remove any undefined values
