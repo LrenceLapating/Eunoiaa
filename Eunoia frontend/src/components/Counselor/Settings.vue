@@ -257,6 +257,7 @@
 
 <script>
 import axios from 'axios';
+import { apiUrl } from '@/utils/apiUtils';
 
 export default {
   name: 'Settings',
@@ -342,7 +343,7 @@ export default {
     
     async loadCounselorProfile() {
       try {
-        const response = await axios.get('/api/auth/counselor/profile', {
+        const response = await axios.get(apiUrl('auth/counselor/profile'), {
           withCredentials: true
         });
         
@@ -364,7 +365,7 @@ export default {
     
     async loadAcademicSettings() {
        try {
-         const response = await axios.get('/api/academic-settings', {
+         const response = await axios.get(apiUrl('academic-settings'), {
            withCredentials: true
          });
          
@@ -409,7 +410,7 @@ export default {
       this.showErrorMessage = false;
       
       try {
-        const response = await axios.put('/api/auth/counselor/profile', {
+        const response = await axios.put(apiUrl('auth/counselor/profile'), {
           name: this.accountSettings.fullName,
           email: this.accountSettings.email,
           college: this.accountSettings.college,
@@ -460,7 +461,7 @@ export default {
       this.showErrorMessage = false;
       
       try {
-        const response = await axios.post('/api/auth/counselor/change-password', {
+        const response = await axios.post(apiUrl('auth/counselor/change-password'), {
           currentPassword: this.securitySettings.currentPassword,
           newPassword: this.securitySettings.newPassword
         }, {
@@ -620,7 +621,7 @@ export default {
           }))
         };
         
-        const response = await axios.post('/api/academic-settings', payload, {
+        const response = await axios.post(apiUrl('academic-settings'), payload, {
            withCredentials: true
          });
         

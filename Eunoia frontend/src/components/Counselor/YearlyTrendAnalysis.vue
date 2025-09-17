@@ -98,6 +98,7 @@
 <script>
 import { Chart, registerables } from 'chart.js';
 import axios from 'axios';
+import { apiUrl } from '@/utils/apiUtils';
 
 Chart.register(...registerables);
 
@@ -181,7 +182,7 @@ export default {
   methods: {
     async fetchAvailableYears() {
       try {
-        const response = await axios.get('/api/yearly-trends/available-years');
+        const response = await axios.get(apiUrl('yearly-trends/available-years'));
         if (response.data.success) {
           this.availableYears = response.data.data.years;
           if (this.availableYears.length > 0) {
@@ -208,14 +209,14 @@ export default {
       try {
         console.log('Fetching data for dimension:', this.selectedDimension, 'year:', this.selectedYear);
         const [atRiskResponse, improvementResponse] = await Promise.all([
-          axios.get('/api/yearly-trends/at-risk', {
+          axios.get(apiUrl('yearly-trends/at-risk'), {
             params: {
               dimension: this.selectedDimension,
               year: this.selectedYear
             },
             signal: this.abortController.signal
           }),
-          axios.get('/api/yearly-trends/improvement', {
+          axios.get(apiUrl('yearly-trends/improvement'), {
             params: {
               dimension: this.selectedDimension,
               year: this.selectedYear

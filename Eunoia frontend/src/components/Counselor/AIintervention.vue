@@ -510,7 +510,7 @@ export default {
         const assessmentTypeParam = `&assessmentType=${this.assessmentTypeFilter}`;
         
         // Fetch at-risk students
-        const atRiskResponse = await fetch(apiUrl(`/counselor-assessments/students/at-risk?${assessmentTypeParam}`), {
+        const atRiskResponse = await fetch(apiUrl(`counselor-assessments/students/at-risk?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -524,7 +524,7 @@ export default {
         }
         
         // Fetch moderate students
-        const moderateResponse = await fetch(apiUrl(`/counselor-assessments/students/moderate?${assessmentTypeParam}`), {
+        const moderateResponse = await fetch(apiUrl(`counselor-assessments/students/moderate?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -538,7 +538,7 @@ export default {
         }
         
         // Fetch healthy students
-        const healthyResponse = await fetch(apiUrl(`/counselor-assessments/students/healthy?${assessmentTypeParam}`), {
+        const healthyResponse = await fetch(apiUrl(`counselor-assessments/students/healthy?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -852,7 +852,7 @@ export default {
         // Filter out empty action items
         const filteredActionPlan = this.editableActionPlan.filter(item => item.trim() !== '');
         
-        const response = await fetch(apiUrl(`/counselor-interventions/${aiIntervention.id}/action-plan`), {
+        const response = await fetch(apiUrl(`counselor-interventions/${aiIntervention.id}/action-plan`), {
           method: 'PUT',
           credentials: 'include',
           headers: {
@@ -1285,7 +1285,7 @@ export default {
     // Fetch AI-generated intervention for a specific student
     async fetchAIInterventionForStudent(studentId) {
       try {
-        const response = await fetch(apiUrl(`/counselor-interventions/student/${studentId}/latest`), {
+        const response = await fetch(apiUrl(`counselor-interventions/student/${studentId}/latest`), {
           method: 'GET',
           credentials: 'include',
           headers: {

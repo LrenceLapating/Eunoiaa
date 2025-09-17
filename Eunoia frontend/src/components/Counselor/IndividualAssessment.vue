@@ -334,6 +334,8 @@
 </template>
 
 <script>
+import { apiUrl } from '../../utils/apiUtils.js';
+
 export default {
   name: 'IndividualAssessment',
   data() {
@@ -390,7 +392,7 @@ export default {
       // Debounce search to avoid too many API calls
       this.searchTimeout = setTimeout(async () => {
         try {
-          const response = await fetch(`/api/accounts/students?search=${encodeURIComponent(this.searchQuery)}`, {
+          const response = await fetch(apiUrl(`accounts/students?search=${encodeURIComponent(this.searchQuery)}`), {
             headers: {
               'Content-Type': 'application/json'
             },
@@ -488,7 +490,7 @@ export default {
             scheduledDate: this.scheduledDate
           };
           
-          const response = await fetch('/api/individual-assessments/create', {
+          const response = await fetch(apiUrl('individual-assessments/create'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -616,7 +618,7 @@ export default {
           params.append('assessment_type', this.assessmentTypeFilter);
         }
         
-        const response = await fetch(`/api/individual-assessments/history?${params}`, {
+        const response = await fetch(apiUrl(`individual-assessments/history?${params}`), {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json'
@@ -681,7 +683,7 @@ export default {
       this.cancellingAssessment = assessmentId;
       
       try {
-        const response = await fetch(`/api/individual-assessments/${assessmentId}/cancel`, {
+        const response = await fetch(apiUrl(`individual-assessments/${assessmentId}/cancel`), {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json'
@@ -728,7 +730,7 @@ export default {
     // Load current academic period from backend API
     async loadCurrentAcademicPeriod() {
       try {
-        const response = await fetch('/api/academic-settings/current');
+        const response = await fetch(apiUrl('academic-settings/current'));
         
         if (response.ok) {
           const data = await response.json();

@@ -420,7 +420,7 @@ export default {
       try {
         console.log(`Fetching assessment history for student ID: ${studentId}`);
         
-        const response = await fetch(apiUrl(`/counselor-assessments/student/${studentId}/history`), {
+        const response = await fetch(apiUrl(`counselor-assessments/student/${studentId}/history`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -585,7 +585,7 @@ export default {
         });
         
         // Fetch student assessment data
-        const response = await fetch(apiUrl(`/counselor-assessments/student/${this.selectedStudent.id}/history`), {
+        const response = await fetch(apiUrl(`counselor-assessments/student/${this.selectedStudent.id}/history`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'

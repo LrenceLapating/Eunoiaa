@@ -983,7 +983,7 @@ export default {
            section: this.selectedSection
          });
          
-         const response = await fetch(apiUrl(`/accounts/colleges/scores?${params.toString()}`), {
+         const response = await fetch(apiUrl(`accounts/colleges/scores?${params.toString()}`), {
            method: 'GET',
            credentials: 'include',
            headers: {
@@ -1241,7 +1241,7 @@ export default {
             section: this.selectedSection
           });
           
-          const response = await fetch(apiUrl(`/counselor-assessments/risk-distribution?${params.toString()}`), {
+          const response = await fetch(apiUrl(`counselor-assessments/risk-distribution?${params.toString()}`), {
             method: 'GET',
             credentials: 'include',
             headers: {
