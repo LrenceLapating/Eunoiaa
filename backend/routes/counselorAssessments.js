@@ -2102,13 +2102,14 @@ router.get('/student/:studentId/dimension/:dimension', verifyCounselorSession, a
 // Get risk distribution for a specific college and assessment
 router.get('/risk-distribution', verifyCounselorSession, async (req, res) => {
   try {
-    const { college, assessmentName, yearLevel, section } = req.query;
+    const { college, assessmentName, yearLevel, section, course } = req.query;
     
     console.log('🎯 Fetching risk distribution from assessment_assignments:', {
       college,
       assessmentName,
       yearLevel,
-      section
+      section,
+      course
     });
     
     if (!college || !assessmentName) {
@@ -2138,7 +2139,7 @@ router.get('/risk-distribution', verifyCounselorSession, async (req, res) => {
         data: {
           riskDistribution: { atRisk: 0, moderate: 0, healthy: 0, total: 0 },
           totalStudents: 0,
-          filters: { college, assessmentName, yearLevel: yearLevel || 'All Years', section: section || 'All Sections' }
+          filters: { college, assessmentName, yearLevel: yearLevel || 'All Years', section: section || 'All Sections', course: course || 'All Courses' }
         }
       });
     }
@@ -2166,7 +2167,7 @@ router.get('/risk-distribution', verifyCounselorSession, async (req, res) => {
         data: {
           riskDistribution: { atRisk: 0, moderate: 0, healthy: 0, total: 0 },
           totalStudents: 0,
-          filters: { college, assessmentName, yearLevel: yearLevel || 'All Years', section: section || 'All Sections' }
+          filters: { college, assessmentName, yearLevel: yearLevel || 'All Years', section: section || 'All Sections', course: course || 'All Courses' }
         }
       });
     }
@@ -2175,7 +2176,7 @@ router.get('/risk-distribution', verifyCounselorSession, async (req, res) => {
     const studentIds = assignments.map(a => a.student_id);
     let studentQuery = supabaseAdmin
       .from('students')
-      .select('id, name, college, year_level, section, status')
+      .select('id, name, college, year_level, section, course, status')
       .in('id', studentIds)
       .eq('status', 'active')
       .eq('college', college);
@@ -2187,6 +2188,10 @@ router.get('/risk-distribution', verifyCounselorSession, async (req, res) => {
     
     if (section && section !== 'All Sections') {
       studentQuery = studentQuery.eq('section', section);
+    }
+    
+    if (course && course !== 'All Courses') {
+      studentQuery = studentQuery.eq('course', course);
     }
     
     const { data: students, error: studentError } = await studentQuery;
@@ -2249,7 +2254,8 @@ router.get('/risk-distribution', verifyCounselorSession, async (req, res) => {
           college,
           assessmentName,
           yearLevel: yearLevel || 'All Years',
-          section: section || 'All Sections'
+          section: section || 'All Sections',
+          course: course || 'All Courses'
         }
       }
     });

@@ -68,6 +68,19 @@
               <span class="metric-value">{{ completionRateDisplay }}</span>
             </div>
             <div class="metric-item">
+                <span class="metric-label">Course</span>
+                <div class="dropdown-container">
+                  <select v-model="selectedCourse" class="metric-dropdown" :disabled="!selectedAssessmentName || loadingCourses">
+                    <option value="">{{ loadingCourses ? 'Loading courses...' : (selectedAssessmentName ? 'All Courses' : 'Select Assessment First') }}</option>
+                    <option v-for="course in availableCourses" :key="course" :value="course">{{ course }}</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Hidden debug element to trigger computed property -->
+              <div style="display: none;">{{ debugCourses }}</div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-item">
                 <span class="metric-label">Students Year</span>
                 <div class="dropdown-container">
                   <select v-model="selectedYear" class="metric-dropdown" :disabled="!selectedAssessmentName || loadingYears">
@@ -76,12 +89,6 @@
                   </select>
                 </div>
               </div>
-          </div>
-          <div class="metric-row">
-            <div class="metric-item">
-              <span class="metric-label">Overall Score</span>
-              <span class="metric-value">{{ dynamicOverallScore || '0' }}</span>
-            </div>
             <div class="metric-item" v-show="selectedYear && selectedAssessmentName">
               <span class="metric-label">Sections</span>
               <div class="dropdown-container">
@@ -90,6 +97,12 @@
                   <option v-for="section in filteredSections" :key="section" :value="section">{{ section }}</option>
                 </select>
               </div>
+            </div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-item">
+              <span class="metric-label">Overall Score</span>
+              <span class="metric-value">{{ dynamicOverallScore || '0' }}</span>
             </div>
           </div>
         </div>
@@ -136,7 +149,13 @@
     <div class="dimension-analysis-section">
       <h2>Dimension Analysis</h2>
       
-    <div class="dimensions-grid">
+      <!-- No Data Message -->
+      <div v-if="dimensions.length === 0" class="no-data-text">
+        <i class="fas fa-info-circle"></i>
+        <p>{{ noDataMessage }}</p>
+      </div>
+      
+    <div class="dimensions-grid" v-else>
       <div class="dimension-card" v-for="(dimension, index) in dimensions" :key="index">
         <div class="dimension-header" :style="{ borderLeft: `4px solid ${getDimensionColor(dimension)}` }">
           <div class="dimension-title-section">
@@ -254,8 +273,11 @@ export default {
       selectedAssessmentName: '',
       assessmentNames: [],
       loadingAssessmentNames: false,
+      selectedCourse: '',
       selectedYear: '',
       selectedSection: '',
+      availableCourses: [],
+      loadingCourses: false,
       availableSections: [],
       loadingSections: false,
       availableYears: [],
@@ -287,6 +309,11 @@ export default {
           this.selectedAssessmentName = '';
           // Refetch assessment names for the new college
           this.fetchAssessmentNames();
+          // Fetch courses immediately so course dropdown is populated
+          this.fetchCoursesForAssessment();
+          // Fetch college scores and risk distribution immediately
+          this.fetchCollegeScores();
+          this.fetchRiskDistribution();
         }
       },
       immediate: true,
@@ -304,16 +331,34 @@ export default {
     selectedAssessmentName: {
       handler(newVal, oldVal) {
         console.log('selectedAssessmentName changed from', oldVal, 'to', newVal);
-        // Reset section and year selection and fetch both when assessment changes
+        // Reset all filters when assessment changes
+        this.selectedCourse = '';
         this.selectedSection = '';
         this.selectedYear = '';
         if (newVal) {
+          this.fetchCoursesForAssessment();
           this.fetchYearsForAssessment();
           // Also fetch college scores for the selected assessment
           this.fetchCollegeScores();
         } else {
+          this.availableCourses = [];
           this.availableSections = [];
           this.availableYears = [];
+        }
+      }
+    },
+    selectedCourse: {
+      handler(newVal, oldVal) {
+        console.log('selectedCourse changed from', oldVal, 'to', newVal);
+        // Reset year and section when course changes
+        this.selectedYear = '';
+        this.selectedSection = '';
+        // Always fetch college scores when course changes, even without specific assessment
+        this.fetchCollegeScores();
+        // Fetch years available for the selected course if no assessment is selected
+        // (if assessment is selected, the selectedCourse watcher below will handle updates)
+        if (!this.selectedAssessmentName) {
+          this.fetchYearsForAssessment();
         }
       }
     },
@@ -322,19 +367,15 @@ export default {
         console.log('selectedYear changed from', oldVal, 'to', newVal);
         // Reset section selection when year changes
         this.selectedSection = '';
-        // Fetch updated college scores when year filter changes
-        if (this.selectedAssessmentName) {
-          this.fetchCollegeScores();
-        }
+        // Always fetch updated college scores when year filter changes
+        this.fetchCollegeScores();
       }
     },
     selectedSection: {
       handler(newVal, oldVal) {
         console.log('selectedSection changed from', oldVal, 'to', newVal);
-        // Fetch updated college scores when section filter changes
-        if (this.selectedAssessmentName) {
-          this.fetchCollegeScores();
-        }
+        // Always fetch updated college scores when section filter changes
+        this.fetchCollegeScores();
       }
     }
   },
@@ -657,6 +698,51 @@ export default {
       }
       
       return 'Loading...';
+    },
+    noDataMessage() {
+      // Get the selected filters from the component data
+      const selectedCourse = this.selectedCourse;
+      const selectedYear = this.selectedYear;
+      const selectedSection = this.selectedSection;
+      
+      // Build filter description parts
+      let filterParts = [];
+      
+      if (selectedCourse && selectedCourse !== '' && selectedCourse !== 'All Courses') {
+        filterParts.push(`${selectedCourse}`);
+      }
+      
+      if (selectedYear && selectedYear !== '' && selectedYear !== 'All Years') {
+        const yearText = selectedYear == 1 ? '1st year' : 
+                        selectedYear == 2 ? '2nd year' : 
+                        selectedYear == 3 ? '3rd year' : 
+                        selectedYear == 4 ? '4th year' : 
+                        `${selectedYear} year`;
+        filterParts.push(yearText);
+      }
+      
+      if (selectedSection && selectedSection !== '' && selectedSection !== 'All Sections') {
+        filterParts.push(`from ${selectedSection}`);
+      }
+      
+      // Construct the message based on applied filters
+      if (filterParts.length > 0) {
+        const filterText = filterParts.join(' ');
+        return `There are no ${filterText} students who have answered the assessment yet.`;
+      } else {
+        // No specific filters, general message
+        return 'There are no students who have answered the assessment yet.';
+      }
+    },
+    // Debug computed property to track courses
+    debugCourses() {
+      console.log('🔍 COMPUTED debugCourses triggered');
+      console.log('🔍 availableCourses:', this.availableCourses);
+      console.log('🔍 availableCourses length:', this.availableCourses ? this.availableCourses.length : 'undefined');
+      console.log('🔍 availableCourses type:', typeof this.availableCourses);
+      console.log('🔍 selectedAssessmentName:', this.selectedAssessmentName);
+      console.log('🔍 loadingCourses:', this.loadingCourses);
+      return this.availableCourses;
     }
   },
   methods: {
@@ -952,7 +1038,7 @@ export default {
        return totalAtRisk;
      },
      async fetchCollegeScores() {
-       if (!this.selectedAssessmentName || !this.selectedCollege) {
+       if (!this.selectedCollege) {
          return;
        }
        
@@ -964,7 +1050,16 @@ export default {
          const params = new URLSearchParams();
          params.append('college', this.selectedCollege.name);
          params.append('assessmentType', dbAssessmentType);
-         params.append('assessmentName', this.selectedAssessmentName);
+         
+         // Only add assessment name if one is selected
+         if (this.selectedAssessmentName) {
+           params.append('assessmentName', this.selectedAssessmentName);
+         }
+         
+         // Add course filter if selected
+         if (this.selectedCourse && this.selectedCourse !== '' && this.selectedCourse !== 'All Courses') {
+           params.append('course', this.selectedCourse);
+         }
          
          // Add year and section filters if selected
          if (this.selectedYear && this.selectedYear !== '' && this.selectedYear !== 'All Years') {
@@ -978,7 +1073,8 @@ export default {
          console.log('🔍 Fetching college scores with filters:', {
            college: this.selectedCollege.name,
            assessmentType: dbAssessmentType,
-           assessmentName: this.selectedAssessmentName,
+           assessmentName: this.selectedAssessmentName || 'All Assessments',
+           course: this.selectedCourse,
            yearLevel: this.selectedYear,
            section: this.selectedSection
          });
@@ -1010,6 +1106,14 @@ export default {
                  
                  // Replace local college data for immediate display (don't merge to avoid accumulation)
                  this.selectedCollege.dimensions = collegeData.dimensions;
+               } else {
+                 // Clear dimensions if no data available for this filter
+                 console.log('❌ No dimensions found, clearing existing dimensions');
+                 this.selectedCollege.dimensions = {};
+                 this.$emit('update-college-dimensions', {
+                   collegeName: this.selectedCollege.name,
+                   dimensions: {}
+                 });
                }
                
                // Check for completion data in different possible locations
@@ -1054,9 +1158,45 @@ export default {
                 this.fetchRiskDistribution();
              } else {
                console.log('❌ No college data found for:', this.selectedCollege.name);
+               // Clear all data when no college data is found for the selected filters
+               console.log('🧹 Clearing dimensions and completion data due to no data for filters');
+               this.selectedCollege.dimensions = {};
+               this.selectedCollege.completionData = null;
+               this.selectedCollege.completionDataByAssessment = {};
+               this.completionDataUpdateTrigger++;
+               
+               // Clear risk distribution as well
+               this.riskDistribution = {
+                 atRisk: 0,
+                 moderate: 0,
+                 healthy: 0
+               };
+               
+               this.$emit('update-college-dimensions', {
+                 collegeName: this.selectedCollege.name,
+                 dimensions: {}
+               });
              }
            } else {
-             console.log('❌ API response structure invalid:', { success: data.success, colleges: data.colleges });
+             console.log('❌ API response structure invalid or no colleges data:', { success: data.success, colleges: data.colleges });
+             // Clear all data when API returns no colleges or invalid structure
+             console.log('🧹 Clearing all data due to invalid API response or no colleges');
+             this.selectedCollege.dimensions = {};
+             this.selectedCollege.completionData = null;
+             this.selectedCollege.completionDataByAssessment = {};
+             this.completionDataUpdateTrigger++;
+             
+             // Clear risk distribution as well
+             this.riskDistribution = {
+               atRisk: 0,
+               moderate: 0,
+               healthy: 0
+             };
+             
+             this.$emit('update-college-dimensions', {
+               collegeName: this.selectedCollege.name,
+               dimensions: {}
+             });
            }
          } else {
            console.error('❌ API response not ok:', response.status, response.statusText);
@@ -1132,13 +1272,106 @@ export default {
           this.loadingAssessmentNames = false;
         }
       },
+      async fetchCoursesForAssessment() {
+        console.log('🔍 fetchCoursesForAssessment called');
+        console.log('  selectedAssessmentName:', this.selectedAssessmentName);
+        console.log('  selectedCollege:', this.selectedCollege);
+        
+        if (!this.selectedCollege) {
+          console.log('  ❌ Missing college, clearing courses');
+          this.availableCourses = [];
+          return;
+        }
+
+        console.log('  ⏳ Starting to fetch courses...');
+        this.loadingCourses = true;
+        try {
+          // Build query parameters
+          const params = new URLSearchParams();
+          
+          // Add assessment type
+          if (this.assessmentType) {
+            const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+            params.append('assessmentType', dbAssessmentType);
+          }
+          
+          // Add specific assessment name
+          if (this.selectedAssessmentName) {
+            params.append('assessmentName', this.selectedAssessmentName);
+          }
+
+          const url = apiUrl(`accounts/colleges/${encodeURIComponent(this.selectedCollege.name)}/assessment-filters?${params.toString()}`);
+          console.log('  🌐 API URL:', url);
+          console.log('  📋 Query params:', params.toString());
+          console.log('  🏢 College name:', this.selectedCollege.name);
+          console.log('  📝 Assessment name:', this.selectedAssessmentName);
+          console.log('  🎯 Assessment type:', this.assessmentType);
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          console.log('  📡 Response status:', response.status);
+          console.log('  📡 Response ok:', response.ok);
+
+          if (!response.ok) {
+            console.error('  ❌ HTTP error! status:', response.status);
+            const errorText = await response.text();
+            console.error('  ❌ Error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('🔍 FULL API Response:', JSON.stringify(data, null, 2));
+          console.log('🔍 data.success:', data.success);
+          console.log('🔍 data.data:', data.data);
+          console.log('🔍 data.data?.courses:', data.data?.courses);
+          console.log('🔍 data.courses (direct):', data.courses);
+          console.log('🔍 Response structure keys:', Object.keys(data));
+          
+          // Check multiple possible response structures
+          let courses = [];
+          if (data.success && data.data && data.data.courses) {
+            courses = data.data.courses;
+            console.log('✅ Found courses in data.data.courses:', courses);
+          } else if (data.success && data.courses) {
+            courses = data.courses;
+            console.log('✅ Found courses in data.courses:', courses);
+          } else if (data.courses) {
+            courses = data.courses;
+            console.log('✅ Found courses directly:', courses);
+          } else {
+            console.error('❌ No courses found in response structure');
+            console.error('❌ Available keys:', Object.keys(data));
+          }
+          
+          console.log('🔍 Before assignment - this.availableCourses:', this.availableCourses);
+          this.availableCourses = courses;
+          console.log('🔍 After assignment - this.availableCourses:', this.availableCourses);
+          console.log('🔍 availableCourses length:', this.availableCourses.length);
+          
+          // Force Vue reactivity
+          this.$nextTick(() => {
+            console.log('🔄 Next tick - availableCourses:', this.availableCourses);
+          });
+        } catch (error) {
+          console.error('Error fetching courses for assessment:', error);
+          this.availableCourses = [];
+        } finally {
+          this.loadingCourses = false;
+        }
+      },
       async fetchSectionsForAssessment() {
         // This method is now handled by fetchYearsForAssessment since both come from the same endpoint
         // Keep this method for backward compatibility but delegate to fetchYearsForAssessment
         await this.fetchYearsForAssessment();
       },
       async fetchYearsForAssessment() {
-         if (!this.selectedAssessmentName || !this.selectedCollege) {
+         if (!this.selectedCollege) {
            this.availableYears = [];
            this.availableSections = [];
            return;
@@ -1160,6 +1393,11 @@ export default {
           // Add specific assessment name
           if (this.selectedAssessmentName) {
             params.append('assessmentName', this.selectedAssessmentName);
+          }
+          
+          // Add course filter for cascading behavior
+          if (this.selectedCourse && this.selectedCourse !== '' && this.selectedCourse !== 'All Courses') {
+            params.append('course', this.selectedCourse);
           }
 
           const url = apiUrl(`accounts/colleges/${encodeURIComponent(this.selectedCollege.name)}/assessment-filters?${params.toString()}`);
@@ -1212,7 +1450,7 @@ export default {
       
       // Fetch risk distribution using the new optimized endpoint
       async fetchRiskDistribution() {
-        if (!this.selectedAssessmentName || !this.selectedCollege) {
+        if (!this.selectedCollege) {
           return;
         }
         
@@ -1221,11 +1459,19 @@ export default {
         try {
           // Build query parameters for the new risk distribution endpoint
           const params = new URLSearchParams({
-            college: this.selectedCollege.name,
-            assessmentName: this.selectedAssessmentName
+            college: this.selectedCollege.name
           });
           
+          // Add assessment name only if selected
+          if (this.selectedAssessmentName) {
+            params.append('assessmentName', this.selectedAssessmentName);
+          }
+          
           // Add optional filters if selected
+          if (this.selectedCourse && this.selectedCourse !== '' && this.selectedCourse !== 'All Courses') {
+            params.append('course', this.selectedCourse);
+          }
+          
           if (this.selectedYear && this.selectedYear !== 'All Years') {
             params.append('yearLevel', this.selectedYear);
           }
@@ -1236,7 +1482,8 @@ export default {
           
           console.log('🔍 Fetching risk distribution from assessment_assignments:', {
             college: this.selectedCollege.name,
-            assessmentName: this.selectedAssessmentName,
+            assessmentName: this.selectedAssessmentName || 'All Assessments',
+            course: this.selectedCourse,
             yearLevel: this.selectedYear,
             section: this.selectedSection
           });
@@ -1289,7 +1536,11 @@ export default {
   },
   watch: {
     selectedAssessmentName(newValue, oldValue) {
+      console.log('🔍 selectedAssessmentName watcher triggered:', { newValue, oldValue });
       if (newValue && newValue !== oldValue) {
+        console.log('🔍 Fetching data for new assessment:', newValue);
+        // Fetch courses for the selected assessment
+        this.fetchCoursesForAssessment();
         // Fetch years and sections for the selected assessment
         this.fetchYearsForAssessment();
         // Fetch college scores for the new assessment to update dimension analysis
@@ -1299,7 +1550,14 @@ export default {
       }
     },
     
-    // Watch for year and section changes to update both risk distribution and dimension scores
+    // Watch for course, year and section changes to update both risk distribution and dimension scores
+    selectedCourse() {
+      if (this.selectedAssessmentName) {
+        this.fetchCollegeScores(); // Update dimension analysis scores
+        this.fetchRiskDistribution(); // Update risk distribution
+      }
+    },
+    
     selectedYear() {
       if (this.selectedAssessmentName) {
         this.fetchCollegeScores(); // Update dimension analysis scores
@@ -1315,11 +1573,23 @@ export default {
     }
   },
   mounted() {
+    console.log('🔄 CollegeDetail mounted');
+    console.log('📍 Selected college:', this.selectedCollege);
+    console.log('🎯 Assessment type:', this.assessmentType);
+    console.log('🌐 Route query params:', this.$route.query);
+    console.log('🌐 Route params:', this.$route.params);
+    console.log('📋 Initial assessment names:', this.assessmentNames);
+    console.log('📋 Initial selected assessment:', this.selectedAssessmentName);
+    
     // Fetch assessment names when component is mounted
     this.fetchAssessmentNames();
-    // Fetch risk distribution if college and assessment are already selected
+    // Fetch courses and risk distribution if college and assessment are already selected
     if (this.selectedCollege && this.selectedAssessmentName) {
+      console.log('🚀 Auto-fetching courses and risk distribution');
+      this.fetchCoursesForAssessment();
       this.fetchRiskDistribution();
+    } else {
+      console.log('⏸️ Not auto-fetching - college:', !!this.selectedCollege, 'assessment:', !!this.selectedAssessmentName);
     }
   }
 };
@@ -1630,6 +1900,31 @@ export default {
   font-weight: 600;
   color: #1a2e35;
   margin-bottom: 20px;
+}
+
+.no-data-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.no-data-text i {
+  color: #6c757d;
+  font-size: 18px;
+}
+
+.no-data-text p {
+  margin: 0;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 16px;
+  text-align: center;
 }
 
 .dimensions-grid {

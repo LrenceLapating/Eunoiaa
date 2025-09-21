@@ -104,8 +104,14 @@
       </div>
     </div>
 
+    <!-- Loading Indicator -->
+    <div v-if="(currentTab === 'student' && isLoading) || (currentTab === 'history' && isLoadingHistory)" class="loading-container">
+      <i class="fas fa-spinner loading-spinner"></i>
+      <p class="loading-text">{{ currentTab === 'history' ? 'Loading assessment history...' : 'Loading student data...' }}</p>
+    </div>
+
     <!-- Student Data Table -->
-    <div class="data-table-container" v-if="currentTab === 'student'">
+    <div class="data-table-container" v-if="currentTab === 'student' && !isLoading">
       <table class="data-table">
         <thead>
           <tr>
@@ -216,7 +222,7 @@
     </div>
 
     <!-- History Data Table -->
-    <div class="data-table-container" v-if="currentTab === 'history'">
+    <div class="data-table-container" v-if="currentTab === 'history' && !isLoadingHistory">
       <table class="data-table">
         <thead>
           <tr>
@@ -710,6 +716,8 @@ export default {
       selectedDimension: null,
       dimensionData: null,
       loadingDimensionData: false,
+      isLoading: false, // Loading state for main data fetching
+      isLoadingHistory: false, // Loading state for historical data fetching
       allStudents: [], // Store original unfiltered data from backend
       allHistoricalStudents: [], // Store historical data from ryff_history table
       filteredStudents: [],
@@ -815,10 +823,18 @@ export default {
       return consolidated;
     }
   },
+  watch: {
+    // Watch for tab changes to load historical data when needed
+    currentTab(newTab) {
+      if (newTab === 'history' && this.allHistoricalStudents.length === 0) {
+        // Load historical data only when history tab is accessed for the first time
+        this.fetchHistoricalResults();
+      }
+    }
+  },
   async created() {
-    // Fetch both current and historical assessment data from backend
+    // Only fetch current assessment data initially (default tab is 'student')
     await this.fetchAssessmentResults();
-    await this.fetchHistoricalResults();
     
     // Always set college filter to 'all'
     this.collegeFilter = 'all';
@@ -841,6 +857,7 @@ export default {
   methods: {
     // Fetch historical assessment results from backend
     async fetchHistoricalResults() {
+      this.isLoadingHistory = true;
       try {
         // Build query parameters for historical data
         const params = new URLSearchParams({
@@ -929,11 +946,14 @@ export default {
       } catch (error) {
         console.error('Error fetching historical results:', error);
         this.allHistoricalStudents = [];
+      } finally {
+        this.isLoadingHistory = false;
       }
     },
 
     // Fetch real assessment results from backend
     async fetchAssessmentResults() {
+      this.isLoading = true;
       try {
         // Build query parameters including assessment type filter
         const params = new URLSearchParams({
@@ -1033,6 +1053,8 @@ export default {
         // Fallback to prop data if API fails
         this.allStudents = [...this.students];
         this.filteredStudents = [...this.students];
+      } finally {
+        this.isLoading = false;
       }
     },
     
@@ -2915,6 +2937,39 @@ export default {
   font-size: 24px;
   margin-bottom: 10px;
   color: #007bff;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
+  min-height: 200px;
+}
+
+.loading-container i,
+.loading-spinner {
+  font-size: 2rem;
+  color: #00B3B0;
+  margin-bottom: 15px;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  font-size: 1rem;
+  color: #666;
+  font-weight: 600;
+  margin: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .error-state i {

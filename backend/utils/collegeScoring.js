@@ -15,11 +15,12 @@ const RYFF_DIMENSIONS = {
  * @param {string} assessmentName - Optional: filter by specific assessment name
  * @param {string} yearLevel - Optional: filter by year level
  * @param {string} section - Optional: filter by section
+ * @param {string} course - Optional: filter by course
  * @returns {Object} Completion data grouped by college and assessment
  */
-async function getAssessmentCompletionCounts(assessmentName = null, yearLevel = null, section = null) {
+async function getAssessmentCompletionCounts(assessmentName = null, yearLevel = null, section = null, course = null) {
   try {
-    console.log(`Getting completion counts${assessmentName ? ` for ${assessmentName}` : ''}${yearLevel ? ` (Year ${yearLevel})` : ''}${section ? ` (Section ${section})` : ''}...`);
+    console.log(`Getting completion counts${assessmentName ? ` for ${assessmentName}` : ''}${yearLevel ? ` (Year ${yearLevel})` : ''}${section ? ` (Section ${section})` : ''}${course ? ` (Course ${course})` : ''}...`);
     
     // First, get all assessment assignments
     let assignmentQuery = supabaseAdmin
@@ -64,7 +65,7 @@ async function getAssessmentCompletionCounts(assessmentName = null, yearLevel = 
     // Get students data
     let studentQuery = supabaseAdmin
       .from('students')
-      .select('id, college, year_level, section')
+      .select('id, college, year_level, section, course')
       .in('id', studentIds);
     
     if (yearLevel) {
@@ -73,6 +74,10 @@ async function getAssessmentCompletionCounts(assessmentName = null, yearLevel = 
     
     if (section) {
       studentQuery = studentQuery.eq('section', section);
+    }
+    
+    if (course && course !== 'All Courses') {
+      studentQuery = studentQuery.eq('course', course);
     }
     
     const { data: students, error: studentError } = await studentQuery;
@@ -423,9 +428,11 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
  * @param {string} assessmentName - Optional: filter by specific assessment name
  * @param {number|string} yearLevel - Optional: filter by specific year level
  * @param {string} section - Optional: filter by specific section
+ * @param {string} course - Optional: filter by specific course
+ * @param {boolean} isActive - Optional: filter by active status (true for active, false for archived)
  * @returns {Object} College scores grouped by college and dimension
  */
-async function getCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null) {
+async function getCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null, course = null, isActive = true) {
   try {
     // College name mapping - convert full names to codes for database queries
     const collegeNameMapping = {
@@ -443,11 +450,11 @@ async function getCollegeScores(collegeName = null, assessmentType = null, asses
     }
 
     // Get completion data using the college code
-    const completionData = await getAssessmentCompletionCounts(assessmentName, yearLevel, section);
+    const completionData = await getAssessmentCompletionCounts(assessmentName, yearLevel, section, course);
     
-    // If year or section filtering is requested, compute scores dynamically
-    if (yearLevel || section) {
-      const result = await computeDynamicCollegeScores(collegeCode, assessmentType, assessmentName, yearLevel, section);
+    // If year, section, or course filtering is requested, compute scores dynamically
+    if (yearLevel || section || course) {
+      const result = await computeDynamicCollegeScores(collegeCode, assessmentType, assessmentName, yearLevel, section, course);
       
       // Add completion data to the result
       if (result.success && result.colleges) {
@@ -496,6 +503,9 @@ async function getCollegeScores(collegeName = null, assessmentType = null, asses
     if (assessmentName) {
       query = query.eq('assessment_name', assessmentName);
     }
+
+    // Filter by active status - this enables unified College Detail/History functionality
+    query = query.eq('is_active', isActive);
 
     const { data: scores, error } = await query;
 
@@ -625,7 +635,7 @@ async function getCollegeScores(collegeName = null, assessmentType = null, asses
  * @param {string} section - Optional: filter by specific section
  * @returns {Object} Dynamically computed college scores
  */
-async function computeDynamicCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null) {
+async function computeDynamicCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null, course = null) {
   try {
     // College name mapping - convert full names to codes for database queries
     const collegeNameMapping = {
@@ -642,7 +652,7 @@ async function computeDynamicCollegeScores(collegeName = null, assessmentType = 
       console.log(`🔄 Mapped college name "${collegeName}" to code "${collegeCode}"`);
     }
 
-    console.log(`Computing dynamic college scores with filters: college=${collegeCode}, type=${assessmentType}, assessment=${assessmentName}, year=${yearLevel}, section=${section}`);
+    console.log(`Computing dynamic college scores with filters: college=${collegeCode}, type=${assessmentType}, assessment=${assessmentName}, year=${yearLevel}, section=${section}, course=${course}`);
     
     // Determine which table to query based on assessment type
     let tableName = 'assessments_42items'; // Default
@@ -720,7 +730,7 @@ async function computeDynamicCollegeScores(collegeName = null, assessmentType = 
     // Fetch student data with filtering
     let studentQuery = supabaseAdmin
       .from('students')
-      .select('id, college, year_level, section')
+      .select('id, college, year_level, section, course')
       .in('id', studentIds)
       .eq('status', 'active');
     
@@ -735,6 +745,10 @@ async function computeDynamicCollegeScores(collegeName = null, assessmentType = 
     
     if (section) {
       studentQuery = studentQuery.eq('section', section);
+    }
+    
+    if (course && course !== 'All Courses') {
+      studentQuery = studentQuery.eq('course', course);
     }
     
     const { data: students, error: studentError } = await studentQuery;

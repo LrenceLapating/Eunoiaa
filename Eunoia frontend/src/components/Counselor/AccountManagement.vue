@@ -170,9 +170,31 @@
       </div>
     </div>
 
+    <!-- Add Student Loading Modal -->
+    <div v-if="showAddStudentLoadingModal" class="modal-overlay">
+      <div class="modal-content upload-loading-modal">
+        <div class="modal-body">
+          <div v-if="addStudentLoadingState === 'loading'" class="loading-content">
+            <div class="spinner-container">
+              <i class="fas fa-spinner fa-spin loading-spinner"></i>
+            </div>
+            <h3>Adding Student...</h3>
+            <p>Please wait while we process your request.</p>
+          </div>
+          <div v-else-if="addStudentLoadingState === 'success'" class="success-content">
+            <div class="success-icon-container">
+              <i class="fas fa-check-circle success-icon"></i>
+            </div>
+            <h3>Student Added Successfully!</h3>
+            <p>{{ addStudentResultMessage }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Student Modal -->
     <div v-if="showAddStudentModal" class="modal-overlay">
-      <div class="modal-content">
+      <div class="modal-content" :class="{ 'expanded': isLongCourseName }">
         <div class="modal-header">
           <h3>Add New Student</h3>
           <button class="close-modal" @click="closeAddStudentModal">
@@ -221,15 +243,7 @@
                   <option v-for="college in colleges" :key="college.name" :value="college.name">
                     {{ college.name }}
                   </option>
-                  <option value="other">Other (specify below)</option>
                 </select>
-                <input 
-                  v-if="studentForm.college === 'other'" 
-                  type="text" 
-                  v-model="studentForm.customCollege" 
-                  placeholder="Enter college name"
-                  class="custom-college-input"
-                >
               </div>
             </div>
             <div class="form-row" v-if="studentForm.college && studentForm.college !== 'other'">
@@ -263,7 +277,15 @@
                   <option v-for="section in availableSections" :key="section" :value="section">
                     {{ section }}
                   </option>
+                  <option value="other">Other (specify below)</option>
                 </select>
+                <input 
+                  v-if="studentForm.section === 'other'" 
+                  type="text" 
+                  v-model="studentForm.customSection" 
+                  placeholder="Enter section name"
+                  class="custom-section-input"
+                >
               </div>
               <div class="form-group">
                 <label for="student-semester">Semester</label>
@@ -335,15 +357,7 @@
                   <option v-for="college in colleges" :key="college.name" :value="college.name">
                     {{ college.name }}
                   </option>
-                  <option value="other">Other (specify below)</option>
                 </select>
-                <input 
-                  v-if="studentForm.college === 'other'" 
-                  type="text" 
-                  v-model="studentForm.customCollege" 
-                  placeholder="Enter college name"
-                  class="custom-college-input"
-                >
               </div>
             </div>
             <div class="form-row" v-if="studentForm.college && studentForm.college !== 'other'">
@@ -377,7 +391,15 @@
                   <option v-for="section in availableSections" :key="section" :value="section">
                     {{ section }}
                   </option>
+                  <option value="other">Other (specify below)</option>
                 </select>
+                <input 
+                  v-if="studentForm.section === 'other'" 
+                  type="text" 
+                  v-model="studentForm.customSection" 
+                  placeholder="Enter section name"
+                  class="custom-section-input"
+                >
               </div>
             </div>
           </form>
@@ -447,6 +469,9 @@ export default {
       showUploadLoadingModal: false,
       uploadLoadingState: 'loading', // 'loading' or 'success'
       uploadResultMessage: '',
+      showAddStudentLoadingModal: false,
+      addStudentLoadingState: 'loading', // 'loading' or 'success'
+      addStudentResultMessage: '',
       deactivatePrevious: false,
       uploadedFile: null,
       uploadedFileName: '',
@@ -467,7 +492,8 @@ export default {
         id_number: '',
         year_level: '',
         semester: '1st Semester',
-        customCollege: ''
+        customCollege: '',
+        customSection: ''
       },
       availableCourses: [],
       availableSections: [],
@@ -549,6 +575,16 @@ export default {
           && user.college === this.selectedCollege
         );
       });
+    },
+    isLongCourseName() {
+      if (!this.studentForm.course) return false;
+      
+      // Find the selected course name
+      const selectedCourse = this.availableCourses.find(course => course.code === this.studentForm.course);
+      if (!selectedCourse) return false;
+      
+      // Consider course names longer than 35 characters as "long"
+      return selectedCourse.name.length > 35;
     }
   },
   methods: {
@@ -1050,7 +1086,8 @@ export default {
         id_number: '',
         year_level: '',
         semester: '1st Semester',
-        customCollege: ''
+        customCollege: '',
+        customSection: ''
       };
       this.availableCourses = [];
       this.availableSections = [];
@@ -1066,16 +1103,28 @@ export default {
           return;
         }
 
-        // For non-custom colleges, require course and section
-        if (this.studentForm.college !== 'other' && (!this.studentForm.course || !this.studentForm.section)) {
+        // Require course and section
+        if (!this.studentForm.course || !this.studentForm.section) {
           this.showNotification('Please select course and section', 'error', 'fas fa-exclamation-circle');
           return;
         }
 
-        // Handle custom college
-        let collegeName = this.studentForm.college;
-        if (this.studentForm.college === 'other' && this.studentForm.customCollege) {
-          collegeName = this.studentForm.customCollege.trim();
+        // For custom section, require custom section input
+        if (this.studentForm.section === 'other' && !this.studentForm.customSection) {
+          this.showNotification('Please enter a custom section name', 'error', 'fas fa-exclamation-circle');
+          return;
+        }
+
+        // Hide the Add Student modal and show loading modal
+        this.showAddStudentModal = false;
+        this.showEditStudentModal = false;
+        this.addStudentLoadingState = 'loading';
+        this.showAddStudentLoadingModal = true;
+
+        // Handle custom section
+        let sectionName = this.studentForm.section;
+        if (this.studentForm.section === 'other' && this.studentForm.customSection) {
+          sectionName = this.studentForm.customSection.trim();
         }
 
         // Get full course name from course code
@@ -1089,8 +1138,8 @@ export default {
         const studentData = {
           name: this.studentForm.name.trim(),
           email: this.studentForm.email.trim(),
-          section: this.studentForm.section.trim(),
-          college: collegeName,
+          section: sectionName,
+          college: this.studentForm.college,
           course: courseName,
           id_number: this.studentForm.id_number.trim(),
           year_level: this.studentForm.year_level,
@@ -1121,24 +1170,35 @@ export default {
         const result = await response.json();
 
         if (response.ok) {
-          // Success - refresh data
-          await this.loadCollegesFromBackend();
-          if (this.selectedCollege) {
-            await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
-          }
-
+          // Show success state
+          this.addStudentLoadingState = 'success';
           const action = this.editingStudentId ? 'updated' : 'added';
-          this.showNotification(`Student ${action} successfully!`, 'success', 'fas fa-check-circle');
+          this.addStudentResultMessage = `Student ${action} successfully!`;
           
-          // Close modal
-          this.showAddStudentModal = false;
-          this.showEditStudentModal = false;
-          this.resetStudentForm();
+          // Wait 2 seconds then close loading modal and refresh data
+           setTimeout(async () => {
+             this.showAddStudentLoadingModal = false;
+             
+             // Success - refresh data
+             await this.loadCollegesFromBackend();
+             if (this.selectedCollege) {
+               await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
+             }
+
+             this.showNotification(`Student ${action} successfully!`, 'success', 'fas fa-check-circle');
+             
+             // Reset form
+             this.resetStudentForm();
+           }, 2000);
         } else {
+          // Hide loading modal and show error
+          this.showAddStudentLoadingModal = false;
           this.showNotification(result.error || `Failed to ${this.editingStudentId ? 'update' : 'add'} student`, 'error', 'fas fa-exclamation-circle');
         }
       } catch (error) {
         console.error('Error saving student:', error);
+        // Hide loading modal and show error
+        this.showAddStudentLoadingModal = false;
         this.showNotification('Network error. Please check if the backend server is running.', 'error', 'fas fa-exclamation-circle');
       }
     },
@@ -1622,6 +1682,12 @@ export default {
   max-width: 550px;
   overflow: hidden;
   animation: fadeInScale 0.3s ease-out forwards;
+  transition: max-width 0.3s ease;
+}
+
+/* Dynamic modal sizing */
+.modal-content.expanded {
+  max-width: 650px;
 }
 
 .modal-header {
@@ -1696,6 +1762,7 @@ export default {
   transition: all 0.3s ease;
   background-color: #fff;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .form-group input:focus,
@@ -1711,11 +1778,30 @@ export default {
   font-style: italic;
 }
 
+.custom-section-input {
+  margin-top: 10px;
+  width: 100%;
+}
+
+/* Year Level dropdown specific styling */
+.form-row .form-group:last-child select {
+  min-width: 160px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.form-row .form-group:last-child {
+  min-width: 160px;
+}
+
+
+
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
   gap: 20px;
   margin-bottom: 20px;
+  align-items: start;
 }
 
 .form-row .form-group {
@@ -1723,9 +1809,21 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .modal-content,
+  .modal-content.expanded {
+    width: 95%;
+    max-width: 95%;
+  }
+  
   .form-row {
     grid-template-columns: 1fr;
     gap: 15px;
+  }
+  
+  .form-row .form-group:last-child select,
+  .form-row .form-group:last-child {
+    min-width: unset;
+    width: 100%;
   }
 }
 

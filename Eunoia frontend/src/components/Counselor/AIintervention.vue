@@ -38,15 +38,8 @@
 
       <!-- Loading State -->
       <div v-if="isLoading" class="loading-container">
-        <div class="loading-spinner">
-          <div class="spinner-ring">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-          </div>
-        </div>
-        <p>Loading student data...</p>
+        <i class="fas fa-spinner loading-spinner"></i>
+        <p class="loading-text">Loading student data...</p>
       </div>
       
       <!-- Assessment Selection Prompt -->
@@ -1426,15 +1419,16 @@ export default {
 
 /* Dashboard Header Styles */
 .dashboard-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #00B3B0 0%, #00A3A0 100%);
   color: white;
-  padding: 30px;
-  border-radius: 12px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+  border-radius: 8px 8px 0 0;
 }
 
 .header-content h2 {
@@ -1472,66 +1466,45 @@ export default {
 }
 
 .assessment-filter select {
-  background: rgba(255, 255, 255, 0.15);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 12px 45px 12px 16px;
-  border-radius: 10px;
-  font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #333;
+  padding: 8px 35px 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   appearance: none;
-  backdrop-filter: blur(10px);
   transition: all 0.3s ease;
-  min-width: 220px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
 }
 
 .assessment-filter select:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .assessment-filter select:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(255, 255, 255, 1);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
 .assessment-filter select option {
-  background: #667eea;
-  color: white;
-  padding: 12px 16px;
-  border: none;
-  font-weight: 500;
-}
-
-.assessment-filter select option:hover {
-  background: #5a6fd8;
-}
-
-.assessment-filter select option:first-child {
-  color: rgba(255, 255, 255, 0.7);
-  font-style: italic;
+  background: white;
+  color: #333;
+  padding: 8px;
 }
 
 .assessment-filter i {
   position: absolute;
-  right: 16px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.8);
+  color: #666;
   pointer-events: none;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.assessment-filter:hover i {
-  color: white;
-  transform: translateY(-50%) rotate(180deg);
+  font-size: 12px;
 }
 
 .test-connection-btn,
@@ -1789,19 +1762,31 @@ export default {
 
 .search-container i {
   position: absolute;
-  left: 15px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #999;
+  color: #00B3B0;
+  font-size: 14px;
 }
 
 .search-container input {
   width: 100%;
-  padding: 12px 15px 12px 45px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
+  padding: 10px 12px 10px 35px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
   background: white;
+  transition: all 0.3s ease;
+}
+
+.search-container input:focus {
+  outline: none;
+  border-color: #00B3B0;
+  box-shadow: 0 0 0 2px rgba(0, 179, 176, 0.1);
+}
+
+.search-container input::placeholder {
+  color: #a0aec0;
 }
 
 .filter-dropdowns {
@@ -1814,13 +1799,20 @@ export default {
 }
 
 .filter-dropdown select {
-  padding: 12px 40px 12px 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 10px 35px 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   background: white;
-  font-size: 0.95rem;
+  font-size: 14px;
   cursor: pointer;
   appearance: none;
+  transition: all 0.3s ease;
+}
+
+.filter-dropdown select:focus {
+  outline: none;
+  border-color: #00B3B0;
+  box-shadow: 0 0 0 2px rgba(0, 179, 176, 0.1);
 }
 
 .filter-dropdown i {
@@ -1866,7 +1858,7 @@ export default {
 
 .student-id-cell {
   font-weight: 600;
-  color: #667eea;
+  color: #00B3B0;
 }
 
 .student-name {
@@ -1987,7 +1979,7 @@ export default {
 
 /* Action Button */
 .view-button {
-  background: #667eea;
+  background: #00B3B0;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -2001,7 +1993,7 @@ export default {
 }
 
 .view-button:hover {
-  background: #5a67d8;
+  background: #00A3A0;
 }
 
 .no-data {
@@ -2690,60 +2682,30 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 40px 20px;
   text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 20px 0;
 }
 
 .loading-spinner {
-  margin-bottom: 20px;
+  font-size: 2rem;
+  color: #00B3B0;
+  margin-bottom: 15px;
+  animation: spin 1s linear infinite;
 }
 
-.spinner-ring {
-  display: inline-block;
-  position: relative;
-  width: 64px;
-  height: 64px;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.spinner-ring div {
-  box-sizing: border-box;
-  display: block;
-  position: absolute;
-  width: 51px;
-  height: 51px;
-  margin: 6px;
-  border: 6px solid #667eea;
-  border-radius: 50%;
-  animation: spinner-ring-animation 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  border-color: #667eea transparent transparent transparent;
-}
-
-.spinner-ring div:nth-child(1) {
-  animation-delay: -0.45s;
-}
-
-.spinner-ring div:nth-child(2) {
-  animation-delay: -0.3s;
-}
-
-.spinner-ring div:nth-child(3) {
-  animation-delay: -0.15s;
-}
-
-@keyframes spinner-ring-animation {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-container p {
-  font-size: 1.1rem;
-  color: #718096;
+.loading-container .loading-text {
+  font-size: 1rem;
+  color: #666;
+  font-weight: 600;
   margin: 0;
-  font-weight: 500;
 }
 
 /* Notification Styles */
