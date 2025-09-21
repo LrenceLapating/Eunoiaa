@@ -746,12 +746,12 @@ export default {
       // Overall score risk thresholds
       overallRiskThresholds: {
         '42-item': {
-          atRisk: 111,    // 42-111 (At Risk)
-          healthy: 182    // 182-252 (Healthy), 112-181 (Moderate)
+          atRisk: 108,    // 42-108 (At Risk) - 18*6 dimensions
+          healthy: 186    // 186-252 (Healthy), 109-185 (Moderate) - 31*6 dimensions
         },
         '84-item': {
-          atRisk: 223,    // 84-223 (At Risk)
-          healthy: 364    // 364-504 (Healthy), 224-363 (Moderate)
+          atRisk: 216,    // 84-216 (At Risk) - 36*6 dimensions
+          healthy: 354    // 354-504 (Healthy), 217-353 (Moderate) - 59*6 dimensions
         }
       }
     };

@@ -108,24 +108,52 @@ router.get('/', verifyStudentSession, async (req, res) => {
       }
     });
 
-    // Try to get assessment scores for this student from the correct table
-    const { data: assessmentData } = await supabase
-      .from('assessments_42items')
+    // Try to get assessment scores for this student from both assessment tables
+    let assessmentData = null;
+    let assessmentType = 'ryff_42'; // default
+    
+    // First try 84-item assessments
+    const { data: assessment84Data } = await supabase
+      .from('assessments_84items')
       .select('scores, overall_score, risk_level')
       .eq('student_id', studentId)
       .not('completed_at', 'is', null)
       .order('completed_at', { ascending: false })
       .limit(1);
+    
+    if (assessment84Data && assessment84Data.length > 0) {
+      assessmentData = assessment84Data;
+      assessmentType = 'ryff_84';
+    } else {
+      // Fallback to 42-item assessments
+      const { data: assessment42Data } = await supabase
+        .from('assessments_42items')
+        .select('scores, overall_score, risk_level')
+        .eq('student_id', studentId)
+        .not('completed_at', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(1);
+      
+      if (assessment42Data && assessment42Data.length > 0) {
+        assessmentData = assessment42Data;
+        assessmentType = 'ryff_42';
+      }
+    }
 
     const dimensionScores = assessmentData && assessmentData[0] ? assessmentData[0].scores : null;
+    const overallScore = assessmentData && assessmentData[0] ? assessmentData[0].overall_score : null;
+    const riskLevel = assessmentData && assessmentData[0] ? assessmentData[0].risk_level : null;
 
     // Add dimension scores to each transformed intervention
     const interventionsWithScores = transformedInterventions.map(intervention => ({
       ...intervention,
-      dimension_scores: dimensionScores
+      dimension_scores: dimensionScores,
+      overall_score: overallScore,
+      risk_level: riskLevel,
+      assessment_type: assessmentType
     }));
     
-    console.log(`Found ${interventionsWithScores.length} interventions for student ${studentId}`);
+    console.log(`Found ${interventionsWithScores.length} interventions for student ${studentId} (${assessmentType})`);
     
     res.json({
       success: true,

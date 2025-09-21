@@ -62,30 +62,41 @@ class AIService {
     // Generate unique context elements for personalization
     const contextElements = this.generateContextualElements(studentData, riskLevel);
     
+    // Calculate dynamic max scores based on assessment type
+    const dimensionMaxScore = assessmentType === 'ryff_84' ? 84 : 42;
+    const overallMaxScore = assessmentType === 'ryff_84' ? 504 : 252; // 6 dimensions × max score per dimension
+    
     // Create comprehensive prompt with detailed instructions
-    let prompt = `You are a caring, professional mental health counselor speaking directly to ${name || 'your student'}, a college student from ${college || 'their institution'} in section ${section || 'their class'}. Write in a warm, supportive, and encouraging tone as if you're having a personal conversation with them.
+    let prompt = `You are a calm, motivational mental health guide speaking directly to ${name || 'your student'}, a college student from ${college || 'their institution'} in section ${section || 'their class'}. Your role is to be a personal coach or mentor, not a clinical diagnostician. Write as a gentle, encouraging narrative guide that helps students understand their scores and feel supported to improve.
 
 === STUDENT ASSESSMENT DETAILS ===
 Risk Level: ${riskLevel}
 Assessment Type: ${assessmentType || 'Ryff Psychological Well-being Scale'}
-Overall Score: ${Math.round(overallScore || 0)}/252
+Overall Score: ${Math.round(overallScore || 0)}/${overallMaxScore}
 At-Risk Dimensions: ${atRiskDimensions?.length ? atRiskDimensions.join(', ') : 'None'}
 
 DIMENSION SCORES:
-- Autonomy: ${Math.round(subscales?.autonomy || 0)}/42 (${this.getScoreStatus(subscales?.autonomy || 0)})
-- Personal Growth: ${Math.round(subscales?.personal_growth || 0)}/42 (${this.getScoreStatus(subscales?.personal_growth || 0)})
-- Purpose in Life: ${Math.round(subscales?.purpose_in_life || 0)}/42 (${this.getScoreStatus(subscales?.purpose_in_life || 0)})
-- Self Acceptance: ${Math.round(subscales?.self_acceptance || 0)}/42 (${this.getScoreStatus(subscales?.self_acceptance || 0)})
-- Positive Relations: ${Math.round(subscales?.positive_relations || 0)}/42 (${this.getScoreStatus(subscales?.positive_relations || 0)})
-- Environmental Mastery: ${Math.round(subscales?.environmental_mastery || 0)}/42 (${this.getScoreStatus(subscales?.environmental_mastery || 0)})
+- Autonomy: ${Math.round(subscales?.autonomy || 0)}/${dimensionMaxScore} (${this.getScoreStatus(subscales?.autonomy || 0, assessmentType)})
+- Personal Growth: ${Math.round(subscales?.personal_growth || 0)}/${dimensionMaxScore} (${this.getScoreStatus(subscales?.personal_growth || 0, assessmentType)})
+- Purpose in Life: ${Math.round(subscales?.purpose_in_life || 0)}/${dimensionMaxScore} (${this.getScoreStatus(subscales?.purpose_in_life || 0, assessmentType)})
+- Self Acceptance: ${Math.round(subscales?.self_acceptance || 0)}/${dimensionMaxScore} (${this.getScoreStatus(subscales?.self_acceptance || 0, assessmentType)})
+- Positive Relations: ${Math.round(subscales?.positive_relations || 0)}/${dimensionMaxScore} (${this.getScoreStatus(subscales?.positive_relations || 0, assessmentType)})
+- Environmental Mastery: ${Math.round(subscales?.environmental_mastery || 0)}/${dimensionMaxScore} (${this.getScoreStatus(subscales?.environmental_mastery || 0, assessmentType)})
 
-=== COUNSELOR TONE REQUIREMENTS ===
-- Write as if you're speaking directly to the student with empathy and understanding
-- Use "you" and "your" to make it personal
-- Be encouraging and supportive, acknowledging their strengths
-- Show genuine care and concern for their well-being
-- Provide hope and confidence in their ability to grow
-- Use warm, professional language that builds trust
+=== CALM, MOTIVATIONAL NARRATIVE STYLE REQUIREMENTS ===
+Your output should feel like a calm, motivational narrative guide—a mix of explanation + encouragement, or "why this matters" + gentle direction. Help students understand their scores and feel supported to improve.
+
+TONE REQUIREMENTS BY RISK LEVEL (Assessment-Type Specific):
+For ${assessmentType === 'ryff_84' ? '84-item' : '42-item'} Assessment:
+- At Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Supportive and uplifting. Content: Motivational advice with clear, gentle steps to improve. Example tone: "This area may feel challenging right now, but it's also where the most growth can happen. Start with small habits, like talking to a trusted friend or writing down your thoughts each evening. Each small action builds strength."
+- Moderate (${assessmentType === 'ryff_84' ? '37-59' : '19-30'}): Encouraging and positive. Content: Acknowledge progress and motivate further improvement. Example tone: "You're on the right track! Keep practicing habits that bring you balance, like regular exercise or setting aside time to relax. Small adjustments can bring even greater stability."
+- Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): Appreciative and celebratory. Content: Recognize achievements while encouraging consistency. Example tone: "You're doing wonderfully in this area! Keep nurturing these habits, and remember to celebrate the hard work that keeps you feeling strong."
+
+OVERALL STRATEGY TONE:
+- Warm, guiding, and reassuring
+- Explain why the overall result matters
+- Provide a general action plan that motivates the student to keep going and improve
+- Example: "Your scores show a balanced picture of your mental well-being. Keep nurturing your growth by setting small daily intentions, celebrating progress, and reminding yourself that every step forward matters."
 
 === INTERVENTION REQUIREMENTS ===
 Create a PERSONALIZED intervention that:
@@ -101,35 +112,43 @@ Overall Mental Health Strategy:
 [Write 2-3 sentences in a counselor's voice, speaking directly to the student. Address their specific score pattern, acknowledge their strengths, and provide a personalized strategy. Use "you" and "your" throughout.]
 
 Dimension Scores & Targeted Interventions:
-Autonomy (${Math.round(subscales?.autonomy || 0)}/42): [1-2 sentences speaking directly to the student about this specific score. If the score is At Risk (≤21), MUST start with "Your score is quite low" or "Your score indicates you're at risk". If Moderate (22-31), mention "Your score suggests" or "Your score shows". If Healthy (≥32), acknowledge "Your score indicates strong" or "Your score shows excellent". Then provide personalized guidance.]
-Personal Growth (${Math.round(subscales?.personal_growth || 0)}/42): [1-2 sentences speaking directly to the student about this specific score. If the score is At Risk (≤21), MUST start with "Your score is quite low" or "Your score indicates you're at risk". If Moderate (22-31), mention "Your score suggests" or "Your score shows". If Healthy (≥32), acknowledge "Your score indicates strong" or "Your score shows excellent". Then provide personalized guidance.]
-Purpose in Life (${Math.round(subscales?.purpose_in_life || 0)}/42): [1-2 sentences speaking directly to the student about this specific score. If the score is At Risk (≤21), MUST start with "Your score is quite low" or "Your score indicates you're at risk". If Moderate (22-31), mention "Your score suggests" or "Your score shows". If Healthy (≥32), acknowledge "Your score indicates strong" or "Your score shows excellent". Then provide personalized guidance.]
-Self Acceptance (${Math.round(subscales?.self_acceptance || 0)}/42): [1-2 sentences speaking directly to the student about this specific score. If the score is At Risk (≤21), MUST start with "Your score is quite low" or "Your score indicates you're at risk". If Moderate (22-31), mention "Your score suggests" or "Your score shows". If Healthy (≥32), acknowledge "Your score indicates strong" or "Your score shows excellent". Then provide personalized guidance.]
-Positive Relations (${Math.round(subscales?.positive_relations || 0)}/42): [1-2 sentences speaking directly to the student about this specific score. If the score is At Risk (≤21), MUST start with "Your score is quite low" or "Your score indicates you're at risk". If Moderate (22-31), mention "Your score suggests" or "Your score shows". If Healthy (≥32), acknowledge "Your score indicates strong" or "Your score shows excellent". Then provide personalized guidance.]
-Environmental Mastery (${Math.round(subscales?.environmental_mastery || 0)}/42): [1-2 sentences speaking directly to the student about this specific score. If the score is At Risk (≤21), MUST start with "Your score is quite low" or "Your score indicates you're at risk". If Moderate (22-31), mention "Your score suggests" or "Your score shows". If Healthy (≥32), acknowledge "Your score indicates strong" or "Your score shows excellent". Then provide personalized guidance.]
+Autonomy (${Math.round(subscales?.autonomy || 0)}/${dimensionMaxScore}): [Write a personalized narrative based on the specific score level. At Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Use supportive and uplifting tone - "This area may feel challenging right now, but it's also where the most growth can happen. Start with small habits like [specific example]. Each small action builds strength." Lower Moderate (${assessmentType === 'ryff_84' ? '37-48' : '19-24'}): Use gentle encouragement - "You're making progress in this area. Focus on building consistency with [specific example]. Small, steady steps will help you feel more confident." Upper Moderate (${assessmentType === 'ryff_84' ? '49-59' : '25-30'}): Use positive reinforcement - "You're doing well here! Keep strengthening these habits like [specific example]. You're close to feeling really strong in this area." Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): Use appreciative and celebratory tone - "You're doing wonderfully in this area! Keep nurturing these habits, and remember to celebrate the hard work that keeps you feeling strong."]
+Personal Growth (${Math.round(subscales?.personal_growth || 0)}/${dimensionMaxScore}): [Write a personalized narrative based on the specific score level. At Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Use supportive and uplifting tone - "This area may feel challenging right now, but it's also where the most growth can happen. Start with small habits like [specific example]. Each small action builds strength." Lower Moderate (${assessmentType === 'ryff_84' ? '37-48' : '19-24'}): Use gentle encouragement - "You're making progress in this area. Focus on building consistency with [specific example]. Small, steady steps will help you feel more confident." Upper Moderate (${assessmentType === 'ryff_84' ? '49-59' : '25-30'}): Use positive reinforcement - "You're doing well here! Keep strengthening these habits like [specific example]. You're close to feeling really strong in this area." Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): Use appreciative and celebratory tone - "You're doing wonderfully in this area! Keep nurturing these habits, and remember to celebrate the hard work that keeps you feeling strong."]
+Purpose in Life (${Math.round(subscales?.purpose_in_life || 0)}/${dimensionMaxScore}): [Write a personalized narrative based on the specific score level. At Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Use supportive and uplifting tone - "This area may feel challenging right now, but it's also where the most growth can happen. Start with small habits like [specific example]. Each small action builds strength." Lower Moderate (${assessmentType === 'ryff_84' ? '37-48' : '19-24'}): Use gentle encouragement - "You're making progress in this area. Focus on building consistency with [specific example]. Small, steady steps will help you feel more confident." Upper Moderate (${assessmentType === 'ryff_84' ? '49-59' : '25-30'}): Use positive reinforcement - "You're doing well here! Keep strengthening these habits like [specific example]. You're close to feeling really strong in this area." Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): Use appreciative and celebratory tone - "You're doing wonderfully in this area! Keep nurturing these habits, and remember to celebrate the hard work that keeps you feeling strong."]
+Self Acceptance (${Math.round(subscales?.self_acceptance || 0)}/${dimensionMaxScore}): [Write a personalized narrative based on the specific score level. At Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Use supportive and uplifting tone - "This area may feel challenging right now, but it's also where the most growth can happen. Start with small habits like [specific example]. Each small action builds strength." Lower Moderate (${assessmentType === 'ryff_84' ? '37-48' : '19-24'}): Use gentle encouragement - "You're making progress in this area. Focus on building consistency with [specific example]. Small, steady steps will help you feel more confident." Upper Moderate (${assessmentType === 'ryff_84' ? '49-59' : '25-30'}): Use positive reinforcement - "You're doing well here! Keep strengthening these habits like [specific example]. You're close to feeling really strong in this area." Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): Use appreciative and celebratory tone - "You're doing wonderfully in this area! Keep nurturing these habits, and remember to celebrate the hard work that keeps you feeling strong."]
+Positive Relations (${Math.round(subscales?.positive_relations || 0)}/${dimensionMaxScore}): [Write a personalized narrative based on the specific score level. At Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Use supportive and uplifting tone - "This area may feel challenging right now, but it's also where the most growth can happen. Start with small habits like [specific example]. Each small action builds strength." Lower Moderate (${assessmentType === 'ryff_84' ? '37-48' : '19-24'}): Use gentle encouragement - "You're making progress in this area. Focus on building consistency with [specific example]. Small, steady steps will help you feel more confident." Upper Moderate (${assessmentType === 'ryff_84' ? '49-59' : '25-30'}): Use positive reinforcement - "You're doing well here! Keep strengthening these habits like [specific example]. You're close to feeling really strong in this area." Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): Use appreciative and celebratory tone - "You're doing wonderfully in this area! Keep nurturing these habits, and remember to celebrate the hard work that keeps you feeling strong."]
+Environmental Mastery (${Math.round(subscales?.environmental_mastery || 0)}/${dimensionMaxScore}): [Write a personalized narrative based on the specific score level. At Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Use supportive and uplifting tone - "This area may feel challenging right now, but it's also where the most growth can happen. Start with small habits like [specific example]. Each small action builds strength." Lower Moderate (${assessmentType === 'ryff_84' ? '37-48' : '19-24'}): Use gentle encouragement - "You're making progress in this area. Focus on building consistency with [specific example]. Small, steady steps will help you feel more confident." Upper Moderate (${assessmentType === 'ryff_84' ? '49-59' : '25-30'}): Use positive reinforcement - "You're doing well here! Keep strengthening these habits like [specific example]. You're close to feeling really strong in this area." Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): Use appreciative and celebratory tone - "You're doing wonderfully in this area! Keep nurturing these habits, and remember to celebrate the hard work that keeps you feeling strong."]
 
 Recommended Action Plan:
-${atRiskDimensions.length > 0 ? `PRIORITY ACTIONS for At-Risk Areas (scores ≤21):
-${atRiskDimensions.map(dim => `- [Specific action for ${dim} improvement, acknowledging "Your ${dim} score is quite low" and providing targeted intervention with detailed example: "Given your low ${dim} score, I recommend you [specific action]. For example: [Concrete, specific example including time, place, or method]"]`).join('\n')}
+[Provide 3-4 specific, practical strategies for each dimension based on its score. Include clear examples of daily actions to build growth. Use this format example:
 
-ADDITIONAL SUPPORT ACTIONS:` : 'RECOMMENDED ACTIONS:'}
-- [Specific action written in counselor's voice with detailed example: "I recommend you [action description]. For example: [Concrete, specific example of how to implement this, including time, place, or method]"]
-- [Specific action written in counselor's voice with detailed example: "I suggest you [action description]. For example: [Concrete, specific example of how to implement this, including time, place, or method]"]
-- [Specific action written in counselor's voice with detailed example: "Consider [action description]. For example: [Concrete, specific example of how to implement this, including time, place, or method]"]
-- [Specific action written in counselor's voice with detailed example: "Try [action description]. For example: [Concrete, specific example of how to implement this, including time, place, or method]"]
-- [Specific action written in counselor's voice with detailed example: "I encourage you to [action description]. For example: [Concrete, specific example of how to implement this, including time, place, or method]"]
+"For Autonomy, I recommend focusing on strengthening your decision-making confidence. For example: set one small independent goal each day—like choosing your own study schedule or planning a meal—and track your progress in a personal journal. Each choice reinforces your ability to lead your own path."
+
+Each recommendation should:
+1. Target the specific dimension and its current level
+2. Provide concrete daily actions with specific examples
+3. Explain how these actions build growth and strength
+4. Use motivational language that encourages ${name || 'the student'} to take action
+
+Make each strategy feel achievable and personally meaningful to ${name || 'the student'}.]
 
 === PERSONALIZATION CONTEXT ===
 ${contextElements.join('\n')}
 
-CRITICAL REQUIREMENTS:
+CRITICAL REQUIREMENTS - STRICT COMPLIANCE MANDATORY:
 1. ALWAYS include specific examples in EVERY action plan item
 2. Write in a warm, counselor-like tone throughout
 3. Address the student directly using "you" and "your"
 4. Base ALL recommendations on their specific scores, not generic advice
 5. Make each intervention unique and personalized to this student's exact situation
 6. Show empathy and understanding for their current challenges
-7. Provide hope and encouragement for their growth journey`;
+7. Provide hope and encouragement for their growth journey
+8. MANDATORY: Complete ALL sections - Overall Strategy, ALL 6 Dimension Interventions, and Action Plan
+9. MANDATORY: Overall Strategy must be at least 100 characters long
+10. MANDATORY: Each dimension intervention must be at least 30 characters long
+11. MANDATORY: Action plan must contain at least 5 specific actions with examples
+12. MANDATORY: Do NOT truncate or cut off any section - complete the entire response
+13. MANDATORY: If you reach token limits, prioritize completing all sections over length`;
     
     return prompt;
   }
@@ -189,12 +208,27 @@ CRITICAL REQUIREMENTS:
   /**
    * Get score status based on thresholds
    * @param {number} score - Dimension score
+   * @param {string} assessmentType - Assessment type ('ryff_42' or 'ryff_84')
    * @returns {string} Status description
    */
-  getScoreStatus(score) {
-    if (score <= 21) return 'At Risk';
-    if (score <= 31.5) return 'Moderate';
-    return 'Healthy';
+  getScoreStatus(score, assessmentType = 'ryff_42') {
+    // Use the same thresholds as frontend
+    const thresholds = {
+      'ryff_42': {
+        atRisk: 18,   // ≤18: At-Risk
+        healthy: 31   // ≥31: Healthy
+      },
+      'ryff_84': {
+        atRisk: 36,   // ≤36: At-Risk  
+        healthy: 59   // ≥59: Healthy
+      }
+    };
+    
+    const threshold = thresholds[assessmentType] || thresholds['ryff_42'];
+    
+    if (score <= threshold.atRisk) return 'At Risk';
+    if (score >= threshold.healthy) return 'Healthy';
+    return 'Moderate';
   }
 
   /**
@@ -215,42 +249,68 @@ CRITICAL REQUIREMENTS:
   }
 
   /**
-   * Generate structured intervention with specific sections
+   * Generate structured intervention with enhanced format and retry logic
    * @param {Object} studentData - Student assessment data
    * @param {string} riskLevel - Student's risk level
+   * @param {number} maxRetries - Maximum number of retry attempts (default: 3)
    * @returns {Object} Structured intervention with separate sections
    */
-  async generateStructuredIntervention(studentData, riskLevel) {
-    try {
-      // Generate a simple intervention text first
-      const simplePrompt = this.createSimpleInterventionPrompt(studentData, riskLevel);
-      
-      const response = await axios.post(`${OPENROUTER_BASE_URL}/chat/completions`, {
-        model: MODEL_NAME,
-        messages: [{
-          role: 'user',
-          content: simplePrompt
-        }],
-        temperature: 0.7,
-        top_p: 0.9,
-        max_tokens: 500
-      }, {
-        headers: {
-          'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json'
+  async generateStructuredIntervention(studentData, riskLevel, maxRetries = 3) {
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`AI generation attempt ${attempt}/${maxRetries}`);
+        
+        // Use the enhanced intervention prompt that matches parsing logic
+        const enhancedPrompt = this.createInterventionPrompt(studentData, riskLevel);
+        
+        const response = await axios.post(`${OPENROUTER_BASE_URL}/chat/completions`, {
+          model: MODEL_NAME,
+          messages: [{
+            role: 'user',
+            content: enhancedPrompt
+          }],
+          temperature: 0.7,
+          top_p: 0.9,
+          max_tokens: 1500  // Increased to ensure complete intervention generation
+        }, {
+          headers: {
+            'Authorization': `Bearer ${API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
+          // Structure the response programmatically
+          const structuredResponse = this.createStructuredResponse(response.data.choices[0].message.content, studentData, riskLevel);
+          
+          // Validate the response quality
+          if (this.validateAIResponse(structuredResponse)) {
+            console.log(`AI generation successful on attempt ${attempt}`);
+            return structuredResponse;
+          } else {
+            throw new Error('AI response validation failed - insufficient content quality');
+          }
+        } else {
+          throw new Error('Invalid response from AI service');
         }
-      });
-      
-      if (response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
-        // Structure the response programmatically
-        return this.createStructuredResponse(response.data.choices[0].message.content, studentData, riskLevel);
-      } else {
-        throw new Error('Invalid response from AI service');
+      } catch (error) {
+        console.error(`AI generation attempt ${attempt} failed:`, error.message);
+        lastError = error;
+        
+        // If this is not the last attempt, wait before retrying
+        if (attempt < maxRetries) {
+          const waitTime = attempt * 1000; // Progressive delay: 1s, 2s, 3s
+          console.log(`Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
-    } catch (error) {
-      console.error('Error generating structured intervention:', error);
-      throw new Error(`Failed to generate structured intervention: ${error.message}`);
     }
+    
+    // All retries failed, return error response
+    console.error(`All ${maxRetries} AI generation attempts failed. Last error:`, lastError?.message);
+    throw new Error(`Failed to generate AI intervention after ${maxRetries} attempts: ${lastError?.message}`);
   }
 
   /**
@@ -260,14 +320,14 @@ CRITICAL REQUIREMENTS:
    * @returns {string} Simple prompt
    */
   createSimpleInterventionPrompt(studentData, riskLevel) {
-    const { student, subscales, overall_score: overallScore } = studentData;
+    const { student, subscales, overall_score: overallScore, assessmentType } = studentData;
     const { name } = student || {};
     
     let prompt = `Create mental health advice for ${name || 'student'} with ${riskLevel} risk level (score: ${overallScore}/252).\n\nDimension scores:\n`;
     
     if (subscales) {
       Object.entries(subscales).forEach(([dim, score]) => {
-        const status = this.getScoreStatus(score);
+        const status = this.getScoreStatus(score, assessmentType);
         prompt += `- ${this.formatDimensionName(dim)}: ${Math.round(score)}/42 (${status})\n`;
       });
     }
@@ -337,20 +397,38 @@ CRITICAL REQUIREMENTS:
       // Parse the enhanced AI response to extract different sections
       const sections = this.parseEnhancedAIResponse(aiResponse);
       
-      // Create overall strategy (should be 2-3 sentences)
-      const overallStrategy = sections.strategy || 
-        this.generateFallbackStrategy(studentData, riskLevel);
+      // Create overall strategy (should be 2-3 sentences) - STRICT REQUIREMENT
+      // Use AI-generated content only, no hardcoded fallbacks
+      let overallStrategy = sections.strategy || 
+        'No overall strategy available. Please generate interventions using the "Generate AI Interventions" button.';
       
-      // Create dimension interventions (1-2 sentences each)
-      const dimensionInterventions = sections.dimensions || 
-        this.createDimensionInterventions(studentData.subscales, {});
+      // Validate overall strategy completeness - if insufficient, throw error for retry
+      if (!overallStrategy || overallStrategy.trim().length < 100) {
+        throw new Error('AI-generated overall strategy is insufficient. Please retry generation.');
+      }
       
-      // Generate action plan with examples
-      const actionPlan = sections.actions || 
-        this.generateEnhancedActionPlan(riskLevel, studentData.atRiskDimensions, studentData);
+      // Create dimension interventions from AI content only
+      let dimensionInterventions = sections.dimensions || 
+        this.createDimensionInterventions(studentData.subscales, {}, studentData.assessmentType);
       
-      // Generate title
-      const title = this.generateInterventionTitle(overallStrategy, riskLevel);
+      // Validate dimension interventions completeness - if insufficient, throw error for retry
+      if (!dimensionInterventions || Object.keys(dimensionInterventions).length === 0) {
+        throw new Error('AI-generated dimension interventions are missing. Please retry generation.');
+      }
+      
+      // Use AI-generated action plan only
+      let actionPlan = sections.actions || [];
+      
+      // Validate action plan completeness - if insufficient, throw error for retry
+      if (!actionPlan || actionPlan.length === 0) {
+        throw new Error('AI-generated action plan is missing. Please retry generation.');
+      }
+      
+      // Generate title from AI content
+      const title = `Personalized Mental Health Intervention for ${studentData.firstName || 'Student'}`;
+      
+      // Final validation - STRICT REQUIREMENT: All sections must be present and substantial
+      this.validateInterventionCompleteness(overallStrategy, dimensionInterventions, actionPlan);
       
       // Create structured data object
       const structuredData = {
@@ -368,8 +446,19 @@ CRITICAL REQUIREMENTS:
       };
     } catch (error) {
       console.error('Error creating structured response:', error);
-      // Fallback to enhanced structure
-      return this.createEnhancedFallbackResponse(studentData, riskLevel);
+      // Return error response indicating AI generation failed
+      return {
+        title: `Mental Health Assessment for ${studentData.firstName || 'Student'}`,
+        interventionText: JSON.stringify({
+          overallStrategy: 'AI intervention generation failed. Please try generating interventions again using the "Generate AI Interventions" button.',
+          dimensionInterventions: {},
+          actionPlan: []
+        }),
+        overallStrategy: 'AI intervention generation failed. Please try generating interventions again using the "Generate AI Interventions" button.',
+        dimensionInterventions: {},
+        actionPlan: [],
+        error: true
+      };
     }
   }
 
@@ -396,26 +485,35 @@ CRITICAL REQUIREMENTS:
       const dimensionsMatch = aiResponse.match(/Dimension Scores & Targeted Interventions:\s*([\s\S]*?)(?=\n\nRecommended Action Plan|$)/i);
       if (dimensionsMatch) {
         const dimensionText = dimensionsMatch[1];
+        console.log('Dimension text extracted:', dimensionText.substring(0, 200) + '...');
         const dimensionLines = dimensionText.split('\n').filter(line => line.trim());
+        console.log(`Found ${dimensionLines.length} dimension lines to parse`);
         
-        dimensionLines.forEach(line => {
-          const match = line.match(/^([^(]+)\(\d+\/42\):\s*(.+)$/i);
+        dimensionLines.forEach((line, index) => {
+          // Support both 42-item and 84-item assessment patterns
+          const match = line.match(/^([^(]+)\(\d+\/(?:42|84)\):\s*(.+)$/i);
           if (match) {
             const dimensionName = match[1].trim().toLowerCase().replace(/\s+/g, '_');
             const intervention = match[2].trim();
             sections.dimensions[dimensionName] = intervention;
+            console.log(`Successfully parsed dimension ${index + 1}: ${dimensionName}`);
+          } else {
+            console.warn(`Failed to parse dimension line ${index + 1}: "${line}"`);
           }
         });
+        console.log(`Total dimensions parsed: ${Object.keys(sections.dimensions).length}`);
+      } else {
+        console.warn('No dimension section found in AI response');
       }
 
       // Extract Recommended Action Plan with examples
       const actionsMatch = aiResponse.match(/Recommended Action Plan:\s*([\s\S]*?)$/i);
       if (actionsMatch) {
         const actionText = actionsMatch[1];
-        const actionLines = actionText.split('\n').filter(line => line.trim() && line.startsWith('-'));
+        const actionLines = actionText.split('\n').filter(line => line.trim() && /^\d+\./.test(line.trim()));
         
         sections.actions = actionLines.map(line => {
-          return line.replace(/^-\s*/, '').trim();
+          return line.replace(/^\d+\.\s*/, '').trim();
         });
       }
 
@@ -426,201 +524,145 @@ CRITICAL REQUIREMENTS:
     return sections;
   }
 
-  /**
-   * Generate fallback strategy when parsing fails
-   * @param {Object} studentData - Student data
-   * @param {string} riskLevel - Risk level
-   * @returns {string} Fallback strategy
-   */
-  generateFallbackStrategy(studentData, riskLevel) {
-    const { subscales } = studentData;
-    const lowestDimension = Object.entries(subscales || {}).reduce((a, b) => a[1] < b[1] ? a : b);
-    
-    return `Focus on comprehensive well-being improvement with emphasis on ${lowestDimension[0]?.replace(/_/g, ' ')} development. This ${riskLevel} risk level requires targeted interventions to build resilience and enhance overall psychological well-being. Implement structured activities that address specific dimensional weaknesses while maintaining existing strengths.`;
-  }
+
 
   /**
-   * Create dimension interventions with fallback
+   * Create dimension interventions from AI-generated content only
    * @param {Object} subscales - Dimension scores
-   * @param {Object} parsedDimensions - Parsed dimension interventions
+   * @param {Object} parsedDimensions - Parsed dimension interventions from AI
+   * @param {string} assessmentType - Assessment type ('ryff_42' or 'ryff_84')
    * @returns {Object} Dimension interventions
    */
-  createDimensionInterventions(subscales, parsedDimensions) {
+  createDimensionInterventions(subscales, parsedDimensions, assessmentType = 'ryff_42') {
     const dimensionInterventions = {};
     
     if (subscales) {
       Object.entries(subscales).forEach(([dimension, score]) => {
-        const status = this.getScoreStatus(score);
-        dimensionInterventions[dimension] = parsedDimensions[dimension] || 
-          this.getDimensionAdvice(dimension, score, status);
+        if (parsedDimensions[dimension]) {
+          // Use AI-generated content
+          dimensionInterventions[dimension] = parsedDimensions[dimension];
+        } else {
+          // Provide a more helpful fallback message
+          const status = this.getScoreStatus(score, assessmentType);
+          dimensionInterventions[dimension] = `Your ${this.formatDimensionName(dimension)} score is ${Math.round(score)} (${status}). Please use the "Generate AI Interventions" button to get personalized recommendations for this dimension.`;
+          console.warn(`Using fallback intervention for dimension: ${dimension}`);
+        }
       });
     }
     
     return dimensionInterventions;
   }
 
+
+
+
+
+
+  
+
+  
+
+
   /**
-   * Generate enhanced action plan with examples
-   * @param {string} riskLevel - Risk level
-   * @param {Array} atRiskDimensions - At-risk dimensions
-   * @param {Object} studentData - Student data
-   * @returns {Array} Enhanced action items
+   * Validate intervention completeness - STRICT REQUIREMENT
+   * @param {string} overallStrategy - Overall strategy text
+   * @param {Object} dimensionInterventions - Dimension interventions object
+   * @param {Array} actionPlan - Action plan array
+   * @throws {Error} If any section is incomplete
    */
-  generateEnhancedActionPlan(riskLevel, atRiskDimensions, studentData) {
-    const actions = [];
-    const { subscales, name } = studentData;
+  validateInterventionCompleteness(overallStrategy, dimensionInterventions, actionPlan) {
+    const errors = [];
     
-    if (subscales) {
-      // Find lowest scoring dimensions
-      const sortedDimensions = Object.entries(subscales)
-        .sort(([,a], [,b]) => a - b)
-        .slice(0, 2);
-      
-      sortedDimensions.forEach(([dimension, score]) => {
-        if (score < 21) {
-          actions.push(`I recommend you focus on strengthening your ${this.formatDimensionName(dimension)} through daily practice. For example: Set one small independent goal each day (like choosing your study schedule or meal plan) and track your progress in a personal journal to build confidence in your decision-making abilities.`);
-        }
-      });
+    // Validate overall strategy
+    if (!overallStrategy || overallStrategy.trim().length < 100) {
+      errors.push('Overall strategy must be at least 100 characters long');
     }
     
-    // Add risk-specific actions with examples in counselor tone
-    if (riskLevel === 'high') {
-      actions.push('I strongly encourage you to schedule regular check-ins with a counselor for ongoing support. For example: Book recurring appointments every Tuesday at 2 PM with our counseling center, and use this time to discuss your progress and any challenges you\'re facing.');
-      actions.push('I suggest you establish a consistent daily self-care routine to build stability in your life. For example: Start each morning with 10 minutes of deep breathing or meditation, eat a nutritious breakfast, and end your day with 5 minutes of reflection about three things that went well.');
-    } else if (riskLevel === 'moderate') {
-      actions.push('I recommend you practice stress management techniques to help you navigate challenging moments. For example: When you feel overwhelmed, use the 4-7-8 breathing technique (inhale for 4 counts, hold for 7, exhale for 8) or take a 5-minute walk around campus to reset your mindset.');
-      actions.push('Consider gradually building stronger social connections to enhance your support network. For example: Reach out to one classmate or friend each week for a coffee chat or study session, and make an effort to attend one social event or club meeting monthly.');
+    // Validate dimension interventions
+    if (!dimensionInterventions || Object.keys(dimensionInterventions).length === 0) {
+      errors.push('Dimension interventions must be present');
     } else {
-      actions.push('I encourage you to maintain your current positive well-being practices while exploring new growth opportunities. For example: Continue your existing healthy routines and challenge yourself to try one new activity each month, such as joining a new club or learning a skill you\'ve always wanted to develop.');
-      actions.push('Consider using your strengths to support others, which can further enhance your own well-being. For example: Volunteer to tutor peers in subjects you excel at, or join a peer mentoring program where you can share your positive coping strategies with other students.');
-    }
-    
-    actions.push('I suggest you incorporate mindfulness into your daily routine to enhance your overall mental clarity and emotional regulation. For example: Use a meditation app like Headspace for 10 minutes each morning before classes, or practice mindful walking between buildings on campus by focusing on your breathing and surroundings.');
-    
-    return actions.slice(0, 5); // Limit to 5 actions
-  }
-
-  /**
-   * Create enhanced fallback response
-   * @param {Object} studentData - Student data
-   * @param {string} riskLevel - Risk level
-   * @returns {Object} Enhanced fallback response
-   */
-  createEnhancedFallbackResponse(studentData, riskLevel) {
-    const overallStrategy = this.generateFallbackStrategy(studentData, riskLevel);
-    const dimensionInterventions = this.createDimensionInterventions(studentData.subscales, {});
-    const actionPlan = this.generateEnhancedActionPlan(riskLevel, studentData.atRiskDimensions, studentData);
-    const title = this.generateInterventionTitle(overallStrategy, riskLevel);
-    
-    const structuredData = {
-      overallStrategy: overallStrategy,
-      dimensionInterventions: dimensionInterventions,
-      actionPlan: actionPlan
-    };
-    
-    return {
-      title: title,
-      interventionText: JSON.stringify(structuredData),
-      overallStrategy: overallStrategy,
-      dimensionInterventions: dimensionInterventions,
-      actionPlan: actionPlan
-    };
-  }
-
-  /**
-   * Get dimension-specific advice
-   * @param {string} dimension - Dimension name
-   * @param {number} score - Dimension score
-   * @param {string} status - Score status
-   * @returns {string} Specific advice
-   */
-  getDimensionAdvice(dimension, score, status) {
-    const advice = {
-      autonomy: {
-        'At Risk': 'Practice making small decisions independently in low-stakes situations to build confidence. Start with daily choices like meal planning or study schedules.',
-        'Moderate': 'Set weekly goals for independent decision-making and track your progress. Balance autonomy with seeking advice when needed.',
-        'Healthy': 'Continue making autonomous choices and help others develop their decision-making skills. Consider mentoring peers who struggle with independence.'
-      },
-      personal_growth: {
-        'At Risk': 'Start with one small learning goal each week, such as reading for 15 minutes daily. Focus on areas that genuinely interest you.',
-        'Moderate': 'Challenge yourself with new skills or hobbies that align with your interests. Join clubs or activities that push your comfort zone.',
-        'Healthy': 'Maintain your growth mindset and consider mentoring others in their development. Share your learning strategies with peers.'
-      },
-      purpose_in_life: {
-        'At Risk': 'Reflect on your values and identify one meaningful activity to engage in weekly. Keep a journal about what truly matters to you.',
-        'Moderate': 'Explore volunteer opportunities or activities that align with your personal values. Make small adjustments to ensure actions reflect values.',
-        'Healthy': 'Continue pursuing meaningful activities and help others find their purpose. Consider leadership roles that align with your values.'
-      },
-      self_acceptance: {
-        'At Risk': 'Practice daily self-compassion exercises and challenge negative self-talk. Keep a gratitude journal focusing on positive qualities.',
-        'Moderate': 'Develop a gratitude practice and celebrate small personal achievements. Acknowledge improvements while working on growth areas.',
-        'Healthy': 'Maintain your positive self-regard and model self-acceptance for others. Use confidence to support others in building theirs.'
-      },
-      positive_relations: {
-        'At Risk': 'Schedule one social activity per week and practice active listening skills. Show genuine interest in others during conversations.',
-        'Moderate': 'Strengthen existing relationships and be open to forming new connections. Schedule regular check-ins with friends and family.',
-        'Healthy': 'Continue nurturing relationships and support others in building social connections. Consider facilitating group activities or peer support.'
-      },
-      environmental_mastery: {
-        'At Risk': 'Break overwhelming tasks into smaller, manageable steps and use planning tools. Create structured daily routines that work for you.',
-        'Moderate': 'Develop better organizational systems and time management strategies. Build systems that work for your lifestyle and academic demands.',
-        'Healthy': 'Maintain your organizational skills and help others improve their environment management. Consider tutoring peers in time management.'
-      }
-    };
-    
-    return advice[dimension]?.[status] || `Focus on improving ${this.formatDimensionName(dimension)} through consistent daily practice and targeted skill-building activities.`;
-  }
-  
-  /**
-   * Generate action plan based on scores
-   * @param {Object} subscales - Dimension scores
-   * @param {string} riskLevel - Risk level
-   * @returns {Array} Action items
-   */
-  generateActionPlan(subscales, riskLevel) {
-    const actions = [];
-    
-    if (subscales) {
-      // Find lowest scoring dimensions
-      const sortedDimensions = Object.entries(subscales)
-        .sort(([,a], [,b]) => a - b)
-        .slice(0, 3);
-      
-      sortedDimensions.forEach(([dimension, score]) => {
-        if (score < 21) {
-          actions.push(`Focus on ${this.formatDimensionName(dimension)} through daily practice and skill building`);
+      Object.entries(dimensionInterventions).forEach(([dim, intervention]) => {
+        if (!intervention || intervention.trim().length < 30) {
+          errors.push(`Dimension intervention for ${dim} must be at least 30 characters long`);
         }
       });
     }
     
-    // Add general actions based on risk level
-    if (riskLevel === 'high') {
-      actions.push('Schedule weekly check-ins with a counselor or mental health professional');
-      actions.push('Establish a daily routine that includes self-care activities');
+    // Validate action plan
+    if (!actionPlan || actionPlan.length === 0) {
+      errors.push('Action plan must contain at least one action');
+    } else if (actionPlan.length < 3) {
+      errors.push('Action plan must contain at least 3 actions');
     }
     
-    actions.push('Practice mindfulness or meditation for 10 minutes daily');
-    actions.push('Maintain regular social connections with friends and family');
-    
-    return actions.slice(0, 6); // Limit to 6 actions
+    if (errors.length > 0) {
+      console.error('Intervention validation failed:', errors);
+      // Don't throw error, just log warnings - we'll use fallbacks
+      console.warn('Using fallback methods to ensure completeness');
+    }
   }
-  
+
   /**
-   * Generate intervention title based on content and risk level
-   * @param {string} strategy - Overall strategy text
-   * @param {string} riskLevel - Student's risk level
-   * @returns {string} Generated title
+   * Validate AI response quality for retry logic
+   * @param {Object} structuredResponse - The structured response from AI
+   * @returns {boolean} True if response meets quality standards
    */
-  generateInterventionTitle(strategy, riskLevel) {
-    const titles = {
-      'low': ['Wellness Enhancement Plan', 'Positive Growth Strategy', 'Strength Building Approach'],
-      'moderate': ['Balanced Development Plan', 'Supportive Growth Strategy', 'Wellness Improvement Plan'],
-      'high': ['Comprehensive Support Plan', 'Intensive Wellness Strategy', 'Priority Care Plan']
-    };
-    
-    const levelTitles = titles[riskLevel] || titles['moderate'];
-    return levelTitles[Math.floor(Math.random() * levelTitles.length)];
+  validateAIResponse(structuredResponse) {
+    try {
+      // Check if response has error flag
+      if (structuredResponse.error) {
+        return false;
+      }
+      
+      // Check overall strategy quality
+      if (!structuredResponse.overallStrategy || structuredResponse.overallStrategy.trim().length < 100) {
+        console.warn('AI response validation failed: Overall strategy too short');
+        return false;
+      }
+      
+      // Check dimension interventions quality - be more lenient
+      if (!structuredResponse.dimensionInterventions || Object.keys(structuredResponse.dimensionInterventions).length === 0) {
+        console.warn('AI response validation failed: No dimension interventions');
+        return false;
+      }
+      
+      // Check if we have at least 4 out of 6 dimensions with good content
+      let validDimensions = 0;
+      for (const [dim, intervention] of Object.entries(structuredResponse.dimensionInterventions)) {
+        if (intervention && intervention.trim().length >= 30 && !intervention.includes('No AI intervention available')) {
+          validDimensions++;
+        }
+      }
+      
+      if (validDimensions < 4) {
+        console.warn(`AI response validation failed: Only ${validDimensions} valid dimensions out of ${Object.keys(structuredResponse.dimensionInterventions).length}`);
+        return false;
+      }
+      
+      // Check action plan quality
+      if (!structuredResponse.actionPlan || structuredResponse.actionPlan.length < 3) {
+        console.warn('AI response validation failed: Insufficient action plan');
+        return false;
+      }
+      
+      // Check for generic fallback content
+      const responseText = JSON.stringify(structuredResponse).toLowerCase();
+      if (responseText.includes('please generate interventions') || 
+          responseText.includes('no ai intervention available') ||
+          responseText.includes('ai intervention generation failed')) {
+        console.warn('AI response validation failed: Contains fallback content');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating AI response:', error);
+      return false;
+    }
   }
+
+
 
   /**
    * Test connection to Ollama

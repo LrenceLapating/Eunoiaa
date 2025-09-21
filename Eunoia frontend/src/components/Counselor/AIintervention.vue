@@ -262,8 +262,15 @@
                 </div>
               </td>
               <td>
-                <button class="view-button" @click="viewStudentDetails(student)">
-                  <i class="fas fa-eye"></i> View
+                <button 
+                  class="view-button" 
+                  @click="viewStudentDetails(student)"
+                  :disabled="generatingStudents.has(student.id)"
+                  :class="{ 'generating': generatingStudents.has(student.id) }"
+                >
+                  <i v-if="generatingStudents.has(student.id)" class="fas fa-spinner fa-spin"></i>
+                  <i v-else class="fas fa-eye"></i>
+                  {{ generatingStudents.has(student.id) ? 'Generating...' : 'View' }}
                 </button>
               </td>
             </tr>
@@ -409,6 +416,8 @@ export default {
       isLoading: false,
       isSendingIntervention: false, // Loading state for sending intervention
       isBulkGenerating: false, // Loading state for bulk intervention generation
+      isGeneratingIntervention: false, // Loading state for individual intervention generation
+      generatingStudents: new Set(), // Track which students are currently having interventions generated
 
       // Notification system
       notification: {
@@ -433,15 +442,15 @@ export default {
       ],
       riskThresholds: {
         'ryff_42': {
-          atRisk: 111,    // ≤111: At-Risk (42-111)
-          moderate: 181,  // 112-181: Moderate, ≥182: Healthy (182-252)
+          atRisk: 18,     // 7-18: At-Risk
+          moderate: 30,   // 19-30: Moderate, 31-42: Healthy
           // Dimension-level thresholds
           q1: 18, // Below or equal to this is "At Risk" (7-18)
-          q4: 31  // Above or equal to this is "Healthy" (31-42)
+          q4: 30  // Above this is "Healthy" (31-42), moderate is 19-30
         },
         'ryff_84': {
-          atRisk: 223,    // ≤223: At-Risk (84-223)
-          moderate: 363,  // 224-363: Moderate, ≥364: Healthy (364-504)
+          atRisk: 36,     // 14-36: At-Risk
+          moderate: 59,   // 37-59: Moderate, 60-84: Healthy
           // Dimension-level thresholds
           q1: 36, // Below or equal to this is "At Risk" (14-36)
           q4: 59  // Above or equal to this is "Healthy" (60-84)
@@ -577,7 +586,7 @@ export default {
           riskLevel: assessment.risk_level,
           subscales: assessment.scores || {},
           completedAt: assessment.completed_at,
-          assessment_type: assessment.assessment_type,
+          assessmentType: assessment.assessment_type, // Fixed: use camelCase to match getDimensionMaxScore function
           atRiskDimensions: assessment.at_risk_dimensions || []
         };
       });
@@ -688,7 +697,7 @@ export default {
     // Risk assessment methods
     getThresholdsForStudent(student) {
       // Determine assessment type from student data
-      const assessmentType = student?.assessment_type === 'ryff_84' ? 'ryff_84' : 'ryff_42';
+      const assessmentType = student?.assessmentType === 'ryff_84' ? 'ryff_84' : 'ryff_42';
       return this.riskThresholds[assessmentType];
     },
     isAtRisk(score, student = null) {
@@ -697,11 +706,11 @@ export default {
     },
     isHealthy(score, student = null) {
       const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
-      return score >= thresholds.q4;
+      return score > thresholds.q4;
     },
     isModerate(score, student = null) {
       const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
-      return score > thresholds.q1 && score < thresholds.q4;
+      return score > thresholds.q1 && score <= thresholds.q4;
     },
     hasAnyRiskDimension(student) {
       if (!student || !student.subscales) return false;
@@ -801,15 +810,27 @@ export default {
       if (score < thresholds.q4) return 'Moderate';
       return 'Healthy';
     },
-    viewStudentDetails(student) {
+    async viewStudentDetails(student) {
+      // Prevent viewing if intervention is currently being generated for this student
+      if (this.generatingStudents.has(student.id)) {
+        return;
+      }
+      
       this.selectedStudent = student;
       this.isEditingActionPlan = false;
       this.showDetailsModal = true;
       
       // Fetch AI intervention for this student if not already loaded
-      this.fetchAIInterventionForStudent(student.id);
+      await this.fetchAIInterventionForStudent(student.id);
       
-      // Set action plan after a brief delay to allow AI intervention to load
+      // Check if intervention exists, if not, generate one automatically
+      const aiIntervention = this.aiGeneratedInterventions.get(student.id);
+      if (!aiIntervention || (!aiIntervention.overallStrategy && Object.keys(aiIntervention.dimensionInterventions || {}).length === 0)) {
+        console.log('No AI intervention found for student, generating automatically...');
+        await this.generateInterventionForStudent(student.id);
+      }
+      
+      // Set action plan after intervention is loaded/generated
       setTimeout(() => {
         this.updateEditableActionPlan();
       }, 100);
@@ -952,6 +973,14 @@ export default {
     hasInterventionSent(student) {
       return this.sentInterventions.has(student?.id);
     },
+    
+    hasInterventionAvailable(student) {
+      // Check if there's an AI-generated intervention available for this student
+      const aiIntervention = this.aiGeneratedInterventions.get(student?.id);
+      return aiIntervention && (aiIntervention.overallStrategy || Object.keys(aiIntervention.dimensionInterventions || {}).length > 0);
+    },
+
+
     
     getStudentReviewStatus(student) {
       // Find the intervention for this student and check if it's been reviewed
@@ -1150,14 +1179,26 @@ export default {
     },
     
     getDimensionIntervention(subscale, score) {
+      // Check if intervention is currently being generated
+      if (this.isGeneratingIntervention) {
+        return "Generating AI intervention for this dimension...";
+      }
+      
       // Check if we have AI-generated intervention for this student
       const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent?.id);
-      if (aiIntervention && aiIntervention.dimensionInterventions && aiIntervention.dimensionInterventions[subscale]) {
+      
+      if (!aiIntervention) {
+        // Still loading - no data fetched yet
+        return "Loading AI-generated intervention for this dimension...";
+      }
+      
+      if (aiIntervention.dimensionInterventions && aiIntervention.dimensionInterventions[subscale]) {
+        // AI intervention exists for this dimension
         return aiIntervention.dimensionInterventions[subscale];
       }
       
-      // Return loading message if no AI intervention available
-      return "Loading AI-generated intervention for this dimension...";
+      // AI intervention was fetched but no intervention exists for this dimension
+      return "No AI intervention available for this dimension. Please generate interventions using the 'Generate AI Interventions' button above.";
     },
     
     getActionPlan(student) {
@@ -1327,6 +1368,58 @@ export default {
           dimensionInterventions: {},
           actionPlan: []
         });
+      }
+    },
+    
+    // Generate AI intervention for a specific student
+    async generateInterventionForStudent(studentId) {
+      try {
+        this.generatingStudents.add(studentId);
+        this.isGeneratingIntervention = true;
+        console.log('Generating AI intervention for student:', studentId);
+        
+        const response = await fetch(apiUrl('ai-interventions/generate'), {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            studentId: studentId
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          console.log('AI intervention generated successfully for student:', studentId);
+          // Fetch the newly generated intervention
+          await this.fetchAIInterventionForStudent(studentId);
+          this.showNotification(
+            'success',
+            'Intervention Generated',
+            'AI intervention has been successfully generated for this student.'
+          );
+        } else {
+          console.error('Failed to generate AI intervention:', result.error || 'Unknown error');
+          // Show a user-friendly notification
+          this.showNotification(
+            'warning',
+            'Intervention Generation',
+            'Unable to generate AI intervention automatically. You can manually generate interventions using the "Generate AI Interventions" button.'
+          );
+        }
+      } catch (error) {
+        console.error('Error generating AI intervention for student:', error);
+        // Show a user-friendly notification
+        this.showNotification(
+          'warning',
+          'Intervention Generation',
+          'Unable to generate AI intervention automatically. Please check your connection and try again.'
+        );
+      } finally {
+        this.generatingStudents.delete(studentId);
+        this.isGeneratingIntervention = false;
       }
     },
     
@@ -1994,6 +2087,22 @@ export default {
 
 .view-button:hover {
   background: #00A3A0;
+}
+
+.view-button:disabled,
+.view-button.generating {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.view-button.generating {
+  background: #ff9800;
+  cursor: not-allowed;
+}
+
+.view-button.generating:hover {
+  background: #ff9800;
 }
 
 .no-data {

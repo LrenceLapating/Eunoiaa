@@ -372,7 +372,7 @@
                   <div class="intervention-meta">
                     <div class="overall-score">
                       <span class="score-label">Overall Score</span>
-                      <span class="score-value" :class="getRiskLevelClass(intervention.risk_level)">{{ getRiskLevelScore(intervention.risk_level) }}</span>
+                      <span class="score-value" :class="getRiskLevelClass(intervention.risk_level)">{{ getRiskLevelScore(intervention.risk_level, intervention) }}</span>
                     </div>
                     <div class="status-badge" :class="intervention.is_read ? 'reviewed' : 'new'">
                       <i class="fas" :class="intervention.is_read ? 'fa-check-circle' : 'fa-circle'"></i>
@@ -406,7 +406,7 @@
                     >
                       <div class="dimension-header">
                         <h5>{{ formatDimensionName(dimension) }}</h5>
-                        <div class="dimension-score" :class="getDimensionScoreClass(intervention.dimension_scores, dimension)">
+                        <div class="dimension-score" :class="getDimensionScoreClass(intervention.dimension_scores, dimension, intervention)">
                           {{ getDimensionScore(intervention.dimension_scores, dimension) }}
                         </div>
                       </div>
@@ -1135,7 +1135,15 @@ export default {
       }[riskLevel] || 'score-unknown';
     },
 
-    getRiskLevelScore(riskLevel) {
+    getRiskLevelScore(riskLevel, intervention = null) {
+      // Check if we have intervention data with overall_score
+      if (intervention && intervention.overall_score) {
+        const assessmentType = intervention.assessment_type || 'ryff_42';
+        const maxScore = assessmentType === 'ryff_84' ? 504 : 252;
+        return `${intervention.overall_score}/${maxScore}`;
+      }
+      
+      // Fallback to static values for 42-item assessments
       return {
         'low': '120/252',
         'moderate': '150/252',
@@ -1202,14 +1210,26 @@ export default {
       return dimensionScores[dimension] || 'N/A';
     },
 
-    getDimensionScoreClass(dimensionScores, dimension) {
+    getDimensionScoreClass(dimensionScores, dimension, intervention = null) {
       const score = this.getDimensionScore(dimensionScores, dimension);
       if (score === 'N/A') return 'score-unknown';
       
       const numScore = parseInt(score);
-      if (numScore >= 30) return 'score-high';
-      if (numScore >= 20) return 'score-moderate';
-      return 'score-low';
+      
+      // Determine assessment type and use appropriate thresholds
+      const assessmentType = intervention?.assessment_type || 'ryff_42';
+      
+      if (assessmentType === 'ryff_84') {
+        // 84-item thresholds: ≤36 = At Risk, 37-59 = Moderate, ≥60 = Healthy
+        if (numScore >= 60) return 'score-high';   // Healthy (green)
+        if (numScore >= 37) return 'score-moderate'; // Moderate (yellow)
+        return 'score-low';  // At Risk (red)
+      } else {
+        // 42-item thresholds: ≤18 = At Risk, 19-30 = Moderate, ≥31 = Healthy  
+        if (numScore >= 31) return 'score-high';   // Healthy (green)
+        if (numScore >= 19) return 'score-moderate'; // Moderate (yellow)
+        return 'score-low';  // At Risk (red)
+      }
     }
   }
 }
