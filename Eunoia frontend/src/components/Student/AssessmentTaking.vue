@@ -40,6 +40,10 @@
       <div class="question-card">
         <div class="question-header">
           <span class="question-number">Q{{ currentQuestionIndex + 1 }}</span>
+          <div class="dimension-info">
+            <span class="dimension-name">{{ currentQuestionDimension.toUpperCase() }}</span>
+            <span class="dimension-question-number">{{ currentQuestion.id }}</span>
+          </div>
         </div>
         
         <div class="question-text">
@@ -202,6 +206,35 @@ export default {
     },
     isAssessmentComplete() {
       return this.answeredQuestions === this.totalQuestions
+    },
+    // Get dimension display name
+    currentQuestionDimension() {
+      const dimension = this.currentQuestion.dimension
+      const dimensionNames = {
+        autonomy: 'Autonomy',
+        environmentalMastery: 'Environmental Mastery',
+        personalGrowth: 'Personal Growth',
+        positiveRelations: 'Positive Relations with Others',
+        purposeInLife: 'Purpose in Life',
+        selfAcceptance: 'Self-Acceptance'
+      }
+      return dimensionNames[dimension] || dimension
+    },
+    // Get question number within the dimension (based on original order, not shuffled)
+    currentQuestionNumberInDimension() {
+      const currentDimension = this.currentQuestion.dimension
+      const originalQuestionnaire = this.assessmentType === '84' ? ryff84ItemQuestionnaire : ryff42ItemQuestionnaire
+      const questionsInSameDimension = originalQuestionnaire.items
+        .filter(item => item.dimension === currentDimension)
+        .sort((a, b) => a.id - b.id) // Sort by original ID order
+      const currentQuestionIndex = questionsInSameDimension.findIndex(item => item.id === this.currentQuestion.id)
+      return currentQuestionIndex + 1
+    },
+    // Get total questions in current dimension
+    totalQuestionsInDimension() {
+      const currentDimension = this.currentQuestion.dimension
+      const originalQuestionnaire = this.assessmentType === '84' ? ryff84ItemQuestionnaire : ryff42ItemQuestionnaire
+      return originalQuestionnaire.items.filter(item => item.dimension === currentDimension).length
     }
   },
   async mounted() {
@@ -635,6 +668,26 @@ export default {
   justify-content: center;
   font-weight: 600;
   font-size: 0.875rem;
+}
+
+.dimension-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dimension-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0d6efd;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dimension-question-number {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-weight: 500;
 }
 
 

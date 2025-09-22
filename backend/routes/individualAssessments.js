@@ -161,7 +161,9 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
       finalScheduledDate = new Date().toISOString(); // Send now
     }
 
-    // Create individual assessment record
+    // STEP 1: Always create a new individual assessment record
+    console.log(`📝 Creating individual assessment for ${student.college}...`);
+    
     const { data: individualAssessment, error: assessmentError } = await supabase
       .from('bulk_assessments')
       .insert({
@@ -190,14 +192,49 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
         message: 'Failed to create individual assessment'
       });
     }
+    
+    const bulkAssessmentToUse = individualAssessment;
 
-    // Create assessment assignment for the student (matching bulk assessment pattern)
+    // STEP 1: Invalidate previous semester assessments for this student
+    console.log(`🔄 Invalidating previous semester ${assessmentType} assessments for student ${studentId}...`);
+    
+    try {
+      // Call the database function to invalidate previous semester assessments
+      const { data: invalidationResult, error: invalidationError } = await supabase
+        .rpc('invalidate_previous_semester_assessments', {
+          p_student_ids: [studentId],
+          p_assessment_type: assessmentType,
+          p_current_school_year: academicYear,
+          p_current_semester: semester
+        });
+
+      if (invalidationError) {
+        console.error('⚠️ Error invalidating previous assessments:', invalidationError);
+        // Continue with assignment creation even if invalidation fails
+      } else if (invalidationResult && invalidationResult.length > 0) {
+        const result = invalidationResult[0];
+        console.log(`✅ Successfully invalidated ${result.invalidated_count} previous semester assessments`);
+        
+        // Log details for audit trail
+        if (result.log_details && result.log_details.length > 0) {
+          console.log('📝 Invalidation details:', JSON.stringify(result.log_details, null, 2));
+        }
+      } else {
+        console.log('ℹ️ No previous semester assessments found to invalidate');
+      }
+    } catch (invalidationErr) {
+      console.error('⚠️ Exception during assessment invalidation:', invalidationErr);
+      // Continue with assignment creation
+    }
+
+    // STEP 2: Create assessment assignment for the student (matching bulk assessment pattern)
+    console.log(`📝 Creating individual assessment assignment for student ${studentId}...`);
     const expirationDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now (same as bulk)
 
     const { error: assignmentError } = await supabase
       .from('assessment_assignments')
       .insert({
-        bulk_assessment_id: individualAssessment.id,
+        bulk_assessment_id: bulkAssessmentToUse.id,
         student_id: studentId,
         status: 'assigned', // Changed from 'pending' to match bulk assessments
         assigned_at: new Date().toISOString(),
@@ -206,25 +243,30 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
 
     if (assignmentError) {
       console.error('Error creating assessment assignment:', assignmentError);
-      // Rollback the assessment creation
-      await supabase
-        .from('bulk_assessments')
-        .delete()
-        .eq('id', individualAssessment.id);
+      // Rollback the newly created individual assessment
+      if (bulkAssessmentToUse.assessment_source === 'individual') {
+        console.log('🔄 Rolling back newly created individual assessment...');
+        await supabase
+          .from('bulk_assessments')
+          .delete()
+          .eq('id', bulkAssessmentToUse.id);
+      }
       
       return res.status(500).json({
         success: false,
         message: 'Failed to assign assessment to student'
       });
+    } else {
+      console.log(`✅ Successfully created assessment assignment for bulk assessment: ${bulkAssessmentToUse.id}`);
     }
 
-    console.log('✅ Individual assessment created successfully:', individualAssessment.id);
+    console.log('✅ Individual assessment process completed successfully:', bulkAssessmentToUse.id);
 
     res.status(201).json({
       success: true,
       message: `Assessment "${assessmentName}" sent successfully to ${student.name}`,
       assessment: {
-        id: individualAssessment.id,
+        id: bulkAssessmentToUse.id,
         name: assessmentName,
         type: assessmentType,
         student: {
@@ -234,7 +276,8 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
           college: student.college
         },
         scheduledDate: finalScheduledDate,
-        status: individualAssessment.status
+        status: bulkAssessmentToUse.status,
+        isUsingExistingBulk: false
       }
     });
 
@@ -255,11 +298,43 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
     
     console.log(`📊 Fetching individual assessment history for counselor ${counselorId}, filter: ${assessment_type || 'all'}`);
     
-    // Get individual assessments only
+    // First, get total count for pagination (optimized count query)
+    let countQuery = supabase
+      .from('bulk_assessments')
+      .select('id', { count: 'exact', head: true })
+      .eq('counselor_id', counselorId)
+      .eq('target_type', 'individual')
+      .not('target_student_id', 'is', null);
+
+    if (assessment_type) {
+      countQuery = countQuery.eq('assessment_type', assessment_type);
+    }
+
+    const { count: totalCount, error: countError } = await countQuery;
+
+    if (countError) {
+      console.error('Error getting assessment count:', countError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch assessment count'
+      });
+    }
+
+    // Build optimized query with JOIN and database-level pagination
+    const offset = (page - 1) * limit;
     let query = supabase
       .from('bulk_assessments')
       .select(`
-        *,
+        id,
+        assessment_name,
+        assessment_type,
+        target_student_id,
+        custom_message,
+        scheduled_date,
+        status,
+        created_at,
+        school_year,
+        semester,
         students!target_student_id (
           id,
           name,
@@ -267,18 +342,25 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
           college,
           year_level,
           section
+        ),
+        assessment_assignments!bulk_assessment_id (
+          status,
+          assigned_at,
+          completed_at,
+          student_id
         )
       `)
       .eq('counselor_id', counselorId)
-      .eq('assessment_source', 'individual')
-      .not('target_student_id', 'is', null);
+      .not('target_student_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     // Apply assessment type filter if provided
     if (assessment_type && assessment_type !== 'all') {
       query = query.eq('assessment_type', assessment_type);
     }
 
-    const { data: assessments, error } = await query.order('created_at', { ascending: false });
+    const { data: assessments, error } = await query;
 
     if (error) {
       console.error('Error fetching individual assessment history:', error);
@@ -288,17 +370,14 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
       });
     }
 
-    console.log(`📋 Found ${assessments.length} individual assessments before pagination`);
+    console.log(`📋 Found ${assessments.length} individual assessments for page ${page}`);
 
-    // Get assignment counts for each assessment
-    const enrichedAssessments = await Promise.all(assessments.map(async (assessment) => {
-      // Get assignment status
-      const { data: assignment } = await supabase
-        .from('assessment_assignments')
-        .select('status, assigned_at, completed_at')
-        .eq('bulk_assessment_id', assessment.id)
-        .eq('student_id', assessment.target_student_id)
-        .single();
+    // Transform data (no more Promise.all needed!)
+    const enrichedAssessments = assessments.map((assessment) => {
+      // Find the assignment for this specific student
+      const assignment = assessment.assessment_assignments?.find(
+        assign => assign.student_id === assessment.target_student_id
+      );
 
       const totalAssigned = 1;
       const totalCompleted = assignment?.status === 'completed' ? 1 : 0;
@@ -331,19 +410,17 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
         completion: completionPercentage,
         completionText: `${totalCompleted}/${totalAssigned}`
       };
-    }));
+    });
 
-    // Apply pagination
-    const offset = (page - 1) * limit;
-    const paginatedAssessments = enrichedAssessments.slice(offset, offset + parseInt(limit));
+    const paginatedAssessments = enrichedAssessments;
 
     res.json({
       success: true,
       assessments: paginatedAssessments,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(enrichedAssessments.length / limit),
-        totalItems: enrichedAssessments.length,
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
         itemsPerPage: parseInt(limit)
       }
     });

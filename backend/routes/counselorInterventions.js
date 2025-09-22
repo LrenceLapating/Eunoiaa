@@ -265,6 +265,41 @@ router.post('/bulk-send', verifyCounselorSession, async (req, res) => {
   }
 });
 
+// GET /api/counselor-interventions - Get all interventions (for checking availability)
+router.get('/', verifyCounselorSession, async (req, res) => {
+  try {
+    console.log('Fetching all interventions for availability check');
+    
+    // Get all interventions regardless of status
+    const { data: interventions, error } = await supabase
+      .from('counselor_interventions')
+      .select('student_id, status, created_at')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching all interventions:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch interventions'
+      });
+    }
+    
+    console.log(`Found ${interventions.length} total interventions`);
+    
+    res.json({
+      success: true,
+      data: interventions
+    });
+    
+  } catch (error) {
+    console.error('Error in all interventions route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 // GET /api/counselor-interventions/sent - Get interventions sent by the current counselor
 router.get('/sent', verifyCounselorSession, async (req, res) => {
   try {

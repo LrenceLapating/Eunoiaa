@@ -398,6 +398,44 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
       const studentsToAssign = targetStudents.filter(student => !existingStudentIds.has(student.id));
 
       if (studentsToAssign.length > 0) {
+        // STEP 1: Invalidate previous semester assessments for these students
+        console.log(`🔄 Invalidating previous semester ${assessmentType} assessments for ${studentsToAssign.length} students...`);
+        
+        try {
+          const studentIds = studentsToAssign.map(student => student.id);
+          
+          // Call the database function to invalidate previous semester assessments
+          const { data: invalidationResult, error: invalidationError } = await supabase
+            .rpc('invalidate_previous_semester_assessments', {
+              p_student_ids: studentIds,
+              p_assessment_type: assessmentType,
+              p_current_school_year: academicYear,
+              p_current_semester: semester
+            });
+
+          if (invalidationError) {
+            console.error('⚠️ Error invalidating previous assessments:', invalidationError);
+            // Continue with assignment creation even if invalidation fails
+          } else if (invalidationResult && invalidationResult.length > 0) {
+            const result = invalidationResult[0];
+            console.log(`✅ Successfully invalidated ${result.invalidated_count} previous semester assessments`);
+            console.log(`📊 Affected students: ${result.affected_student_ids?.length || 0}`);
+            
+            // Log details for audit trail
+            if (result.log_details && result.log_details.length > 0) {
+              console.log('📝 Invalidation details:', JSON.stringify(result.log_details, null, 2));
+            }
+          } else {
+            console.log('ℹ️ No previous semester assessments found to invalidate');
+          }
+        } catch (invalidationErr) {
+          console.error('⚠️ Exception during assessment invalidation:', invalidationErr);
+          // Continue with assignment creation
+        }
+
+        // STEP 2: Create new assessment assignments
+        console.log(`📝 Creating ${studentsToAssign.length} new assessment assignments...`);
+        
         const assignments = studentsToAssign.map(student => ({
           bulk_assessment_id: bulkAssessment.id,
           student_id: student.id,
@@ -413,6 +451,8 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
         if (assignmentError) {
           console.error('Error creating assignments:', assignmentError);
           // Don't fail the whole operation, just log the error
+        } else {
+          console.log(`✅ Successfully created ${assignments.length} new assessment assignments`);
         }
       }
 
@@ -471,7 +511,7 @@ router.post('/create', verifyCounselorSession, async (req, res) => {
   }
 });
 
-// Get bulk assessment history for counselor
+// Get bulk assessment history for counselor (OPTIMIZED VERSION)
 router.get('/history', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
@@ -479,13 +519,40 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
     
     console.log(`📊 Fetching assessment history for counselor ${counselorId}, filter: ${assessment_type || 'all'}`);
     
-    // Get ALL bulk assessments first (we'll handle filtering after grouping)
+    // Build optimized query with proper filtering and pagination
     let query = supabase
       .from('bulk_assessments')
-      .select('*')
-      .eq('counselor_id', counselorId);
-    
-    const { data: assessments, error } = await query.order('created_at', { ascending: false });
+      .select(`
+        id,
+        assessment_name,
+        assessment_type,
+        target_type,
+        target_colleges,
+        target_year_levels,
+        target_sections,
+        custom_message,
+        scheduled_date,
+        status,
+        created_at,
+        updated_at,
+        school_year,
+        semester
+      `)
+      .eq('counselor_id', counselorId)
+      .neq('status', 'archived');
+
+    // Apply assessment type filter at database level
+    if (assessment_type && (assessment_type === 'ryff_42' || assessment_type === 'ryff_84')) {
+      query = query.eq('assessment_type', assessment_type);
+    }
+
+    // Apply pagination at database level
+    const offset = (page - 1) * limit;
+    query = query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const { data: assessments, error } = await query;
 
     if (error) {
       console.error('Error fetching assessment history:', error);
@@ -495,122 +562,129 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
       });
     }
 
-    console.log(`📋 Found ${assessments.length} total assessments before filtering`);
+    if (!assessments || assessments.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    }
 
-    // Get assignment counts for each assessment
-    const enrichedAssessments = await Promise.all(assessments.map(async (assessment) => {
-      // Get total assigned count
-      const { count: totalAssigned } = await supabase
-        .from('assessment_assignments')
-        .select('*', { count: 'exact', head: true })
-        .eq('bulk_assessment_id', assessment.id);
-      
-      // Get completed count
-      const { count: totalCompleted } = await supabase
-        .from('assessment_assignments')
-        .select('*', { count: 'exact', head: true })
-        .eq('bulk_assessment_id', assessment.id)
-        .eq('status', 'completed');
-      
-      const completionPercentage = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
+    console.log(`📋 Found ${assessments.length} assessments for page ${page}`);
+
+    // Get assignment counts using a single optimized query with aggregation
+    const assessmentIds = assessments.map(a => a.id);
+    
+    const { data: assignmentStats, error: statsError } = await supabase
+      .from('assessment_assignments')
+      .select(`
+        bulk_assessment_id,
+        status
+      `)
+      .in('bulk_assessment_id', assessmentIds);
+
+    if (statsError) {
+      console.error('Error fetching assignment stats:', statsError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch assignment statistics'
+      });
+    }
+
+    // Create stats map for quick lookup
+    const statsMap = {};
+    assignmentStats?.forEach(assignment => {
+      const bulkId = assignment.bulk_assessment_id;
+      if (!statsMap[bulkId]) {
+        statsMap[bulkId] = { total: 0, completed: 0 };
+      }
+      statsMap[bulkId].total++;
+      if (assignment.status === 'completed') {
+        statsMap[bulkId].completed++;
+      }
+    });
+
+    // Enrich assessments with stats
+    const enrichedAssessments = assessments.map(assessment => {
+      const stats = statsMap[assessment.id] || { total: 0, completed: 0 };
+      const completionPercentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
       
       return {
         ...assessment,
-        total_assigned: totalAssigned || 0,
-        total_completed: totalCompleted || 0,
+        total_assigned: stats.total,
+        total_completed: stats.completed,
         completion_percentage: completionPercentage
       };
-    }));
+    });
 
-    // Group assessments by college and assessment type to merge duplicates
-    const groupedAssessments = {};
+    // Group assessments by college to eliminate duplicates
+    const collegeGroups = {};
     
     enrichedAssessments.forEach(assessment => {
-      // Create a unique key for each college-assessment type combination
-      const colleges = assessment.target_colleges || [];
-      const assessmentType = assessment.assessment_type;
+      const colleges = Array.isArray(assessment.target_colleges) ? assessment.target_colleges : [assessment.target_colleges];
       
       colleges.forEach(college => {
-        const groupKey = `${college}_${assessmentType}`;
-        
-        if (!groupedAssessments[groupKey]) {
-          // First assessment for this college-type combination
-          groupedAssessments[groupKey] = {
-            id: assessment.id, // Use the first assessment's ID
-            assessment_name: assessment.assessment_name,
-            assessment_type: assessment.assessment_type,
-            target_type: assessment.target_type,
-            target_colleges: [college], // Single college for this group
-            custom_message: assessment.custom_message,
-            scheduled_date: assessment.scheduled_date,
-            status: assessment.status,
-            created_at: assessment.created_at, // Use earliest date
-            updated_at: assessment.updated_at,
-            target_year_levels: assessment.target_year_levels || [],
-            target_sections: assessment.target_sections || [],
-            school_year: assessment.school_year,
-            semester: assessment.semester,
-            total_assigned: assessment.total_assigned,
-            total_completed: assessment.total_completed,
-            completion_percentage: assessment.completion_percentage,
-            // Keep track of merged assessments
-            merged_assessment_ids: [assessment.id],
-            merged_sections: assessment.target_sections || []
-          };
-        } else {
-          // Merge with existing group
-          const existing = groupedAssessments[groupKey];
+        if (college && college !== null) {
+          const groupKey = `${college}_${assessment.assessment_type}_${assessment.school_year}_${assessment.semester}`;
           
-          // Merge recipient counts
-          existing.total_assigned += assessment.total_assigned;
-          existing.total_completed += assessment.total_completed;
-          
-          // Recalculate completion percentage
-          existing.completion_percentage = existing.total_assigned > 0 
-            ? Math.round((existing.total_completed / existing.total_assigned) * 100) 
-            : 0;
-          
-          // Use the most recent date
-          if (new Date(assessment.created_at) > new Date(existing.created_at)) {
-            existing.created_at = assessment.created_at;
-            existing.updated_at = assessment.updated_at;
+          if (!collegeGroups[groupKey]) {
+            collegeGroups[groupKey] = {
+              assessments: [],
+              college: college,
+              assessment_type: assessment.assessment_type,
+              school_year: assessment.school_year,
+              semester: assessment.semester
+            };
           }
           
-          // Merge sections
-          const newSections = assessment.target_sections || [];
-          existing.merged_sections = [...new Set([...existing.merged_sections, ...newSections])];
-          existing.target_sections = existing.merged_sections;
-          
-          // Keep track of merged assessment IDs
-          existing.merged_assessment_ids.push(assessment.id);
+          collegeGroups[groupKey].assessments.push(assessment);
         }
       });
     });
 
-    // Convert grouped assessments back to array
-    let finalAssessments = Object.values(groupedAssessments);
-    
-    // Apply assessment type filter AFTER grouping
-    if (assessment_type && (assessment_type === 'ryff_42' || assessment_type === 'ryff_84')) {
-      finalAssessments = finalAssessments.filter(assessment => 
-        assessment.assessment_type === assessment_type
-      );
-      console.log(`🔍 Filtered to ${finalAssessments.length} assessments of type ${assessment_type}`);
-    }
-    
-    // Sort by date
-    finalAssessments = finalAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    // Create grouped assessments with aggregated data
+    const groupedAssessments = Object.values(collegeGroups).map(group => {
+      // Sort by created_at to get the most recent assessment for display data
+      const sortedAssessments = group.assessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const mostRecentAssessment = sortedAssessments[0];
+      
+      // Aggregate recipient counts and completion data
+      const totalAssigned = group.assessments.reduce((sum, assessment) => sum + (assessment.total_assigned || 0), 0);
+      const totalCompleted = group.assessments.reduce((sum, assessment) => sum + (assessment.total_completed || 0), 0);
+      const aggregatedCompletionPercentage = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
+      
+      // Create assessment name that reflects the grouping
+      const assessmentName = `${mostRecentAssessment.assessment_type === 'ryff_42' ? '42' : '84'} Items, ${mostRecentAssessment.school_year} ${mostRecentAssessment.semester} - ${group.college}`;
+      
+      return {
+        ...mostRecentAssessment,
+        assessment_name: assessmentName,
+        target_colleges: [group.college], // Single college for grouped display
+        total_assigned: totalAssigned,
+        total_completed: totalCompleted,
+        completion_percentage: aggregatedCompletionPercentage,
+        // Add metadata about grouping
+        grouped_assessment_count: group.assessments.length,
+        grouped_assessment_ids: group.assessments.map(a => a.id)
+      };
+    });
 
-    // Apply pagination to the filtered results
-    const offset = (page - 1) * limit;
+    // Sort grouped assessments by created_at (most recent first)
+    const finalAssessments = groupedAssessments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Apply pagination to grouped results
     const paginatedAssessments = finalAssessments.slice(offset, offset + limit);
+    const totalCount = finalAssessments.length;
 
-    console.log(`📄 Returning ${paginatedAssessments.length} assessments (page ${page})`);
+    console.log(`📄 Returning ${paginatedAssessments.length} grouped assessments (page ${page} of ${Math.ceil(totalCount / limit)})`);
+    console.log(`📊 Grouped ${enrichedAssessments.length} individual assessments into ${finalAssessments.length} college groups`);
 
     res.json({
       success: true,
       data: paginatedAssessments,
-      total: finalAssessments.length,
+      total: totalCount,
       page: parseInt(page),
       limit: parseInt(limit)
     });

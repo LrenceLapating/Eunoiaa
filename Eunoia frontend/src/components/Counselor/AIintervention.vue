@@ -265,12 +265,17 @@
                 <button 
                   class="view-button" 
                   @click="viewStudentDetails(student)"
-                  :disabled="generatingStudents.has(student.id)"
-                  :class="{ 'generating': generatingStudents.has(student.id) }"
+                  :disabled="generatingStudents.has(student.id) || !hasInterventionAvailable(student)"
+                  :class="{ 
+                    'generating': generatingStudents.has(student.id),
+                    'disabled': !hasInterventionAvailable(student) && !generatingStudents.has(student.id)
+                  }"
+                  :title="getViewButtonTooltip(student)"
                 >
                   <i v-if="generatingStudents.has(student.id)" class="fas fa-spinner fa-spin"></i>
+                  <i v-else-if="!hasInterventionAvailable(student)" class="fas fa-clock"></i>
                   <i v-else class="fas fa-eye"></i>
-                  {{ generatingStudents.has(student.id) ? 'Generating...' : 'View' }}
+                  {{ getViewButtonText(student) }}
                 </button>
               </td>
             </tr>
@@ -428,6 +433,7 @@ export default {
       },
 
       aiGeneratedInterventions: new Map(), // Store AI-generated interventions by student ID
+      existingInterventions: new Set(), // Store student IDs who have existing interventions in database
       // Real student data from backend
       atRiskStudents: [],
       moderateStudents: [],
@@ -461,6 +467,7 @@ export default {
   async mounted() {
     // Don't fetch student data initially - wait for user to select assessment type
     await this.fetchSentInterventions();
+    await this.fetchExistingInterventions();
   },
   computed: {
     // These are now data properties fetched from backend
@@ -486,6 +493,7 @@ export default {
     async onAssessmentTypeChange() {
       if (this.assessmentTypeFilter) {
         await this.fetchStudentsByRiskLevel();
+        await this.fetchExistingInterventions(); // Refresh intervention data
       } else {
         // Clear data when no assessment type is selected
         this.atRiskStudents = [];
@@ -631,6 +639,39 @@ export default {
         }
       } catch (error) {
         console.error('Error fetching sent interventions:', error);
+      }
+    },
+
+    // Fetch all existing interventions (including unsent ones) to check availability
+    async fetchExistingInterventions() {
+      try {
+        const response = await fetch(apiUrl('/counselor-interventions'), {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          if (result.success && result.data) {
+            // Clear existing interventions and populate with backend data
+            this.existingInterventions.clear();
+            
+            result.data.forEach(intervention => {
+              // Add all students who have any intervention (sent or unsent)
+              this.existingInterventions.add(intervention.student_id);
+            });
+            
+            console.log('Existing interventions loaded for:', this.existingInterventions.size, 'students');
+          }
+        } else {
+          console.error('Failed to fetch existing interventions - status:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching existing interventions:', error);
       }
     },
     
@@ -937,6 +978,10 @@ export default {
           // Mark intervention as sent
           this.sentInterventions.add(this.selectedStudent.id);
           
+          // Refresh intervention data to update button states
+          await this.fetchSentInterventions();
+          await this.fetchExistingInterventions();
+          
           // Show success notification
           this.showNotification(
             'success',
@@ -975,9 +1020,14 @@ export default {
     },
     
     hasInterventionAvailable(student) {
-      // Check if there's an AI-generated intervention available for this student
+      // Check if there's an AI-generated intervention available for this student (in memory)
       const aiIntervention = this.aiGeneratedInterventions.get(student?.id);
-      return aiIntervention && (aiIntervention.overallStrategy || Object.keys(aiIntervention.dimensionInterventions || {}).length > 0);
+      const hasInMemoryIntervention = aiIntervention && (aiIntervention.overallStrategy || Object.keys(aiIntervention.dimensionInterventions || {}).length > 0);
+      
+      // Check if intervention exists in database
+      const hasExistingIntervention = this.existingInterventions.has(student?.id);
+      
+      return hasInMemoryIntervention || hasExistingIntervention;
     },
 
 
@@ -1029,6 +1079,10 @@ export default {
           result.data.successful.forEach(intervention => {
             this.sentInterventions.add(intervention.student_id);
           });
+          
+          // Refresh intervention data to update button states
+          await this.fetchSentInterventions();
+          await this.fetchExistingInterventions();
           
           // Show success message with details
           const successCount = result.data.summary.successful;
@@ -1395,6 +1449,8 @@ export default {
           console.log('AI intervention generated successfully for student:', studentId);
           // Fetch the newly generated intervention
           await this.fetchAIInterventionForStudent(studentId);
+          // Refresh existing interventions to update button states
+          await this.fetchExistingInterventions();
           this.showNotification(
             'success',
             'Intervention Generated',
@@ -1454,6 +1510,27 @@ export default {
     
     hideNotification() {
       this.notification.show = false;
+    },
+
+    // Helper methods for view button state
+    getViewButtonText(student) {
+      if (this.generatingStudents.has(student.id)) {
+        return 'Generating...';
+      } else if (!this.hasInterventionAvailable(student)) {
+        return 'Pending';
+      } else {
+        return 'View';
+      }
+    },
+
+    getViewButtonTooltip(student) {
+      if (this.generatingStudents.has(student.id)) {
+        return 'AI intervention is currently being generated for this student';
+      } else if (!this.hasInterventionAvailable(student)) {
+        return 'AI intervention not yet generated. Please wait for automatic generation or use the Generate AI Interventions button.';
+      } else {
+        return 'View student intervention details';
+      }
     }
 
   },

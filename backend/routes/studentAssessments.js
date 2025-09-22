@@ -13,14 +13,30 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
     const { assessment_type } = req.query; // Optional filter parameter
     console.log(`Fetching assigned assessments for student: ${studentId}${assessment_type ? ` (type: ${assessment_type})` : ''}`);
 
-    // Get assigned assessments that are not completed or expired
-    const { data: assignments, error } = await supabase
+    // Build the query with JOIN to get both assignment and bulk assessment data in one query
+    let query = supabase
       .from('assessment_assignments')
-      .select('*')
+      .select(`
+        *,
+        bulk_assessments!inner(
+          id,
+          assessment_name,
+          assessment_type,
+          custom_message,
+          scheduled_date
+        )
+      `)
       .eq('student_id', studentId)
       .in('status', ['assigned', 'in_progress'])
       .gt('expires_at', new Date().toISOString())
       .order('assigned_at', { ascending: false });
+
+    // Apply assessment_type filter if provided (more efficient to filter in the query)
+    if (assessment_type) {
+      query = query.eq('bulk_assessments.assessment_type', assessment_type);
+    }
+
+    const { data: assignments, error } = await query;
 
     if (error) {
       console.error('Error fetching assigned assessments:', error);
@@ -30,42 +46,11 @@ router.get('/assigned', verifyStudentSession, async (req, res) => {
       });
     }
 
-    // Fetch bulk assessment details separately
-    let enrichedAssignments = [];
-    if (assignments && assignments.length > 0) {
-      const bulkAssessmentIds = assignments.map(a => a.bulk_assessment_id);
-      const { data: bulkAssessments, error: bulkError } = await supabase
-        .from('bulk_assessments')
-        .select('id, assessment_name, assessment_type, custom_message, scheduled_date')
-        .in('id', bulkAssessmentIds);
-
-      if (bulkError) {
-        console.error('Error fetching bulk assessments:', bulkError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to fetch assessment details'
-        });
-      }
-
-      // Create a map for quick lookup
-      const bulkAssessmentMap = {};
-      bulkAssessments?.forEach(bulk => {
-        bulkAssessmentMap[bulk.id] = bulk;
-      });
-
-      // Enrich assignments with bulk assessment data
-      enrichedAssignments = assignments.map(assignment => ({
-        ...assignment,
-        bulk_assessment: bulkAssessmentMap[assignment.bulk_assessment_id] || null
-      }));
-
-      // Apply assessment_type filter if provided
-      if (assessment_type) {
-        enrichedAssignments = enrichedAssignments.filter(assignment => 
-          assignment.bulk_assessment?.assessment_type === assessment_type
-        );
-      }
-    }
+    // Transform the data to match the expected format
+    const enrichedAssignments = assignments?.map(assignment => ({
+      ...assignment,
+      bulk_assessment: assignment.bulk_assessments
+    })) || [];
 
     console.log(`Found ${enrichedAssignments?.length || 0} assigned assessments for student ${studentId}`);
     if (enrichedAssignments && enrichedAssignments.length > 0) {

@@ -8,7 +8,7 @@
       </div>
       <div class="search-container">
         <div class="filter-dropdown">
-          <select v-model="assessmentTypeFilter" @change="loadAssessments" class="assessment-type-filter">
+          <select v-model="assessmentTypeFilter" @change="onAssessmentTypeChange" class="assessment-type-filter">
             <option value="">All Assessment Types</option>
             <option value="ryff_42">42-Item Assessments</option>
             <option value="ryff_84">84-Item Assessments</option>
@@ -61,6 +61,32 @@
           </tr>
         </tbody>
       </table>
+      
+      <!-- Pagination Controls -->
+      <div v-if="pagination.totalPages > 1" class="pagination-container">
+        <div class="pagination">
+          <button 
+            @click="previousPage()"
+            :disabled="pagination.currentPage === 1"
+            class="pagination-button"
+          >
+            <i class="fas fa-chevron-left"></i> Previous
+          </button>
+          
+          <span class="pagination-info">
+            Page {{ pagination.currentPage }} of {{ pagination.totalPages }}
+            ({{ pagination.totalItems }} total items)
+          </span>
+          
+          <button 
+            @click="nextPage()"
+            :disabled="pagination.currentPage === pagination.totalPages"
+            class="pagination-button"
+          >
+            Next <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Assessment Details Modal -->
@@ -160,7 +186,14 @@ export default {
       assessments: [],
       filteredAssessments: [],
       // Loading state
-      isLoading: false
+      isLoading: false,
+      // Pagination data
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: 10
+      }
     };
   },
   computed: {
@@ -201,14 +234,21 @@ export default {
     this.filteredAssessments = [...this.assessments];
   },
   methods: {
-    // Load assessment data from backend
+    // Load assessment data from backend with pagination
     async loadAssessments() {
       this.isLoading = true;
       try {
-        let url = apiUrl('bulk-assessments/history');
+        // Build URL with pagination and filter parameters
+        const params = new URLSearchParams({
+          page: this.pagination.currentPage,
+          limit: this.pagination.itemsPerPage
+        });
+        
         if (this.assessmentTypeFilter) {
-          url += `?assessment_type=${this.assessmentTypeFilter}`;
+          params.append('assessment_type', this.assessmentTypeFilter);
         }
+        
+        const url = apiUrl(`bulk-assessments/history?${params.toString()}`);
         
         const response = await fetch(url, {
           method: 'GET',
@@ -243,6 +283,16 @@ export default {
               totalIncomplete: (assessment.total_assigned || 0) - (assessment.total_completed || 0)
             }));
             
+            // Update pagination info from backend response
+            if (data.pagination) {
+              this.pagination = {
+                currentPage: data.pagination.currentPage,
+                totalPages: data.pagination.totalPages,
+                totalItems: data.pagination.totalItems,
+                itemsPerPage: data.pagination.itemsPerPage
+              };
+            }
+            
             // Update filteredAssessments to reflect the backend filtering
             this.filteredAssessments = [...this.assessments];
           } else {
@@ -275,6 +325,32 @@ export default {
                  assessment.date.includes(query);
         });
       }
+    },
+    
+    // Pagination methods
+    changePage(page) {
+      if (page >= 1 && page <= this.pagination.totalPages) {
+        this.pagination.currentPage = page;
+        this.loadAssessments();
+      }
+    },
+    
+    previousPage() {
+      if (this.pagination.currentPage > 1) {
+        this.changePage(this.pagination.currentPage - 1);
+      }
+    },
+    
+    nextPage() {
+      if (this.pagination.currentPage < this.pagination.totalPages) {
+        this.changePage(this.pagination.currentPage + 1);
+      }
+    },
+    
+    // Handle assessment type filter changes
+    onAssessmentTypeChange() {
+      this.pagination.currentPage = 1; // Reset to first page
+      this.loadAssessments();
     },
     getCompletionColor(completion) {
       if (completion >= 90) return '#4CAF50';  // Green
@@ -678,6 +754,53 @@ export default {
   font-weight: bold; /* Make text bold */
   margin: 0 !important; /* Override default p tag margins */
   color: #777;
+}
+
+/* Pagination Styles */
+.pagination-container {
+  padding: 20px;
+  border-top: 1px solid #f0f0f0;
+  background-color: #fafafa;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.pagination-button {
+  background-color: #00B3B0;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background-color: #009a97;
+}
+
+.pagination-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  text-align: center;
 }
 
 @media (max-width: 768px) {

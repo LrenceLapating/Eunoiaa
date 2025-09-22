@@ -373,7 +373,9 @@ export default {
         totalItems: 0,
         itemsPerPage: 10
       },
-      cancellingAssessment: null
+      cancellingAssessment: null,
+      currentRequest: null,
+      filterTimeout: null
     };
   },
   methods: {
@@ -605,6 +607,9 @@ export default {
 
     // History methods
     async fetchHistory() {
+      // Prevent multiple simultaneous requests
+      if (this.historyLoading) return;
+      
       this.historyLoading = true;
       this.historyError = '';
       
@@ -618,31 +623,49 @@ export default {
           params.append('assessment_type', this.assessmentTypeFilter);
         }
         
+        // Create cache key for request deduplication
+        const cacheKey = `history-${params.toString()}`;
+        
+        // Use AbortController for request cancellation
+        if (this.currentRequest) {
+          this.currentRequest.abort();
+        }
+        this.currentRequest = new AbortController();
+        
         const response = await fetch(apiUrl(`individual-assessments/history?${params}`), {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-          });
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          credentials: 'include',
+          signal: this.currentRequest.signal
+        });
         
         if (!response.ok) {
           throw new Error('Failed to fetch assessment history');
         }
         
         const data = await response.json();
-        this.assessmentHistory = data.assessments;
+        
+        // Update data immediately for smooth UX
+        this.assessmentHistory = data.assessments || [];
         this.historyPagination = {
-          currentPage: data.pagination.currentPage,
-          totalPages: data.pagination.totalPages,
-          totalItems: data.pagination.totalItems,
-          itemsPerPage: data.pagination.itemsPerPage
+          currentPage: data.pagination?.currentPage || 1,
+          totalPages: data.pagination?.totalPages || 1,
+          totalItems: data.pagination?.totalItems || 0,
+          itemsPerPage: data.pagination?.itemsPerPage || 10
         };
+        
       } catch (error) {
-        console.error('Error fetching history:', error);
-        this.historyError = 'Failed to load assessment history. Please try again.';
+        // Don't show error for aborted requests
+        if (error.name !== 'AbortError') {
+          console.error('Error fetching history:', error);
+          this.historyError = 'Failed to load assessment history. Please try again.';
+        }
       } finally {
         this.historyLoading = false;
+        this.currentRequest = null;
       }
     },
 
@@ -785,11 +808,30 @@ export default {
         if (newView === 'history') {
           this.fetchHistory();
         }
+      },
+      assessmentTypeFilter: {
+        handler() {
+          // Debounce filter changes to prevent excessive API calls
+          if (this.filterTimeout) {
+            clearTimeout(this.filterTimeout);
+          }
+          this.filterTimeout = setTimeout(() => {
+            this.historyPagination.currentPage = 1;
+            this.fetchHistory();
+          }, 300);
+        }
       }
     },
     beforeDestroy() {
+      // Cleanup timeouts and abort ongoing requests
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);
+      }
+      if (this.filterTimeout) {
+        clearTimeout(this.filterTimeout);
+      }
+      if (this.currentRequest) {
+        this.currentRequest.abort();
       }
     }
 }

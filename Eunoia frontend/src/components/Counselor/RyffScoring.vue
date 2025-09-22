@@ -60,12 +60,12 @@
     <div class="filters-row">
       <div class="search-container">
         <i class="fas fa-search"></i>
-        <input type="text" placeholder="Search by name, ID, or section..." v-model="searchQuery" @input="filterStudents">
+        <input type="text" placeholder="Search by name, ID, or section..." v-model="searchQuery" @input="debouncedSearch">
       </div>
       
       <div class="filter-dropdowns">
         <div class="filter-dropdown">
-          <select v-model="collegeFilter">
+          <select v-model="currentCollegeFilter">
             <option value="all">All Colleges</option>
             <option v-for="college in availableColleges" :key="college" :value="college">
               {{ college }}
@@ -700,7 +700,9 @@ export default {
       currentTab: 'student',
       currentView: 'student',
       searchQuery: '',
-      collegeFilter: 'all',
+      collegeFilter: 'all', // Keep for backward compatibility
+      studentViewCollegeFilter: 'all', // Separate filter for Student View
+      historyViewCollegeFilter: 'all', // Separate filter for History View
       sectionFilter: 'all',
       assessmentTypeFilter: '42-item',
       riskLevelFilter: 'all',
@@ -721,8 +723,11 @@ export default {
       allStudents: [], // Store original unfiltered data from backend
       allHistoricalStudents: [], // Store historical data from ryff_history table
       filteredStudents: [],
+      // Performance optimization: Request caching and cancellation
+      requestCache: new Map(), // Cache for API responses
+      abortController: null, // For cancelling ongoing requests
+      searchDebounceTimer: null, // Debounce timer for search input
       // Dynamic dropdown options
-      availableColleges: ['CCS', 'CN', 'CBA', 'COE', 'CAS'], // Will be populated from database
       availableSections: [], // Will be populated from database
       ryffDimensionsList: [
         { key: 'autonomy', name: 'Autonomy' },
@@ -765,6 +770,38 @@ export default {
     riskThresholds() {
       return this.baseRiskThresholds[this.assessmentTypeFilter] || this.baseRiskThresholds['42-item'];
     },
+    // Dynamically get available colleges based on current tab and data
+    availableColleges() {
+      let colleges = [];
+      
+      if (this.currentTab === 'history') {
+        // For history view, get colleges from historical data
+        colleges = [...new Set(this.allHistoricalStudents.map(student => student.college).filter(Boolean))];
+      } else {
+        // For student view, get colleges from current assessment data
+        colleges = [...new Set(this.allStudents.map(student => student.college).filter(Boolean))];
+      }
+      
+      // Fallback to all available colleges if no data is available yet
+      if (colleges.length === 0) {
+        colleges = ['CABE', 'CAH', 'CCS', 'CEA', 'CHESFS', 'CMBS', 'CM', 'CN', 'CPC', 'CTE'];
+      }
+      
+      return colleges.sort();
+    },
+    // Computed property to get/set the appropriate college filter based on current tab
+    currentCollegeFilter: {
+      get() {
+        return this.currentTab === 'history' ? this.historyViewCollegeFilter : this.studentViewCollegeFilter;
+      },
+      set(value) {
+        if (this.currentTab === 'history') {
+          this.historyViewCollegeFilter = value;
+        } else {
+          this.studentViewCollegeFilter = value;
+        }
+      }
+    },
     // Consolidate students for history view - one record per person
     consolidatedStudents() {
       if (this.currentTab !== 'history') {
@@ -806,8 +843,8 @@ export default {
       let consolidated = Array.from(studentMap.values());
       
       // Apply college filter
-      if (this.collegeFilter !== 'all') {
-        consolidated = consolidated.filter(student => student.college === this.collegeFilter);
+      if (this.historyViewCollegeFilter !== 'all') {
+        consolidated = consolidated.filter(student => student.college === this.historyViewCollegeFilter);
       }
       
       // Apply search filter
@@ -854,30 +891,102 @@ export default {
       this.filterByDimensionAndCollege();
     }
   },
+
+  beforeDestroy() {
+    // Clean up resources to prevent memory leaks
+    this.cancelOngoingRequests();
+    
+    // Clear debounce timer
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+    
+    // Clear cache
+    if (this.requestCache) {
+      this.requestCache.clear();
+    }
+  },
   methods: {
-    // Fetch historical assessment results from backend
+    // Debounced search to improve performance
+    debouncedSearch() {
+      // Clear existing timer
+      if (this.searchDebounceTimer) {
+        clearTimeout(this.searchDebounceTimer);
+      }
+      
+      // Set new timer with 300ms delay
+      this.searchDebounceTimer = setTimeout(() => {
+        this.filterStudents();
+      }, 300);
+    },
+
+    // Cancel ongoing requests to prevent race conditions
+    cancelOngoingRequests() {
+      if (this.abortController) {
+        this.abortController.abort();
+        this.abortController = null;
+      }
+    },
+
+    // Generate cache key for requests
+    generateCacheKey(endpoint, params) {
+      const sortedParams = Object.keys(params || {}).sort().reduce((result, key) => {
+        result[key] = params[key];
+        return result;
+      }, {});
+      return `${endpoint}_${JSON.stringify(sortedParams)}`;
+    },
+
+    // Check if cached data is still valid (5 minutes)
+    isCacheValid(timestamp) {
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      return Date.now() - timestamp < CACHE_DURATION;
+    },
+
+    // Fetch historical assessment results from backend with caching
     async fetchHistoricalResults() {
+      // Cancel any ongoing requests
+      this.cancelOngoingRequests();
+      
       this.isLoadingHistory = true;
       try {
         // Build query parameters for historical data
-        const params = new URLSearchParams({
+        const params = {
           limit: '1000'
-        });
+        };
         
         // Add assessment type filter if not showing all
         if (this.assessmentTypeFilter && this.assessmentTypeFilter !== 'all') {
           // Convert frontend filter format to backend format
           const assessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
-          params.append('assessmentType', assessmentType);
+          params.assessmentType = assessmentType;
         }
+
+        // Check cache first
+        const cacheKey = this.generateCacheKey('counselor-assessments/history', params);
+        const cachedData = this.requestCache.get(cacheKey);
+        
+        if (cachedData && this.isCacheValid(cachedData.timestamp)) {
+          console.log('Using cached historical results');
+          this.allHistoricalStudents = cachedData.data;
+          this.isLoadingHistory = false;
+          return;
+        }
+
+        // Create new AbortController for this request
+        this.abortController = new AbortController();
+        
+        const queryParams = new URLSearchParams(params);
         
         // Request historical data from the new history endpoint
-        const response = await fetch(apiUrl(`counselor-assessments/history?${params.toString()}`), {
+        const response = await fetch(apiUrl(`counselor-assessments/history?${queryParams.toString()}`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
           },
-          credentials: 'include'
+          credentials: 'include',
+          signal: this.abortController.signal
         });
 
         if (response.ok) {
@@ -933,6 +1042,12 @@ export default {
             // Store historical data
             this.allHistoricalStudents = transformedHistoricalStudents;
             
+            // Cache the successful response
+            this.requestCache.set(cacheKey, {
+              data: transformedHistoricalStudents,
+              timestamp: Date.now()
+            });
+            
             // Emit the updated historical data to parent component if needed
             this.$emit('historical-students-updated', transformedHistoricalStudents);
           } else {
@@ -944,36 +1059,63 @@ export default {
           this.allHistoricalStudents = [];
         }
       } catch (error) {
-        console.error('Error fetching historical results:', error);
-        this.allHistoricalStudents = [];
+        // Don't log error if request was aborted
+        if (error.name !== 'AbortError') {
+          console.error('Error fetching historical results:', error);
+          this.allHistoricalStudents = [];
+        }
       } finally {
         this.isLoadingHistory = false;
+        this.abortController = null;
       }
     },
 
-    // Fetch real assessment results from backend
+    // Fetch real assessment results from backend with caching and optimization
     async fetchAssessmentResults() {
+      // Cancel any ongoing requests
+      this.cancelOngoingRequests();
+      
       this.isLoading = true;
       try {
         // Build query parameters including assessment type filter
-        const params = new URLSearchParams({
+        const params = {
           limit: '1000'
-        });
+        };
         
         // Add assessment type filter if not showing all
         if (this.assessmentTypeFilter && this.assessmentTypeFilter !== 'all') {
           // Convert frontend filter format to backend format
           const assessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
-          params.append('assessmentType', assessmentType);
+          params.assessmentType = assessmentType;
         }
+
+        // Check cache first
+        const cacheKey = this.generateCacheKey('counselor-assessments/results', params);
+        const cachedData = this.requestCache.get(cacheKey);
+        
+        if (cachedData && this.isCacheValid(cachedData.timestamp)) {
+          console.log('Using cached assessment results');
+          this.allStudents = cachedData.data;
+          this.filteredStudents = [...cachedData.data];
+          this.updateDropdownOptions();
+          this.$emit('students-updated', cachedData.data);
+          this.isLoading = false;
+          return;
+        }
+
+        // Create new AbortController for this request
+        this.abortController = new AbortController();
+        
+        const queryParams = new URLSearchParams(params);
         
         // Request all results by setting a high limit
-        const response = await fetch(apiUrl(`counselor-assessments/results?${params.toString()}`), {
+        const response = await fetch(apiUrl(`counselor-assessments/results?${queryParams.toString()}`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
           },
-          credentials: 'include' // Use session-based authentication
+          credentials: 'include', // Use session-based authentication
+          signal: this.abortController.signal // Add abort signal
         });
 
         if (response.ok) {
@@ -1031,6 +1173,12 @@ export default {
             this.allStudents = transformedStudents;
             this.filteredStudents = [...transformedStudents];
             
+            // Cache the successful response
+            this.requestCache.set(cacheKey, {
+              data: transformedStudents,
+              timestamp: Date.now()
+            });
+            
             // Update dynamic dropdown options
             this.updateDropdownOptions();
             
@@ -1049,21 +1197,21 @@ export default {
           this.filteredStudents = [...this.students];
         }
       } catch (error) {
-        console.error('Error fetching assessment results:', error);
-        // Fallback to prop data if API fails
-        this.allStudents = [...this.students];
-        this.filteredStudents = [...this.students];
+        // Don't log error if request was aborted (user navigated away or new request started)
+        if (error.name !== 'AbortError') {
+          console.error('Error fetching assessment results:', error);
+          // Fallback to prop data if API fails
+          this.allStudents = [...this.students];
+          this.filteredStudents = [...this.students];
+        }
       } finally {
         this.isLoading = false;
+        this.abortController = null;
       }
     },
     
     updateDropdownOptions() {
-      // Extract unique colleges from student data
-      const colleges = [...new Set(this.allStudents.map(student => student.college).filter(Boolean))];
-      this.availableColleges = colleges.sort();
-      
-      // Extract unique sections from student data
+      // Extract unique sections from student data (colleges are now handled by computed property)
       const sections = [...new Set(this.allStudents.map(student => student.section).filter(Boolean))];
       this.availableSections = sections.sort();
     },
@@ -1213,8 +1361,8 @@ export default {
       let result = [...baseStudents];
       
       // Apply college filter
-      if (this.collegeFilter !== 'all') {
-        result = result.filter(student => student.college === this.collegeFilter);
+      if (this.studentViewCollegeFilter !== 'all') {
+        result = result.filter(student => student.college === this.studentViewCollegeFilter);
       }
       
       // Apply section filter
@@ -2269,6 +2417,21 @@ export default {
         this.filterByDimensionAndCollege();
       } else {
         this.filterStudents();
+      }
+    },
+    studentViewCollegeFilter() {
+      if (this.currentTab === 'student') {
+        if (this.selectedDimension) {
+          this.filterByDimensionAndCollege();
+        } else {
+          this.filterStudents();
+        }
+      }
+    },
+    historyViewCollegeFilter() {
+      if (this.currentTab === 'history') {
+        // History view uses consolidatedStudents computed property which already handles filtering
+        // No additional action needed as the computed property will automatically update
       }
     },
     sectionFilter() {

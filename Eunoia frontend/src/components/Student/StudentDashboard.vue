@@ -984,20 +984,47 @@ export default {
       // Store completion data including timing information
       this.completionData = completionData;
       this.currentView = 'assessment-complete';
-      // Add a longer delay to ensure database transaction is fully committed
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      // Refresh assigned assessments to remove completed one
-      await this.fetchAssignedAssessments();
+      
+      // Immediately remove the completed assessment from the UI for better UX
+      if (completionData.assignedAssessmentId) {
+        this.assignedAssessments = this.assignedAssessments.filter(
+          assessment => assessment.id !== completionData.assignedAssessmentId
+        );
+        this.hasAssignedAssessments = this.assignedAssessments.length > 0;
+        console.log('Immediately removed completed assessment from UI');
+      }
+      
+      // Refresh from server with retry logic to ensure consistency
+      await this.refreshAssessmentsWithRetry();
+    },
+
+    async refreshAssessmentsWithRetry(maxRetries = 3) {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`Refreshing assessments (attempt ${attempt}/${maxRetries})`);
+          
+          // Wait longer on each retry to allow database operations to complete
+          const delay = attempt * 1500; // 1.5s, 3s, 4.5s
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          await this.fetchAssignedAssessments();
+          console.log(`Assessment refresh successful on attempt ${attempt}`);
+          break;
+        } catch (error) {
+          console.error(`Assessment refresh failed on attempt ${attempt}:`, error);
+          if (attempt === maxRetries) {
+            console.error('All refresh attempts failed');
+          }
+        }
+      }
     },
 
     async onReturnToDashboard() {
       // Return to main assessment dashboard
       this.currentView = 'assessment';
       this.currentAssessment = null;
-      // Add a longer delay to ensure any pending operations are complete
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // Refresh assigned assessments
-      await this.fetchAssignedAssessments();
+      // Refresh assigned assessments with retry logic
+      await this.refreshAssessmentsWithRetry();
     },
 
     async logout() {
