@@ -35,19 +35,7 @@
         </div>
       </div>
 
-      <div class="version-card add-version-card" :key="'new'"
-           @mouseenter="hoveredCard = 'new'" 
-           @mouseleave="hoveredCard = null"
-           :class="{ 'hovered': hoveredCard === 'new' }"
-           @click="createNewVersion">
-        <div class="add-version-content">
-          <div class="add-icon">
-            <i class="fas fa-plus"></i>
-          </div>
-          <h3>Create New Version</h3>
-          <p>Design a custom assessment template</p>
-        </div>
-      </div>
+
     </transition-group>
   </div>
 </template>
@@ -87,11 +75,7 @@ export default {
       // Apply selected version
       this.$emit('select-version', version);
     },
-    createNewVersion() {
-      // This would typically navigate to a create form or open a modal
-      // Create new version functionality
-      this.$emit('create-version');
-    }
+
   }
 };
 </script>
@@ -304,45 +288,7 @@ export default {
 
 
 
-.add-version-card {
-  background-color: #f0f7ff;
-  border: 1px dashed #c0d7f7;
-}
 
-.add-version-card:hover, .add-version-card.hovered {
-  background-color: #e6f0ff;
-  border-color: var(--primary);
-}
-
-.add-version-content {
-  padding: 20px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.add-icon {
-  width: 50px;
-  height: 50px;
-  background-color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
-  font-size: 20px;
-  margin-bottom: 15px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 10px rgba(0, 179, 176, 0.1);
-}
-
-.add-version-card:hover .add-icon, .add-version-card.hovered .add-icon {
-  transform: rotate(90deg) scale(1.1);
-  box-shadow: 0 5px 15px rgba(0, 179, 176, 0.2);
-}
 
 @media (max-width: 768px) {
   .versions-grid {

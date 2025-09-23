@@ -23,7 +23,7 @@
               <span v-show="sidebarExpanded">Dashboard</span>
             </a>
           </li>
-          <li :class="{ active: ['bulkAssessment', 'individualAssessment', 'autoReminders'].includes(currentView) }">
+          <li :class="{ active: ['bulkAssessment', 'individualAssessment', 'assessmentTracker'].includes(currentView) }">
             <a @click="toggleSubmenu('ryffAssessment')" class="menu-item has-submenu" data-tooltip="Test Management">
               <div class="menu-icon">
               <i class="fas fa-chart-bar"></i>
@@ -44,10 +44,11 @@
                   <span v-show="sidebarExpanded">Individual Assessment</span>
                 </a>
               </li>
-              <li :class="{ active: currentView === 'autoReminders' }">
-                <a @click="setView('autoReminders')" class="submenu-item">
-                  <i class="fas fa-bell"></i>
-                  <span v-show="sidebarExpanded">Auto-Reminders</span>
+
+              <li :class="{ active: currentView === 'assessmentTracker' }">
+                <a @click="setView('assessmentTracker')" class="submenu-item">
+                  <i class="fas fa-tasks"></i>
+                  <span v-show="sidebarExpanded">Assessment Tracker</span>
                 </a>
               </li>
             </ul>
@@ -283,7 +284,8 @@ import YearlyTrendAnalysis from './YearlyTrendAnalysis.vue'
 import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
 import IndividualAssessment from './IndividualAssessment.vue'
-import AutoReminders from './AutoReminders.vue'
+
+import AssessmentTracker from './AssessmentTracker.vue'
 import AccountManagement from './AccountManagement.vue'
 import CollegeView from './CollegeView.vue'
 import CollegeDetail from './CollegeDetail.vue'
@@ -301,7 +303,8 @@ export default {
     RyffScoring,
     BulkAssessment,
     IndividualAssessment,
-    AutoReminders,
+
+    AssessmentTracker,
     AccountManagement,
     CollegeView,
     CollegeDetail,
@@ -370,7 +373,8 @@ export default {
         'CounselorDashboard': 'dashboard',
         'BulkAssessment': 'bulkAssessment',
         'IndividualAssessment': 'individualAssessment',
-        'AutoReminders': 'autoReminders',
+
+        'AssessmentTracker': 'assessmentTracker',
         'RyffScoring': 'ryffScoring',
         'CollegeSummary': 'guidance',
         'CollegeDetail': 'guidance',
@@ -388,8 +392,9 @@ export default {
           return 'Bulk Assessment';
         case 'individualAssessment':
           return 'Individual Assessment';
-        case 'autoReminders':
-          return 'Auto-Reminders';
+
+        case 'assessmentTracker':
+          return 'Assessment Tracker';
         case 'ryffScoring':
           return 'Ryff Scoring';
         case 'guidance':
@@ -412,8 +417,9 @@ export default {
           return 'Distribute the Ryff assessment to target groups in one click';
         case 'individualAssessment':
           return 'Send assessments to specific students by searching and selecting them individually';
-        case 'autoReminders':
-          return 'Schedule automatic assessment reminders';
+
+        case 'assessmentTracker':
+          return 'Track and monitor incomplete student assessments';
         case 'ryffScoring':
           return 'Review and analyze assessment scores';
         case 'guidance':
@@ -441,7 +447,8 @@ export default {
         'dashboard': '/counselor',
         'bulkAssessment': '/counselor/bulk-assessment',
         'individualAssessment': '/counselor/individual-assessment',
-        'autoReminders': '/counselor/auto-reminders',
+
+        'assessmentTracker': '/counselor/assessment-tracker',
         'ryffScoring': '/counselor/ryff-scoring',
         'guidance': '/counselor/college-summary',
         'intervention': '/counselor/ai-intervention',

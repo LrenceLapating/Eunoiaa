@@ -21,8 +21,7 @@
     <!-- Saved Versions Section -->
     <saved-versions v-if="currentView === 'versions'"
                    @select-version="selectVersion"
-                   @preview-version="previewSavedVersion"
-                   @create-version="createNewVersion" />
+                   @preview-version="previewSavedVersion" />
 
     <!-- Assessment History Section -->
     <assessment-history v-if="currentView === 'history'" />
@@ -110,22 +109,15 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" v-if="false">
         <label class="schedule-label">
-          <i class="far fa-clock"></i> Select Schedule
+          <i class="far fa-clock"></i> Schedule
         </label>
-        <div class="radio-options schedule-options">
-          <div class="radio-option">
-            <input type="radio" id="send-now" value="now" v-model="scheduleOption">
-            <label for="send-now">Send Now (immediate dispatch)</label>
+        <div class="schedule-info">
+          <div class="schedule-display">
+            <i class="fas fa-paper-plane"></i>
+            <span>Send Now (immediate dispatch)</span>
           </div>
-          <div class="radio-option">
-            <input type="radio" id="schedule-later" value="later" v-model="scheduleOption">
-            <label for="schedule-later">Schedule Later</label>
-          </div>
-        </div>
-        <div v-if="scheduleOption === 'later'" class="date-selector">
-          <input type="datetime-local" v-model="scheduledDate" class="form-control">
         </div>
       </div>
 
@@ -205,7 +197,7 @@
             <span class="preview-label">Version:</span>
             <span class="preview-value">{{ selectedVersion }} items</span>
           </div>
-          <div class="preview-item">
+          <div class="preview-item" v-if="false">
             <span class="preview-label">Schedule:</span>
             <span class="preview-value">{{ scheduleText }}</span>
           </div>
@@ -422,7 +414,7 @@
 import SavedVersions from './SavedVersions.vue';
 import CollegeFilter from './CollegeFilter.vue';
 import AssessmentHistory from './AssessmentHistory.vue';
-import AutoReminders from './AutoReminders.vue'; // Kept for future use
+
 import { ryff42ItemQuestionnaire } from '../../assets/ryff42ItemQuestionnaire.js';
 import { ryff84ItemQuestionnaire } from '../../assets/ryff84ItemQuestionnaire.js';
 import { apiUrl } from '../../utils/apiUtils.js';
@@ -433,7 +425,7 @@ export default {
     SavedVersions,
     CollegeFilter,
     AssessmentHistory,
-    AutoReminders
+
   },
   async mounted() {
     // Load colleges and current academic period from backend when component mounts
@@ -453,13 +445,6 @@ export default {
       selectAllColleges: false,
       error: null,
       colleges: [], // Will be populated from backend API
-      scheduleOption: 'now',
-      scheduledDate: (() => {
-        const now = new Date();
-        now.setDate(now.getDate() + 1); // Default to tomorrow
-        now.setHours(9, 0, 0, 0); // Default to 9:00 AM
-        return now.toISOString().slice(0, 16); // Format for datetime-local
-      })(),
       selectedVersion: '84',
       customMessage: 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.',
       showPreview: false,
@@ -530,13 +515,7 @@ export default {
       const selected = this.colleges.filter(c => c.selected).map(c => c.name);
       return selected.length ? selected.join(', ') : 'None selected';
     },
-    scheduleText() {
-      if (this.scheduleOption === 'now') {
-        return 'Immediate dispatch';
-      } else {
-        return `Scheduled for ${new Date(this.scheduledDate).toLocaleString()}`;
-      }
-    },
+
     hasSelectedColleges() {
       return this.colleges.some(c => c.selected);
     },
@@ -682,12 +661,7 @@ export default {
         this.colleges = [];
       }
     },
-    getDefaultScheduledDate() {
-      const now = new Date();
-      now.setDate(now.getDate() + 1); // Default to tomorrow
-      now.setHours(9, 0, 0, 0); // Default to 9:00 AM
-      return now.toISOString().slice(0, 16); // Format for datetime-local
-    },
+
     async toggleAllColleges() {
       for (const college of this.colleges) {
         college.selected = this.selectAllColleges;
@@ -802,9 +776,7 @@ export default {
           targetColleges: selectedColleges.map(college => college.name),
           targetYearLevels: Array.from(targetYearLevels).sort((a, b) => a - b), // Convert Set to sorted array
           targetSections: Array.from(targetSections).sort(), // Convert Set to sorted array
-          customMessage: this.customMessage,
-          scheduleOption: this.scheduleOption,
-          scheduledDate: this.scheduleOption === 'scheduled' ? this.scheduledDate : null
+          customMessage: this.customMessage
         };
         
         console.log('Payload with target data:', payload); // Debug log
@@ -1084,8 +1056,6 @@ export default {
       // Reset form to default values
       this.selectAllColleges = false;
       this.colleges.forEach(college => college.selected = false);
-      this.scheduleOption = 'now';
-      this.scheduledDate = this.getDefaultScheduledDate();
       this.selectedVersion = '84'; // Default to full version
       this.customMessage = 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.';
       this.error = null;
@@ -1093,21 +1063,7 @@ export default {
         colleges: ''
       };
     },
-    createNewVersion() {
-      this.resetForm();
-      
-      // Switch to form view
-      this.currentView = 'form';
-      
-      // Show a toast notification
-      this.showToast = true;
-      this.toastMessage = 'Creating a new assessment version';
-      
-      // Hide toast after 3 seconds
-      setTimeout(() => {
-        this.showToast = false;
-      }, 3000);
-    }
+
   }
 }
 </script>
@@ -1321,6 +1277,26 @@ textarea.form-control {
   border-color: #e0e0e0;
 }
 
+.schedule-info {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: var(--border-radius);
+  margin-top: 5px;
+}
+
+.schedule-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.schedule-display i {
+  font-size: 16px;
+}
+
 .radio-options {
   display: flex;
   flex-direction: column;
@@ -1328,7 +1304,7 @@ textarea.form-control {
   padding-left: 10px;
 }
 
-.schedule-options, .test-item-options {
+.test-item-options {
   margin-top: 5px;
 }
 
@@ -1352,10 +1328,7 @@ textarea.form-control {
   cursor: pointer;
 }
 
-.date-selector {
-  margin-top: 15px;
-  padding-left: 26px;
-}
+
 
 .message-note {
   font-size: 13px;

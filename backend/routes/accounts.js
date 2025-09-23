@@ -350,7 +350,7 @@ router.get('/colleges/:collegeName/sections', async (req, res) => {
   }
 });
 
-// GET /api/accounts/history - Get archived students from history
+// GET /api/accounts/history - Get students with historical assessment data
 router.get('/history', async (req, res) => {
   try {
     const { 
@@ -361,39 +361,103 @@ router.get('/history', async (req, res) => {
       search = '' 
     } = req.query;
 
-    let query = supabase
-      .from('students_history')
-      .select('*', { count: 'exact' })
+    console.log('Fetching historical students with params:', { college, semester, page, limit, search });
+
+    // Get unique student IDs from ryff_history table
+    let historyQuery = supabase
+      .from('ryff_history')
+      .select('student_id, archived_at')
       .order('archived_at', { ascending: false });
+
+    const { data: historyData, error: historyError } = await historyQuery;
+
+    if (historyError) {
+      console.error('Error fetching from ryff_history:', historyError);
+      throw historyError;
+    }
+
+    if (!historyData || historyData.length === 0) {
+      return res.json({
+        students: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          totalPages: 0
+        }
+      });
+    }
+
+    // Get unique student IDs
+    const uniqueStudentIds = [...new Set(historyData.map(item => item.student_id))];
+    console.log(`Found ${uniqueStudentIds.length} unique students with historical data`);
+
+    if (uniqueStudentIds.length === 0) {
+      return res.json({
+        students: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          totalPages: 0
+        }
+      });
+    }
+
+    // Get student details for these IDs
+    let studentsQuery = supabase
+      .from('students')
+      .select('*')
+      .in('id', uniqueStudentIds);
 
     // Apply filters
     if (college && college !== 'all') {
-      query = query.eq('college', college);
+      studentsQuery = studentsQuery.eq('college', college);
     }
 
     if (semester) {
-      query = query.eq('semester', semester);
+      studentsQuery = studentsQuery.eq('semester', semester);
     }
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,id_number.ilike.%${search}%`);
+      studentsQuery = studentsQuery.or(`name.ilike.%${search}%,email.ilike.%${search}%,id_number.ilike.%${search}%`);
     }
 
+    const { data: studentsData, error: studentsError } = await studentsQuery;
+
+    if (studentsError) {
+      console.error('Error fetching students:', studentsError);
+      throw studentsError;
+    }
+
+    // Add archived_at information to students
+    const studentsWithHistory = (studentsData || []).map(student => {
+      const studentHistory = historyData.filter(h => h.student_id === student.id);
+      const latestArchived = studentHistory.reduce((latest, current) => {
+        return new Date(current.archived_at) > new Date(latest.archived_at) ? current : latest;
+      }, studentHistory[0]);
+
+      return {
+        ...student,
+        archived_at: latestArchived?.archived_at,
+        isHistorical: true
+      };
+    });
+
     // Apply pagination
+    const total = studentsWithHistory.length;
     const offset = (page - 1) * limit;
-    query = query.range(offset, offset + limit - 1);
+    const paginatedStudents = studentsWithHistory.slice(offset, offset + limit);
 
-    const { data, error, count } = await query;
-
-    if (error) throw error;
+    console.log(`Returning ${paginatedStudents.length} historical students out of ${total} total`);
 
     res.json({
-      students: data || [],
+      students: paginatedStudents,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
+        total: total,
+        totalPages: Math.ceil(total / limit)
       }
     });
   } catch (error) {

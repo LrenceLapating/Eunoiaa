@@ -169,23 +169,16 @@
       </div>
 
       <!-- Schedule Section -->
-      <div class="form-section">
+      <div class="form-section" v-if="false">
         <div class="form-group">
           <label class="schedule-label">
-            <i class="far fa-clock"></i> Select Schedule
+            <i class="far fa-clock"></i> Schedule
           </label>
-          <div class="radio-options schedule-options">
-            <div class="radio-option">
-              <input type="radio" id="send-now-individual" value="now" v-model="scheduleOption">
-              <label for="send-now-individual">Send Now (immediate dispatch)</label>
+          <div class="schedule-info">
+            <div class="schedule-display">
+              <i class="fas fa-bolt"></i>
+              Send Now (immediate dispatch)
             </div>
-            <div class="radio-option">
-              <input type="radio" id="schedule-later-individual" value="later" v-model="scheduleOption">
-              <label for="schedule-later-individual">Schedule Later</label>
-            </div>
-          </div>
-          <div v-if="scheduleOption === 'later'" class="date-selector">
-            <input type="datetime-local" v-model="scheduledDate" class="form-control">
           </div>
         </div>
       </div>
@@ -261,9 +254,9 @@
               </div>
             </div>
           </div>
-          <div class="preview-item">
+          <div class="preview-item" v-if="false">
             <span class="preview-label">Schedule:</span>
-            <span class="preview-value">{{ scheduleOption === 'now' ? 'Send Immediately' : `Scheduled for ${formatDate(scheduledDate)}` }}</span>
+            <span class="preview-value">Send Immediately</span>
           </div>
           <div class="preview-item">
             <span class="preview-label">Test Version:</span>
@@ -345,8 +338,6 @@ export default {
       searchResults: [],
       selectedStudents: [],
       isSearching: false,
-      scheduleOption: 'now',
-      scheduledDate: '',
       selectedVersion: '84',
       customMessage: 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.',
       error: '',
@@ -445,11 +436,6 @@ export default {
         return;
       }
       
-      if (this.scheduleOption === 'later' && !this.scheduledDate) {
-        this.error = 'Please select a scheduled date and time.';
-        return;
-      }
-      
       this.error = '';
       this.showPreview = true;
     },
@@ -487,9 +473,7 @@ export default {
             studentId: student.id,
             assessmentName: assessmentName,
             assessmentType: this.selectedVersion === '84' ? 'ryff_84' : 'ryff_42',
-            customMessage: this.customMessage,
-            scheduleOption: this.scheduleOption,
-            scheduledDate: this.scheduledDate
+            customMessage: this.customMessage
           };
           
           const response = await fetch(apiUrl('individual-assessments/create'), {
@@ -547,8 +531,6 @@ export default {
           // Reset form after successful sends
           this.selectedStudents = [];
           this.customMessage = 'Dear participant,\n\nYou have been selected to participate in our well-being assessment. Your insights will help us better understand and support the mental health needs of our community.\n\nThank you for your participation.';
-          this.scheduleOption = 'now';
-          this.scheduledDate = '';
           this.selectedVersion = '84';
           this.searchQuery = '';
           this.searchResults = [];
@@ -1536,10 +1518,44 @@ label i {
   color: var(--text);
 }
 
+.schedule-info {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+}
+
+.schedule-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #28a745;
+  font-weight: 500;
+}
+
+.schedule-display i {
+  color: #28a745;
+}
+
+.schedule-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-label i {
+  color: var(--primary);
+}
+
 .radio-options {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 15px;
+  padding-left: 10px;
+}
+
+.test-item-options {
+  margin-top: 5px;
 }
 
 .radio-option {
@@ -1560,21 +1576,6 @@ label i {
   margin-bottom: 0;
   font-weight: normal;
   cursor: pointer;
-}
-
-.schedule-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.schedule-label i {
-  color: var(--primary);
-}
-
-.date-selector {
-  margin-top: 15px;
-  padding-left: 26px;
 }
 
 .form-control {

@@ -8,7 +8,8 @@ import CounselorDashboard from '../components/Counselor/CounselorDashboard.vue'
 import AIintervention from '../components/Counselor/AIintervention.vue'
 import AccountManagement from '../components/Counselor/AccountManagement.vue'
 import AssessmentHistory from '../components/Counselor/AssessmentHistory.vue'
-import AutoReminders from '../components/Counselor/AutoReminders.vue'
+import AssessmentTracker from '../components/Counselor/AssessmentTracker.vue'
+
 import BulkAssessment from '../components/Counselor/BulkAssessment.vue'
 import IndividualAssessment from '../components/Counselor/IndividualAssessment.vue'
 import CollegeDetail from '../components/Counselor/CollegeDetail.vue'
@@ -67,11 +68,12 @@ const routes = [
         component: BulkAssessment,
         meta: { view: 'bulkAssessment' }
       },
+
       {
-        path: 'auto-reminders',
-        name: 'AutoReminders',
-        component: AutoReminders,
-        meta: { view: 'autoReminders' }
+        path: 'assessment-tracker',
+        name: 'AssessmentTracker',
+        component: AssessmentTracker,
+        meta: { view: 'assessmentTracker' }
       },
       {
         path: 'individual-assessment',

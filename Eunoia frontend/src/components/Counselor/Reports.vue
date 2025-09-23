@@ -68,6 +68,12 @@
           </div>
         </div>
         
+        <!-- Loading Historical Students -->
+        <div v-if="isLoadingHistoricalStudents" class="loading-indicator">
+          <i class="fas fa-spinner fa-spin"></i>
+          Loading historical students...
+        </div>
+        
         <!-- Student Results -->
         <div v-if="studentSearchQuery && filteredStudents.length > 0" class="search-results">
           <div v-for="student in filteredStudents" 
@@ -75,11 +81,16 @@
                class="student-result-item"
                @click="selectStudent(student)">
             <div class="student-info">
-              <div class="student-name">{{ student.name }}</div>
+              <div class="student-name">
+                {{ student.name }}
+                <span v-if="student.isHistorical" class="historical-badge">Historical</span>
+              </div>
               <div class="student-details">ID: {{ student.id_number || student.id }} | {{ student.college }} - {{ student.section }}</div>
             </div>
             <div class="student-status">
-              <span class="status-badge completed">Completed</span>
+              <span class="status-badge" :class="student.isHistorical ? 'historical' : 'completed'">
+                {{ student.isHistorical ? 'Historical' : 'Current' }}
+              </span>
             </div>
           </div>
         </div>
@@ -275,10 +286,12 @@ export default {
   data() {
     return {
       
-      selectedReportType: '',
+      selectedReportType: 'individual',
       studentSearchQuery: '',
       filteredStudents: [],
       selectedStudent: null,
+      allStudents: [], // Combined current + historical students
+      isLoadingHistoricalStudents: false,
       selectedColleges: [],
       selectedYearLevels: [],
       selectedAssessments: [],
@@ -355,6 +368,9 @@ export default {
     // Load colleges from backend first
     await this.loadCollegesFromBackend();
     
+    // Load historical students and combine with current students
+    await this.fetchHistoricalStudents();
+    
     // Handle pre-selected data from navigation
     if (this.preSelectedStudent && this.preSelectedReportType) {
       // Pre-select student for report generation
@@ -393,11 +409,11 @@ export default {
       }
       
       const query = this.studentSearchQuery.toLowerCase();
-      this.filteredStudents = this.students.filter(student => 
+      this.filteredStudents = this.allStudents.filter(student => 
         student.name.toLowerCase().includes(query) || 
         student.id.toLowerCase().includes(query) ||
         (student.id_number && student.id_number.toLowerCase().includes(query))
-      ).slice(0, 5); // Limit to 5 results
+      ).slice(0, 10); // Increased limit to show more results since we have more students
     },
     
     async selectStudent(student) {
@@ -407,7 +423,13 @@ export default {
       this.selectedAssessments = []; // Reset assessments when changing student
       
       // Fetch assessment history for the selected student
-      await this.fetchStudentAssessmentHistory(student.id);
+      if (student.isHistorical) {
+        // For historical students, fetch their historical assessment data
+        await this.fetchHistoricalStudentAssessments(student.id);
+      } else {
+        // For current students, use the regular assessment history endpoint
+        await this.fetchStudentAssessmentHistory(student.id);
+      }
     },
     
     clearSelectedStudent() {
@@ -420,7 +442,7 @@ export default {
       try {
         console.log(`Fetching assessment history for student ID: ${studentId}`);
         
-        const response = await fetch(apiUrl(`counselor-assessments/student/${studentId}/history`), {
+        const response = await fetch(apiUrl(`counselor-assessments/student/${studentId}/history?includeArchived=true`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -450,6 +472,99 @@ export default {
       } catch (error) {
         console.error('Error fetching student assessment history:', error);
         this.studentAssessmentHistory = [];
+      }
+    },
+    
+    async fetchHistoricalStudentAssessments(studentId) {
+      try {
+        console.log(`Fetching historical assessment data for student ID: ${studentId}`);
+        
+        // Try to use the existing student history endpoint first
+        // This might fail if the student is not in the current students table
+        const response = await fetch(apiUrl(`counselor-assessments/student/${studentId}/history?includeArchived=true`), {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const apiResponse = await response.json();
+          console.log('Fetched historical assessment data:', apiResponse);
+          
+          if (apiResponse.success && apiResponse.data) {
+            this.studentAssessmentHistory = apiResponse.data.assessments || [];
+            console.log(`Found ${this.studentAssessmentHistory.length} historical assessments for student`);
+            console.log('Historical assessment data:', this.studentAssessmentHistory);
+            
+            // Force reactivity update
+            this.$forceUpdate();
+          } else {
+            console.error('Invalid API response structure:', apiResponse);
+            this.studentAssessmentHistory = [];
+          }
+        } else if (response.status === 404) {
+          // Student not found in current students table, this is expected for historical students
+          console.log('Student not found in current students table, this is expected for historical students');
+          // For now, we'll set empty history. In a future update, we can implement a dedicated historical endpoint
+          this.studentAssessmentHistory = [];
+        } else {
+          console.error('Failed to fetch historical assessment data:', response.statusText);
+          this.studentAssessmentHistory = [];
+        }
+      } catch (error) {
+        console.error('Error fetching historical assessment data:', error);
+        this.studentAssessmentHistory = [];
+      }
+    },
+    
+    async fetchHistoricalStudents() {
+      try {
+        this.isLoadingHistoricalStudents = true;
+        console.log('Fetching historical students...');
+        
+        const response = await fetch(apiUrl('accounts/history?limit=1000'), {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const apiResponse = await response.json();
+          console.log('Fetched historical students:', apiResponse);
+          
+          if (apiResponse.students) {
+            // Mark historical students to distinguish them
+            const historicalStudents = apiResponse.students.map(student => ({
+              ...student,
+              isHistorical: true,
+              displayName: `${student.name} (Historical)`,
+              originalName: student.name
+            }));
+            
+            // Combine current students with historical students
+            this.allStudents = [
+              ...this.students.map(student => ({ ...student, isHistorical: false })),
+              ...historicalStudents
+            ];
+            
+            console.log(`Combined ${this.students.length} current students with ${historicalStudents.length} historical students`);
+          } else {
+            console.error('Invalid API response structure:', apiResponse);
+            this.allStudents = [...this.students.map(student => ({ ...student, isHistorical: false }))];
+          }
+        } else {
+          console.error('Failed to fetch historical students:', response.statusText);
+          this.allStudents = [...this.students.map(student => ({ ...student, isHistorical: false }))];
+        }
+      } catch (error) {
+        console.error('Error fetching historical students:', error);
+        this.allStudents = [...this.students.map(student => ({ ...student, isHistorical: false }))];
+      } finally {
+        this.isLoadingHistoricalStudents = false;
       }
     },
     
@@ -585,7 +700,7 @@ export default {
         });
         
         // Fetch student assessment data
-        const response = await fetch(apiUrl(`counselor-assessments/student/${this.selectedStudent.id}/history`), {
+        const response = await fetch(apiUrl(`counselor-assessments/student/${this.selectedStudent.id}/history?includeArchived=true`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
