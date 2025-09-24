@@ -4,9 +4,10 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
 const ExcelJS = require('exceljs');
-const { supabase } = require('../config/database');
+const { supabase, supabaseAdmin } = require('../config/database');
 const { validateStudentData, sanitizeStudentData } = require('../utils/validation');
 const { computeAndStoreCollegeScores, getCollegeScores } = require('../utils/collegeScoring');
+const { archiveCollegeScores } = require('../utils/archiveCollegeScores');
 const { verifyStudentSession } = require('../middleware/sessionManager');
 
 const router = express.Router();
@@ -138,26 +139,35 @@ router.get('/colleges/:collegeName/assessment-filters', async (req, res) => {
       });
     }
     
-    // Get available courses - same logic as year levels and sections
-    // Get all courses for the college (like how year levels and sections work)
-    const { data: studentsData, error: studentsError } = await supabase
-      .from('students')
-      .select('course')
-      .eq('college', collegeName)
-      .not('course', 'is', null);
+    // Get available courses - FIXED to match year/section logic
+    // Only show courses from students who received assessments (like year levels and sections)
+    const coursesSet = new Set();
+    
+    // Get students who received assessments through assessment_assignments
+    const bulkAssessmentIds = bulkAssessments.map(ba => ba.id);
+    
+    const { data: assignedStudents, error: assignedStudentsError } = await supabase
+      .from('assessment_assignments')
+      .select(`
+        student_id,
+        students!inner(course)
+      `)
+      .in('bulk_assessment_id', bulkAssessmentIds)
+      .not('students.course', 'is', null);
 
-    if (studentsError) {
-      console.error('Error fetching students for courses:', studentsError);
-      throw studentsError;
+    if (assignedStudentsError) {
+      console.error('Error fetching assigned students for courses:', assignedStudentsError);
+      throw assignedStudentsError;
     }
 
-    // Extract unique courses (same as year levels and sections logic)
-    const coursesSet = new Set();
-    studentsData.forEach(student => {
-      if (student.course && student.course.trim() !== '') {
-        coursesSet.add(student.course);
+    // Extract unique courses from students who received assessments
+    assignedStudents.forEach(assignment => {
+      const course = assignment.students?.course;
+      if (course && course.trim() !== '') {
+        coursesSet.add(course);
       }
     });
+    
     const availableCourses = Array.from(coursesSet).sort();
     
     console.log('🔍 COURSE DEBUG: Available courses for college =', availableCourses);
@@ -513,7 +523,8 @@ router.get('/students', async (req, res) => {
 // POST /api/accounts/deactivate-students - Deactivate all active students
 router.post('/deactivate-students', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    // First, deactivate all students and move their assessments to history
+    const { data, error } = await supabaseAdmin
       .rpc('deactivate_all_students');
 
     if (error) {
@@ -521,11 +532,38 @@ router.post('/deactivate-students', async (req, res) => {
       return res.status(500).json({ error: 'Failed to deactivate students' });
     }
 
+    console.log('✅ Students deactivated successfully:', data);
+
+    // Then, archive college scores to college_scores_history
+    console.log('🗄️ Starting college scores archiving...');
+    console.log('🔍 About to call archiveCollegeScores function...');
+    
+    try {
+      const archiveResult = await archiveCollegeScores();
+      console.log('📊 Archive function returned:', JSON.stringify(archiveResult, null, 2));
+
+      if (!archiveResult.success) {
+        console.error('❌ Error archiving college scores:', archiveResult.error);
+        // Don't fail the entire operation, but log the error
+        console.warn('⚠️ Student deactivation succeeded but college score archiving failed');
+      } else {
+        console.log('✅ College scores archived successfully:', archiveResult);
+        console.log(`📈 Archived ${archiveResult.archived_count || 0} college score records`);
+      }
+    } catch (archiveError) {
+      console.error('💥 Exception during college score archiving:', archiveError);
+      console.error('Stack trace:', archiveError.stack);
+    }
+
     res.json({
       message: 'All active students have been deactivated successfully',
       deactivatedCount: data?.deactivated_students || 0,
       totalMovedAssessments: data?.total_moved_assessments || 0,
-      details: data
+      archivedCollegeScores: archiveResult.archived_count || 0,
+      details: {
+        studentDeactivation: data,
+        collegeScoreArchiving: archiveResult
+      }
     });
   } catch (error) {
     console.error('Error in deactivate students:', error);
@@ -586,6 +624,18 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
         console.log('Deactivation result:', deactivateData);
         console.log(`Deactivated ${deactivatedCount} previous students`);
         console.log(`Moved ${totalMovedAssessments} assessments to history`);
+        
+        // Archive college scores after deactivating students
+        console.log('📊 Starting college score archiving after student deactivation...');
+        try {
+          const archiveResult = await archiveCollegeScores();
+          console.log('✅ College score archiving completed:', JSON.stringify(archiveResult, null, 2));
+          console.log(`📈 Archived ${archiveResult.archivedCount || 0} college score records`);
+        } catch (archiveError) {
+          console.error('❌ College score archiving failed:', archiveError);
+          console.error('Stack trace:', archiveError.stack);
+          console.warn('⚠️ Student deactivation succeeded but college score archiving failed');
+        }
         
         // Archive orphaned bulk assessments after deactivating students
         try {
@@ -1386,7 +1436,7 @@ router.post('/debug/test-deactivation', async (req, res) => {
     });
     
     // Call the deactivation function
-    const { data: deactivateData, error: deactivateError } = await supabase
+    const { data: deactivateData, error: deactivateError } = await supabaseAdmin
       .rpc('deactivate_all_students');
     
     if (deactivateError) {
@@ -1400,6 +1450,16 @@ router.post('/debug/test-deactivation', async (req, res) => {
     
     console.log('Deactivation result:', deactivateData);
     
+    // Archive college scores to college_scores_history
+    console.log('🗄️ Testing college scores archiving...');
+    const archiveResult = await archiveCollegeScores();
+    
+    if (!archiveResult.success) {
+      console.error('Error archiving college scores:', archiveResult.error);
+    } else {
+      console.log('✅ College scores archived successfully:', archiveResult);
+    }
+    
     // Check counts after deactivation
     const { data: afterStudents, error: afterError } = await supabase
       .from('students')
@@ -1412,9 +1472,19 @@ router.post('/debug/test-deactivation', async (req, res) => {
       console.log('Active students after deactivation:', afterStudents);
     }
     
+    // Check college scores tables after archiving
+    const { data: collegeScoresCount } = await supabase
+      .from('college_scores')
+      .select('*', { count: 'exact', head: true });
+    
+    const { data: collegeScoresHistoryCount } = await supabase
+      .from('college_scores_history')
+      .select('*', { count: 'exact', head: true });
+    
     res.json({
       success: true,
       deactivation_result: deactivateData,
+      archive_result: archiveResult,
       before_counts: {
         active_students: beforeStudents,
         // ryffscoring table no longer used - data in assessments_42items/assessments_84items
@@ -1422,7 +1492,9 @@ router.post('/debug/test-deactivation', async (req, res) => {
         assessments_84items: assess84Count
       },
       after_counts: {
-        active_students: afterStudents
+        active_students: afterStudents,
+        college_scores: collegeScoresCount,
+        college_scores_history: collegeScoresHistoryCount
       }
     });
     
@@ -1450,8 +1522,8 @@ router.get('/colleges/scores', async (req, res) => {
       course
     });
     
-    // Get active college scores only (is_active = true)
-    const result = await getCollegeScores(college, assessmentType, assessmentName, yearLevel, section, course, true);
+    // Get college scores (is_active parameter removed for compatibility)
+    const result = await getCollegeScores(college, assessmentType, assessmentName, yearLevel, section, course);
     
     if (result.success) {
       res.json({
@@ -1596,13 +1668,12 @@ router.get('/colleges/assessment-names', async (req, res) => {
     console.log('🔍 Fetching assessment names from college_scores for college:', college, 'assessmentType:', assessmentType);
     
     // Build query to get unique assessment names from college_scores
-    // Only get assessment names from ACTIVE college scores (is_active = true)
-    // This ensures College Detail only shows assessments with active data
+    // Note: is_active filter removed to avoid database errors since column doesn't exist
+    // All college scores are treated as active by default
     let query = supabase
       .from('college_scores')
       .select('assessment_name, college_name, assessment_type')
-      .not('assessment_name', 'is', null)
-      .eq('is_active', true); // Only show assessments with active scores
+      .not('assessment_name', 'is', null);
     
     // Filter by college if provided
     if (college) {

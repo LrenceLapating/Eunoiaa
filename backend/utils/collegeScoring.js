@@ -153,7 +153,7 @@ async function getAssessmentCompletionCounts(assessmentName = null, yearLevel = 
  * @returns {string} Risk level: 'At Risk', 'Moderate', or 'Healthy'
  */
 function getCollegeDimensionRiskLevel(rawScore) {
-  if (rawScore <= 18) return 'at-risk';   // ≤18 = At-Risk
+  if (rawScore <= 18) return 'at_risk';   // ≤18 = At-Risk
   if (rawScore <= 30) return 'moderate';  // 19-30 = Moderate  
   return 'healthy';                       // ≥31 = Healthy
 }
@@ -309,7 +309,8 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
         collegeData[college] = {
           students: [],
           dimensionTotals: {},
-          studentCount: 0
+          studentCount: 0,
+          studentRiskLevels: [] // Track individual student risk levels
         };
         
         // Initialize dimension totals
@@ -323,12 +324,18 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
         collegeData[college].students.push(assessment.scores);
         collegeData[college].studentCount++;
         
-        // Sum dimension scores (these should be raw scores 7-42)
+        // Calculate student's overall score
+        let studentOverallScore = 0;
         Object.keys(RYFF_DIMENSIONS).forEach(dimension => {
           if (assessment.scores[dimension] !== undefined) {
             collegeData[college].dimensionTotals[dimension] += assessment.scores[dimension];
+            studentOverallScore += assessment.scores[dimension];
           }
         });
+        
+        // Determine this student's risk level and store it
+        const studentRiskLevel = determineStudentRiskLevel(studentOverallScore, assessmentType);
+        collegeData[college].studentRiskLevels.push(studentRiskLevel);
       }
     });
     
@@ -341,6 +348,22 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
       if (data.studentCount === 0) continue;
       
       console.log(`Processing ${college} with ${data.studentCount} students`);
+      
+      // Calculate risk distribution for this college
+      const riskDistribution = {
+        at_risk: 0,
+        moderate: 0,
+        healthy: 0
+      };
+      
+      // Count students by risk level
+      data.studentRiskLevels.forEach(riskLevel => {
+        if (riskDistribution.hasOwnProperty(riskLevel)) {
+          riskDistribution[riskLevel]++;
+        }
+      });
+      
+      console.log(`${college} risk distribution:`, riskDistribution);
       
       // Calculate average scores for each dimension
       Object.keys(RYFF_DIMENSIONS).forEach(dimension => {
@@ -356,7 +379,8 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
           assessment_type: assessmentType, // Use the required assessmentType parameter
           assessment_name: assessmentName || 'General Assessment', // Provide default if null
           last_calculated: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          risk_distribution: riskDistribution // Add the risk distribution data
         });
       });
     }
@@ -429,10 +453,9 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
  * @param {number|string} yearLevel - Optional: filter by specific year level
  * @param {string} section - Optional: filter by specific section
  * @param {string} course - Optional: filter by specific course
- * @param {boolean} isActive - Optional: filter by active status (true for active, false for archived)
  * @returns {Object} College scores grouped by college and dimension
  */
-async function getCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null, course = null, isActive = true) {
+async function getCollegeScores(collegeName = null, assessmentType = null, assessmentName = null, yearLevel = null, section = null, course = null) {
   try {
     // College name mapping - convert full names to codes for database queries
     const collegeNameMapping = {
@@ -504,8 +527,8 @@ async function getCollegeScores(collegeName = null, assessmentType = null, asses
       query = query.eq('assessment_name', assessmentName);
     }
 
-    // Filter by active status - this enables unified College Detail/History functionality
-    query = query.eq('is_active', isActive);
+    // Note: is_active field removed to avoid database errors
+    // All college scores are now treated as active by default
 
     const { data: scores, error } = await query;
 
@@ -863,3 +886,32 @@ module.exports = {
   getCollegeDimensionRiskLevel,
   RYFF_DIMENSIONS
 };
+
+/**
+ * Determine individual student risk level based on overall score
+ * @param {number} overallScore - Sum of all 6 dimension scores
+ * @param {string} assessmentType - 'ryff_42' or 'ryff_84'
+ * @returns {string} Risk level: 'at-risk', 'moderate', or 'healthy'
+ */
+function determineStudentRiskLevel(overallScore, assessmentType = 'ryff_42') {
+  const thresholds = {
+    ryff_42: {
+      atRisk: 111,    // ≤111: At-Risk (42-111)
+      moderate: 181   // 112-181: Moderate, ≥182: Healthy (182-252)
+    },
+    ryff_84: {
+      atRisk: 223,    // ≤223: At-Risk (84-223)
+      moderate: 363   // 224-363: Moderate, ≥364: Healthy (364-504)
+    }
+  };
+  
+  const threshold = thresholds[assessmentType] || thresholds.ryff_42;
+  
+  if (overallScore <= threshold.atRisk) {
+    return 'at_risk';
+  } else if (overallScore <= threshold.moderate) {
+    return 'moderate';
+  } else {
+    return 'healthy';
+  }
+}

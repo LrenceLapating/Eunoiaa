@@ -51,7 +51,8 @@ async function getHistoricalCollegeScores(collegeName = null, assessmentType = n
         last_calculated,
         archive_reason,
         available_year_levels,
-        available_sections
+        available_sections,
+        risk_distribution
       `)
       .order('archived_at', { ascending: false })
       .order('college_name')
@@ -138,7 +139,8 @@ async function getHistoricalCollegeScores(collegeName = null, assessmentType = n
           studentCount: score.student_count || 0,
           lastCalculated: score.last_calculated,
           availableYearLevels: score.available_year_levels || [],
-          availableSections: score.available_sections || []
+          availableSections: score.available_sections || [],
+          riskDistribution: score.risk_distribution || null // Store the actual risk distribution from database
         };
       }
       
@@ -167,60 +169,19 @@ async function getHistoricalCollegeScores(collegeName = null, assessmentType = n
         });
         college.overallScore = Math.round(overallScore * 100) / 100;
         
-        // Calculate risk distribution similar to the original college scoring
-        const riskDistribution = {
-          healthy: 0,
-          moderate: 0,
-          at_risk: 0
-        };
-        
-        const totalStudents = college.studentCount || 0;
-        
-        if (totalStudents > 0) {
-          // Count dimensions by risk level
-          const dimensionRiskCounts = {
+        // Use the actual risk distribution from the database instead of recalculating
+        if (college.riskDistribution) {
+          // Risk distribution already stored from database - use it as is
+          console.log(`📊 Using actual risk distribution from database for ${college.name}:`, college.riskDistribution);
+        } else {
+          // Fallback: if no risk distribution in database, use default values
+          console.log(`⚠️ No risk distribution found in database for ${college.name}, using fallback`);
+          college.riskDistribution = {
             healthy: 0,
             moderate: 0,
             at_risk: 0
           };
-          
-          dimensions.forEach(dim => {
-            if (dim.riskLevel) {
-              const riskKey = dim.riskLevel.replace('-', '_'); // Convert 'at-risk' to 'at_risk'
-              if (dimensionRiskCounts.hasOwnProperty(riskKey)) {
-                dimensionRiskCounts[riskKey]++;
-              }
-            }
-          });
-          
-          // Determine overall college risk based on dimension distribution
-          const totalDimensions = Object.values(dimensionRiskCounts).reduce((sum, count) => sum + count, 0);
-          
-          if (totalDimensions > 0) {
-            const healthyRatio = dimensionRiskCounts.healthy / totalDimensions;
-            const atRiskRatio = dimensionRiskCounts.at_risk / totalDimensions;
-            
-            // Distribute students based on overall college health
-            if (healthyRatio >= 0.6) {
-              // Mostly healthy college
-              riskDistribution.healthy = Math.round(totalStudents * 0.7);
-              riskDistribution.moderate = Math.round(totalStudents * 0.25);
-              riskDistribution.at_risk = totalStudents - riskDistribution.healthy - riskDistribution.moderate;
-            } else if (atRiskRatio >= 0.4) {
-              // High risk college
-              riskDistribution.at_risk = Math.round(totalStudents * 0.5);
-              riskDistribution.moderate = Math.round(totalStudents * 0.35);
-              riskDistribution.healthy = totalStudents - riskDistribution.at_risk - riskDistribution.moderate;
-            } else {
-              // Moderate risk college
-              riskDistribution.moderate = Math.round(totalStudents * 0.5);
-              riskDistribution.healthy = Math.round(totalStudents * 0.3);
-              riskDistribution.at_risk = totalStudents - riskDistribution.moderate - riskDistribution.healthy;
-            }
-          }
         }
-        
-        college.riskDistribution = riskDistribution;
       });
     });
 
