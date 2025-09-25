@@ -153,7 +153,7 @@ async function getAssessmentCompletionCounts(assessmentName = null, yearLevel = 
  * @returns {string} Risk level: 'At Risk', 'Moderate', or 'Healthy'
  */
 function getCollegeDimensionRiskLevel(rawScore) {
-  if (rawScore <= 18) return 'at_risk';   // ≤18 = At-Risk
+  if (rawScore <= 18) return 'at-risk';   // ≤18 = At-Risk
   if (rawScore <= 30) return 'moderate';  // 19-30 = Moderate  
   return 'healthy';                       // ≥31 = Healthy
 }
@@ -333,8 +333,13 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
           }
         });
         
+        // Debug logging for student score calculation
+        console.log(`Student ${assessment.student_id} scores:`, assessment.scores);
+        console.log(`Student ${assessment.student_id} overall score:`, studentOverallScore);
+        
         // Determine this student's risk level and store it
         const studentRiskLevel = determineStudentRiskLevel(studentOverallScore, assessmentType);
+        console.log(`Student ${assessment.student_id} risk level:`, studentRiskLevel);
         collegeData[college].studentRiskLevels.push(studentRiskLevel);
       }
     });
@@ -351,19 +356,31 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
       
       // Calculate risk distribution for this college
       const riskDistribution = {
-        at_risk: 0,
+        'at-risk': 0,
         moderate: 0,
         healthy: 0
       };
       
       // Count students by risk level
+      console.log(`${college} studentRiskLevels array:`, data.studentRiskLevels);
       data.studentRiskLevels.forEach(riskLevel => {
+        console.log(`Checking risk level: "${riskLevel}" - has property: ${riskDistribution.hasOwnProperty(riskLevel)}`);
         if (riskDistribution.hasOwnProperty(riskLevel)) {
           riskDistribution[riskLevel]++;
+          console.log(`Incremented ${riskLevel} to ${riskDistribution[riskLevel]}`);
+        } else {
+          console.log(`Risk level "${riskLevel}" not found in riskDistribution object`);
         }
       });
       
       console.log(`${college} risk distribution:`, riskDistribution);
+      
+      // Convert risk distribution to database format (at-risk -> at_risk)
+      const dbRiskDistribution = {
+        at_risk: riskDistribution['at-risk'] || 0,
+        moderate: riskDistribution.moderate || 0,
+        healthy: riskDistribution.healthy || 0
+      };
       
       // Calculate average scores for each dimension
       Object.keys(RYFF_DIMENSIONS).forEach(dimension => {
@@ -380,7 +397,7 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
           assessment_name: assessmentName || 'General Assessment', // Provide default if null
           last_calculated: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          risk_distribution: riskDistribution // Add the risk distribution data
+          risk_distribution: dbRiskDistribution // Use the database-formatted risk distribution
         });
       });
     }
@@ -598,7 +615,8 @@ async function getCollegeScores(collegeName = null, assessmentType = null, asses
           name: score.college_name,
           dimensions: {},
           studentCount: score.student_count,
-          lastCalculated: score.last_calculated
+          lastCalculated: score.last_calculated,
+          riskDistribution: score.risk_distribution || { at_risk: 0, moderate: 0, healthy: 0 }
         };
       }
       
@@ -908,7 +926,7 @@ function determineStudentRiskLevel(overallScore, assessmentType = 'ryff_42') {
   const threshold = thresholds[assessmentType] || thresholds.ryff_42;
   
   if (overallScore <= threshold.atRisk) {
-    return 'at_risk';
+    return 'at-risk';
   } else if (overallScore <= threshold.moderate) {
     return 'moderate';
   } else {

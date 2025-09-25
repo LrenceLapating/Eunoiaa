@@ -148,25 +148,7 @@
         </div>
       </div>
 
-      <!-- Year Level Selection -->
-      <div class="year-level-section">
-        <h4>Select Year Levels</h4>
-        <div class="year-level-checkboxes">
-          <div v-for="year in availableYearLevels" 
-               :key="year" 
-               class="year-checkbox-item">
-            <label class="checkbox-container">
-              <input 
-                type="checkbox" 
-                :value="year" 
-                v-model="selectedYearLevels"
-              />
-              <span class="checkmark"></span>
-              <span class="year-label">{{ year }}</span>
-            </label>
-          </div>
-        </div>
-      </div>
+
     </div>
 
     <!-- Assessment Selection for Individual Report -->
@@ -266,6 +248,7 @@ import authService from '@/services/authService';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { apiUrl } from '../../utils/apiUtils';
+import { getDetailedScoreInterpretation } from '../Shared/ScoreInterpretationUtils';
 
 export default {
   name: 'Reports',
@@ -293,29 +276,9 @@ export default {
       allStudents: [], // Combined current + historical students
       isLoadingHistoricalStudents: false,
       selectedColleges: [],
-      selectedYearLevels: [],
       selectedAssessments: [],
       selectedPeriods: [],
-      assessmentPeriods: [
-        {
-          id: 1,
-          name: 'First Semester Assessment',
-          dateRange: 'August 2024 - December 2024',
-          participants: 1250
-        },
-        {
-          id: 2,
-          name: 'Second Semester Assessment',
-          dateRange: 'January 2025 - May 2025',
-          participants: 1180
-        },
-        {
-          id: 3,
-          name: 'Summer Assessment',
-          dateRange: 'June 2024 - July 2024',
-          participants: 450
-        }
-      ],
+      assessmentPeriods: [], // Will be populated dynamically from API
       availableColleges: [],
       availableYearLevels: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
       collegesFromBackend: [], // Store colleges fetched from backend
@@ -330,7 +293,7 @@ export default {
       if (reportType === 'individual') {
         return student !== null;
       } else if (reportType === 'college') {
-        return this.selectedColleges.length > 0 && this.selectedYearLevels.length > 0 && this.selectedPeriods.length > 0;
+        return this.selectedColleges.length > 0 && this.selectedPeriods.length > 0;
       }
       return false;
     },
@@ -397,7 +360,6 @@ export default {
       // Reset selections when changing report type
       this.selectedStudent = null;
       this.selectedColleges = [];
-      this.selectedYearLevels = [];
       this.studentSearchQuery = '';
       this.filteredStudents = [];
     },
@@ -1048,11 +1010,300 @@ export default {
         case 'moderate':
           return { r: 255, g: 152, b: 0 }; // Orange
         case 'high':
-        case 'at risk':
+        case 'severe':
           return { r: 244, g: 67, b: 54 }; // Red
         default:
-          return { r: 0, g: 0, b: 0 }; // Black
+          return { r: 158, g: 158, b: 158 }; // Gray
       }
+    },
+
+    // Simple PDF download method
+    downloadPDF(filename) {
+      // This method is called after the PDF is generated
+      // The actual PDF generation and download happens in createCollegeReportPDF
+      console.log(`PDF download initiated: ${filename}`);
+    },
+
+    async createCollegeReportPDF(collegeData, assessmentPeriods, selectedColleges, selectedPeriods) {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let yPosition = 20;
+      
+      // Header
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('College Assessment Report', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 15;
+      
+      // Report metadata
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      const reportDate = new Date().toLocaleDateString();
+      pdf.text(`Generated on: ${reportDate}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 10;
+      
+      const collegeNames = selectedColleges.join(', ');
+      pdf.text(`Colleges: ${collegeNames}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 10;
+      
+      const periodNames = selectedPeriods.map(p => assessmentPeriods.find(ap => ap.id === p)?.name || p).join(', ');
+      pdf.text(`Assessment Periods: ${periodNames}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 20;
+      
+      // Process each college
+      for (let collegeIndex = 0; collegeIndex < collegeData.length; collegeIndex++) {
+        const college = collegeData[collegeIndex];
+        
+        // Add new page for each college (except first)
+        if (collegeIndex > 0) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        // College header
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${college.name}`, 20, yPosition);
+        yPosition += 15;
+        
+        // College summary box
+        pdf.setFillColor(248, 249, 250);
+        pdf.rect(15, yPosition - 5, 180, 45, 'F');
+        
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Total Students: ${college.studentCount || 0}`, 20, yPosition + 5);
+        pdf.text(`Year Level: All Years (Default)`, 20, yPosition + 15);
+        pdf.text(`Last Updated: ${college.lastCalculated ? new Date(college.lastCalculated).toLocaleDateString() : 'N/A'}`, 20, yPosition + 25);
+        
+        // Completion data if available
+        if (college.completionData) {
+          const completionRate = college.completionData.total > 0 ? 
+            Math.round((college.completionData.completed / college.completionData.total) * 100) : 0;
+          pdf.text(`Completion Rate: ${college.completionData.completed}/${college.completionData.total} (${completionRate}%)`, 120, yPosition + 5);
+        }
+        
+        // Calculate and display overall score (SUM of all dimensions, matching CollegeView.vue)
+        let overallScore = 0;
+        if (college.dimensions && Object.keys(college.dimensions).length > 0) {
+          Object.values(college.dimensions).forEach(dimData => {
+            if (dimData.score) {
+              overallScore += dimData.score;
+            }
+          });
+        }
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Overall Score: ${overallScore.toFixed(2)}`, 120, yPosition + 15);
+        
+        // Overall score interpretation (updated thresholds for SUM-based scoring)
+        let overallInterpretation = 'Unknown';
+        if (overallScore >= 182) overallInterpretation = 'Healthy';      // ≥182: Healthy (for 42-item)
+        else if (overallScore >= 112) overallInterpretation = 'Moderate'; // 112-181: Moderate
+        else if (overallScore > 0) overallInterpretation = 'At Risk';     // ≤111: At Risk
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Interpretation: ${overallInterpretation}`, 120, yPosition + 25);
+        
+        yPosition += 55;
+        
+        // Risk Distribution Section
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Risk Distribution', 20, yPosition);
+        yPosition += 15;
+        
+        // Use risk distribution from database (student counts, not dimension counts)
+        let riskDistribution = { healthy: 0, moderate: 0, at_risk: 0 };
+        if (college.riskDistribution) {
+          // Use the actual student risk distribution from database
+          riskDistribution = {
+            healthy: college.riskDistribution.healthy || 0,
+            moderate: college.riskDistribution.moderate || 0,
+            at_risk: college.riskDistribution.at_risk || 0
+          };
+        } else {
+          // Fallback: if no risk distribution data, show zeros
+          console.warn(`No risk distribution data found for college: ${college.name}`);
+        }
+        
+        // Risk distribution visual
+        pdf.setFillColor(220, 220, 220);
+        pdf.rect(15, yPosition - 5, 180, 35, 'F');
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        
+        // Healthy (Green)
+        pdf.setFillColor(76, 175, 80);
+        pdf.rect(20, yPosition + 2, 15, 8, 'F');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`Healthy: ${riskDistribution.healthy}`, 40, yPosition + 8);
+        
+        // Moderate (Orange)
+        pdf.setFillColor(255, 152, 0);
+        pdf.rect(90, yPosition + 2, 15, 8, 'F');
+        pdf.text(`Moderate: ${riskDistribution.moderate}`, 110, yPosition + 8);
+        
+        // At Risk (Red)
+        pdf.setFillColor(244, 67, 54);
+        pdf.rect(20, yPosition + 15, 15, 8, 'F');
+        pdf.text(`At Risk: ${riskDistribution.at_risk}`, 40, yPosition + 21);
+        
+        // Total
+        const totalRisk = riskDistribution.healthy + riskDistribution.moderate + riskDistribution.at_risk;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Total Dimensions: ${totalRisk}`, 110, yPosition + 21);
+        
+        yPosition += 45;
+        
+        // Dimensions header
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Wellbeing Dimensions Analysis', 20, yPosition);
+        yPosition += 15;
+        
+        // Dimensions data
+        if (college.dimensions && Object.keys(college.dimensions).length > 0) {
+          const dimensionNames = {
+            'autonomy': 'Autonomy',
+            'environmental_mastery': 'Environmental Mastery',
+            'personal_growth': 'Personal Growth',
+            'positive_relations': 'Positive Relations',
+            'purpose_in_life': 'Purpose in Life',
+            'self_acceptance': 'Self Acceptance'
+          };
+          
+          Object.entries(college.dimensions).forEach(([dimKey, dimData]) => {
+            const dimensionName = dimensionNames[dimKey] || dimKey;
+            const score = dimData.score || 0;
+            const riskLevel = dimData.riskLevel || 'Unknown';
+            const studentCount = dimData.studentCount || 0;
+            
+            // Check if we need a new page
+            if (yPosition > pageHeight - 50) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+            
+            // Dimension box with enhanced layout
+            const riskColor = this.getRiskLevelColor(riskLevel);
+            pdf.setFillColor(riskColor.r, riskColor.g, riskColor.b);
+            pdf.rect(15, yPosition - 3, 5, 25, 'F');
+            
+            // Dimension background
+            pdf.setFillColor(250, 250, 250);
+            pdf.rect(20, yPosition - 3, 175, 25, 'F');
+            
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(dimensionName, 25, yPosition + 5);
+            
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Score: ${score.toFixed(2)}`, 25, yPosition + 15);
+            
+            // Score interpretation using detailed utility
+            const assessmentType = college.assessmentType || 'ryff_42'; // Default to 42-item if not specified
+            const interpretation = getDetailedScoreInterpretation(score, dimKey, assessmentType);
+            
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(9);
+            
+            // Split interpretation into multiple lines to fit in PDF
+            const maxWidth = 170;
+            const lines = pdf.splitTextToSize(interpretation, maxWidth);
+            
+            // Add interpretation text with proper line spacing
+            let interpretationY = yPosition + 25;
+            lines.forEach((line, index) => {
+              if (interpretationY > pageHeight - 20) {
+                pdf.addPage();
+                interpretationY = 20;
+              }
+              pdf.text(line, 25, interpretationY);
+              interpretationY += 8;
+            });
+            
+            // Add risk level and student count info
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(10);
+            pdf.text(`Risk Level: ${riskLevel}`, 25, interpretationY + 5);
+            pdf.text(`Students: ${studentCount}`, 100, interpretationY + 5);
+            
+            // Update yPosition to account for interpretation text and additional info
+            yPosition = interpretationY + 15;
+          });
+        } else {
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'italic');
+          pdf.text('No dimension data available for this college.', 20, yPosition);
+          yPosition += 15;
+        }
+        
+        // Assessment periods breakdown if available
+        if (college.completionDataByAssessment && Object.keys(college.completionDataByAssessment).length > 0) {
+          yPosition += 10;
+          
+          // Check if we need a new page
+          if (yPosition > pageHeight - 60) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          
+          pdf.setFontSize(14);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Assessment Breakdown', 20, yPosition);
+          yPosition += 15;
+          
+          Object.entries(college.completionDataByAssessment).forEach(([assessmentName, data]) => {
+            if (yPosition > pageHeight - 20) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+            
+            const completionRate = data.total > 0 ? 
+              Math.round((data.completed / data.total) * 100) : 0;
+            
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`${assessmentName}: ${data.completed}/${data.total} (${completionRate}%)`, 25, yPosition);
+            yPosition += 12;
+          });
+        }
+      }
+      
+      // Footer on each page
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        
+        // Page number
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 30, pageHeight - 10);
+        
+        // Date
+        const dateText = `Generated: ${reportDate}`;
+        pdf.text(dateText, 195 - pdf.getTextWidth(dateText), pageHeight - 10);
+        
+        // Warning text
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        const warningText = 'This report contains sensitive psychological assessment data. Handle with appropriate confidentiality.';
+        const warningWidth = pdf.getTextWidth(warningText);
+        pdf.text(warningText, (210 - warningWidth) / 2, pageHeight - 4);
+      }
+      
+      // Generate filename and save
+      const filenameColleges = selectedColleges.join('_');
+      const periodCount = selectedPeriods.length;
+      const filename = `CollegeReport_${filenameColleges}_${periodCount}_periods.pdf`;
+      
+      pdf.save(filename);
+      
+      return filename;
     },
     
     getDimensionHealthStatus(score, maxScore) {
@@ -1084,23 +1335,237 @@ export default {
       });
     },
     
-    generateCollegeReport() {
-      // Simulate PDF generation
-      // Generate college-wide report
-      
-      // Show success message
-      const periodCount = this.selectedPeriods.length;
-      this.$emit('show-notification', {
-        type: 'success',
-        message: `College report for ${this.selectedColleges.join(', ')} with ${periodCount} periods is being generated...`
-      });
-      
-      // Simulate download after delay
-      setTimeout(() => {
-        const collegeNames = this.selectedColleges.join('_');
-        this.downloadPDF(`CollegeReport_${collegeNames}_${periodCount}_periods.pdf`);
-      }, 2000);
+    async generateCollegeReport() {
+      try {
+        console.log('Generating college report for:', this.selectedColleges, 'with periods:', this.selectedPeriods);
+        
+        // Show loading message
+        this.$emit('show-notification', {
+          type: 'info',
+          message: `Fetching data for college report...`
+        });
+        
+        // Check if this is a historical report or current report
+        const isHistoricalReport = this.selectedPeriods.some(periodId => {
+          const period = this.assessmentPeriods.find(p => p.id === periodId);
+          return period && period.name.includes('(Historical)');
+        });
+        
+        let collegeData;
+        if (isHistoricalReport) {
+          // Use historical data fetching (existing logic)
+          collegeData = await this.fetchHistoricalCollegeData();
+        } else {
+          // Use current data fetching (new logic)
+          collegeData = await this.fetchCurrentCollegeData();
+        }
+        
+        // Generate PDF with actual data
+        const filename = await this.createCollegeReportPDF(
+          collegeData, 
+          this.assessmentPeriods, 
+          this.selectedColleges, 
+          this.selectedPeriods
+        );
+        
+        // Show success message
+        const periodCount = this.selectedPeriods.length;
+        this.$emit('show-notification', {
+          type: 'success',
+          message: `College report "${filename}" has been generated and downloaded successfully!`
+        });
+        
+      } catch (error) {
+        console.error('Error generating college report:', error);
+        this.$emit('show-notification', {
+          type: 'error',
+          message: `Failed to generate college report: ${error.message}`
+        });
+      }
     },
+
+    async fetchHistoricalCollegeData() {
+      // Fetch college data for each selected college and period
+      const collegeDataPromises = this.selectedColleges.map(async (college) => {
+        try {
+          // Get assessment names for the selected periods
+          const selectedAssessmentNames = this.selectedPeriods.map(periodId => {
+            const period = this.assessmentPeriods.find(p => p.id === periodId);
+            return period ? period.name.replace(' (Historical)', '') : null;
+          }).filter(name => name);
+          
+          console.log('Fetching historical data for college:', college, 'assessments:', selectedAssessmentNames);
+          
+          // Fetch college historical data for each assessment (contains complete dimensions and scores)
+          const assessmentDataPromises = selectedAssessmentNames.map(async (assessmentName) => {
+            const response = await fetch(apiUrl(`/accounts/colleges/history?college=${encodeURIComponent(college)}&assessmentType=ryff_42&assessmentName=${encodeURIComponent(assessmentName)}`), {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              // Get the college data from history - it contains complete dimensions and scores
+              if (data.success && data.colleges && data.colleges.length > 0) {
+                return data.colleges[0];
+              } else if (data.success && data.history && data.history.length > 0 && data.history[0].colleges && data.history[0].colleges.length > 0) {
+                // If current data is empty, use historical data which has complete information
+                return data.history[0].colleges[0];
+              }
+              return null;
+            } else {
+              console.error(`Failed to fetch data for ${college} - ${assessmentName}`);
+              return null;
+            }
+          });
+            
+            const assessmentResults = await Promise.all(assessmentDataPromises);
+            
+            // Combine data from all assessments for this college
+            const validResults = assessmentResults.filter(result => result !== null);
+            
+            if (validResults.length > 0) {
+              // Use the most recent data as base
+              const baseData = validResults[0];
+              
+              // Merge completion data from all assessments
+              const combinedCompletionData = {};
+              let totalCompleted = 0;
+              let totalTotal = 0;
+              
+              validResults.forEach((result, index) => {
+                const assessmentName = selectedAssessmentNames[index];
+                if (result.completionDataByAssessment && result.completionDataByAssessment[assessmentName]) {
+                  combinedCompletionData[assessmentName] = result.completionDataByAssessment[assessmentName];
+                  // Add to overall totals
+                  totalCompleted += result.completionDataByAssessment[assessmentName].completed || 0;
+                  totalTotal += result.completionDataByAssessment[assessmentName].total || 0;
+                }
+              });
+              
+              return {
+                ...baseData,
+                name: college,
+                completionData: { total: totalTotal, completed: totalCompleted },
+                completionDataByAssessment: combinedCompletionData
+              };
+            } else {
+              // Return placeholder data if no valid results
+              return {
+                name: college,
+                dimensions: {},
+                studentCount: 0,
+                lastCalculated: null,
+                completionData: { total: 0, completed: 0 },
+                completionDataByAssessment: {},
+                riskDistribution: { at_risk: 0, moderate: 0, healthy: 0 }
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching historical data for college ${college}:`, error);
+            return {
+              name: college,
+              dimensions: {},
+              studentCount: 0,
+              lastCalculated: null,
+              completionData: { total: 0, completed: 0 },
+              completionDataByAssessment: {},
+              riskDistribution: { at_risk: 0, moderate: 0, healthy: 0 }
+            };
+          }
+        });
+        
+        return await Promise.all(collegeDataPromises);
+      },
+
+      async fetchCurrentCollegeData() {
+        console.log('Fetching current college data for:', this.selectedColleges);
+        
+        // Fetch current college data using the scores endpoint
+        const collegeDataPromises = this.selectedColleges.map(async (college) => {
+          try {
+            // Use the same endpoint as CollegeView.vue for current data
+            const response = await fetch(apiUrl(`/accounts/colleges/scores?assessmentType=ryff_42`), {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log('Current college scores API response:', data);
+              
+              if (data.success && data.colleges && data.colleges.length > 0) {
+                // Find the specific college data
+                const collegeData = data.colleges.find(c => c.name === college);
+                
+                if (collegeData) {
+                  // Transform the data to match the expected format
+                  return {
+                    name: college,
+                    dimensions: collegeData.dimensions || {},
+                    studentCount: collegeData.studentCount || 0,
+                    lastCalculated: collegeData.lastCalculated || new Date().toISOString(),
+                    completionData: collegeData.completionData || { total: 0, completed: 0 },
+                    completionDataByAssessment: collegeData.completionDataByAssessment || {},
+                    riskDistribution: collegeData.riskDistribution || { at_risk: 0, moderate: 0, healthy: 0 },
+                    assessmentType: 'ryff_42'
+                  };
+                } else {
+                  console.warn(`College ${college} not found in current data`);
+                  return {
+                    name: college,
+                    dimensions: {},
+                    studentCount: 0,
+                    lastCalculated: null,
+                    completionData: { total: 0, completed: 0 },
+                    completionDataByAssessment: {},
+                    riskDistribution: { at_risk: 0, moderate: 0, healthy: 0 }
+                  };
+                }
+              } else {
+                console.warn('No colleges data in current API response');
+                return {
+                  name: college,
+                  dimensions: {},
+                  studentCount: 0,
+                  lastCalculated: null,
+                  completionData: { total: 0, completed: 0 },
+                  completionDataByAssessment: {},
+                  riskDistribution: { at_risk: 0, moderate: 0, healthy: 0 }
+                };
+              }
+            } else {
+              console.error(`Failed to fetch current data for ${college}:`, response.status);
+              return {
+                name: college,
+                dimensions: {},
+                studentCount: 0,
+                lastCalculated: null,
+                completionData: { total: 0, completed: 0 },
+                completionDataByAssessment: {}
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching current data for college ${college}:`, error);
+            return {
+              name: college,
+              dimensions: {},
+              studentCount: 0,
+              lastCalculated: null,
+              completionData: { total: 0, completed: 0 },
+              completionDataByAssessment: {}
+            };
+          }
+        });
+        
+        return await Promise.all(collegeDataPromises);
+      },
     
     async loadCollegesFromBackend() {
       try {
@@ -1116,6 +1581,52 @@ export default {
         }
       } catch (error) {
         console.error('Error loading colleges:', error);
+      }
+    },
+
+    async fetchAssessmentPeriods() {
+      if (this.selectedColleges.length === 0) {
+        this.assessmentPeriods = [];
+        return;
+      }
+
+      try {
+        console.log('Fetching assessment periods for colleges:', this.selectedColleges);
+        
+        // Create query parameters for selected colleges - backend expects 'colleges' parameter
+        const collegeParams = this.selectedColleges.join(',');
+        
+        const response = await fetch(apiUrl(`/accounts/colleges/assessment-periods?colleges=${encodeURIComponent(collegeParams)}`), {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Fetched assessment periods:', data);
+          
+          if (data.success && data.assessmentPeriods) {
+            this.assessmentPeriods = data.assessmentPeriods.map(period => ({
+              id: period.id,
+              name: period.name,
+              dateRange: period.dateRange || 'Date range not available',
+              participants: period.participants || 0
+            }));
+            console.log('Updated assessment periods:', this.assessmentPeriods);
+          } else {
+            console.error('Invalid response structure:', data);
+            this.assessmentPeriods = [];
+          }
+        } else {
+          console.error('Failed to fetch assessment periods:', response.statusText);
+          this.assessmentPeriods = [];
+        }
+      } catch (error) {
+        console.error('Error fetching assessment periods:', error);
+        this.assessmentPeriods = [];
       }
     },
     
@@ -1217,6 +1728,14 @@ export default {
         this.populateAvailableColleges();
       },
       immediate: true
+    },
+    // Watch for changes in selected colleges to fetch assessment periods
+    selectedColleges: {
+      handler(newColleges) {
+        console.log('Selected colleges changed:', newColleges);
+        this.fetchAssessmentPeriods();
+      },
+      deep: true
     }
   }
 };

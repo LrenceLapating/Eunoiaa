@@ -182,6 +182,20 @@ async function getHistoricalCollegeScores(collegeName = null, assessmentType = n
             at_risk: 0
           };
         }
+        
+        // Add completion data for historical reports
+        // Historical data represents completed assessments, so completion rate should be 100%
+        college.completionData = {
+          total: college.studentCount || 0,
+          completed: college.studentCount || 0
+        };
+        
+        // Also add completionDataByAssessment for consistency
+        college.completionDataByAssessment = {};
+        college.completionDataByAssessment[assessment.assessmentName] = {
+          total: college.studentCount || 0,
+          completed: college.studentCount || 0
+        };
       });
     });
 

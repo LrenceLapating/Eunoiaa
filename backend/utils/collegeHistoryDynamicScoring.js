@@ -12,7 +12,7 @@ const RYFF_DIMENSIONS = {
 function getCollegeDimensionRiskLevel(rawScore) {
   if (rawScore >= 30) return 'healthy';
   if (rawScore >= 25) return 'moderate';
-  return 'at_risk';
+  return 'at-risk';
 }
 
 // Helper function to determine individual dimension risk level based on dimension score
@@ -21,7 +21,7 @@ function getDimensionRiskLevel(dimensionScore) {
   // Healthy: 30-42, Moderate: 20-29, At Risk: 7-19
   if (dimensionScore >= 30) return 'healthy';
   if (dimensionScore >= 20) return 'moderate';
-  return 'at risk';
+  return 'at-risk';
 }
 
 /**
@@ -392,7 +392,7 @@ async function processAggregatedData(supabase, filters) {
           
           // Count risk levels
           const riskLevel = record.risk_level || 'moderate';
-          if (riskLevel === 'at risk') {
+          if (riskLevel === 'at-risk') {
             riskCounts.at_risk++;
           } else if (riskCounts.hasOwnProperty(riskLevel)) {
             riskCounts[riskLevel]++;

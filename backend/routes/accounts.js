@@ -1714,6 +1714,123 @@ router.get('/colleges/assessment-names', async (req, res) => {
   }
 });
 
+// GET /api/accounts/colleges/assessment-periods - Get assessment periods for selected colleges
+router.get('/colleges/assessment-periods', async (req, res) => {
+  try {
+    const { colleges } = req.query;
+    
+    if (!colleges) {
+      return res.status(400).json({
+        success: false,
+        message: 'Colleges parameter is required'
+      });
+    }
+    
+    // Parse colleges array from query string
+    const collegeList = Array.isArray(colleges) ? colleges : colleges.split(',');
+    
+    console.log('🔍 Fetching assessment periods for colleges:', collegeList);
+    
+    // Fetch current assessments from college_scores
+    const { data: currentScores, error: currentError } = await supabase
+      .from('college_scores')
+      .select('assessment_name, assessment_type, college_name, last_calculated')
+      .in('college_name', collegeList)
+      .not('assessment_name', 'is', null);
+    
+    if (currentError) {
+      console.error('Error fetching current college scores:', currentError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch current assessment data'
+      });
+    }
+    
+    // Fetch historical assessments from college_scores_history
+    const { data: historicalScores, error: historicalError } = await supabase
+      .from('college_scores_history')
+      .select('assessment_name, assessment_type, college_name, archived_at, last_calculated')
+      .in('college_name', collegeList)
+      .not('assessment_name', 'is', null);
+    
+    if (historicalError) {
+      console.error('Error fetching historical college scores:', historicalError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch historical assessment data'
+      });
+    }
+    
+    // Process and combine the data
+    const assessmentPeriods = new Map();
+    
+    // Process current assessments
+    currentScores.forEach(score => {
+      const key = `${score.assessment_name}_${score.assessment_type}`;
+      if (!assessmentPeriods.has(key)) {
+        assessmentPeriods.set(key, {
+          id: key,
+          name: score.assessment_name,
+          assessmentType: score.assessment_type,
+          dateRange: score.last_calculated ? new Date(score.last_calculated).toLocaleDateString() : 'Current',
+          participants: 0,
+          colleges: new Set(),
+          isHistorical: false,
+          lastCalculated: score.last_calculated
+        });
+      }
+      assessmentPeriods.get(key).colleges.add(score.college_name);
+    });
+    
+    // Process historical assessments
+    historicalScores.forEach(score => {
+      const key = `${score.assessment_name}_${score.assessment_type}_historical`;
+      if (!assessmentPeriods.has(key)) {
+        assessmentPeriods.set(key, {
+          id: key,
+          name: `${score.assessment_name} (Historical)`,
+          assessmentType: score.assessment_type,
+          dateRange: score.archived_at ? new Date(score.archived_at).toLocaleDateString() : 'Historical',
+          participants: 0,
+          colleges: new Set(),
+          isHistorical: true,
+          archivedAt: score.archived_at
+        });
+      }
+      assessmentPeriods.get(key).colleges.add(score.college_name);
+    });
+    
+    // Convert to array and calculate participants (estimate based on colleges)
+    const periodsArray = Array.from(assessmentPeriods.values()).map(period => ({
+      ...period,
+      colleges: Array.from(period.colleges),
+      participants: Array.from(period.colleges).length * 50 // Rough estimate
+    }));
+    
+    // Sort by date (most recent first)
+    periodsArray.sort((a, b) => {
+      const dateA = new Date(a.lastCalculated || a.archivedAt || 0);
+      const dateB = new Date(b.lastCalculated || b.archivedAt || 0);
+      return dateB - dateA;
+    });
+    
+    console.log('✅ Found assessment periods:', periodsArray.length);
+    
+    res.json({
+      success: true,
+      assessmentPeriods: periodsArray,
+      totalPeriods: periodsArray.length
+    });
+    
+  } catch (error) {
+    console.error('Error in assessment-periods endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch assessment periods'
+    });
+  }
+});
+
 // GET /api/accounts/student-status - Check current student status
 router.get('/student-status', verifyStudentSession, async (req, res) => {
   try {

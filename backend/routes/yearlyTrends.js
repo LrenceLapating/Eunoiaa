@@ -29,12 +29,12 @@ const RYFF_DIMENSIONS = {
 
 // Risk thresholds for each dimension (scores below these are considered at-risk)
 const RISK_THRESHOLDS = {
-  autonomy: 30,
-  environmental_mastery: 30,
-  personal_growth: 30,
-  positive_relations: 30,
-  purpose_in_life: 30,
-  self_acceptance: 30
+  autonomy: 18,
+  environmental_mastery: 18,
+  personal_growth: 18,
+  positive_relations: 18,
+  purpose_in_life: 18,
+  self_acceptance: 18
 };
 
 /**
@@ -74,7 +74,7 @@ async function retrySupabaseQuery(queryFunction, description, maxRetries = 3, de
  */
 router.get('/at-risk', async (req, res) => {
   try {
-    const { dimension = 'overall', year } = req.query;
+    const { dimension = 'autonomy', year } = req.query;
     
     console.log(`🔍 Fetching at-risk trends for dimension: ${dimension}, year: ${year || 'all years'}`);
 
@@ -257,7 +257,7 @@ router.get('/at-risk', async (req, res) => {
         const scores = assessment.scores || {};
         const dimensionScore = scores[dimension];
         if (dimensionScore !== null && dimensionScore !== undefined) {
-          isAtRisk = dimensionScore < RISK_THRESHOLDS[dimension];
+          isAtRisk = dimensionScore <= RISK_THRESHOLDS[dimension];
         }
       }
 
@@ -336,7 +336,7 @@ router.get('/at-risk', async (req, res) => {
  */
 router.get('/improvement', async (req, res) => {
   try {
-    const { dimension = 'overall', year } = req.query;
+    const { dimension = 'autonomy', year } = req.query;
     
     console.log(`🔍 Fetching improvement trends for dimension: ${dimension}, year: ${year || 'current year'}`);
 
@@ -617,6 +617,194 @@ router.get('/improvement', async (req, res) => {
 
 /**
  * GET /api/yearly-trends/available-years
+/**
+ * Get overall risk count by years
+ */
+router.get('/overall-risk', async (req, res) => {
+  try {
+    const { college } = req.query;
+    console.log('🔍 Fetching overall risk count by years', { college });
+
+    // Check cache first
+    const cacheKey = `overall_risk_${college || 'all'}`;
+    const cachedData = await cacheManager.get(cacheKey);
+    
+    if (cachedData) {
+      console.log(`📦 Cache hit for overall risk: ${cacheKey}`);
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true
+      });
+    }
+    
+    console.log(`🔍 Cache miss for overall risk: ${cacheKey}`);
+
+    // Build query for overall risk data - use manual joins since foreign keys don't exist
+    let query42 = supabaseAdmin
+      .from('assessments_42items')
+      .select(`
+        completed_at, 
+        overall_score,
+        student_id
+      `)
+      .not('completed_at', 'is', null)
+      .not('overall_score', 'is', null)
+      .not('student_id', 'is', null);
+
+    let query84 = supabaseAdmin
+      .from('assessments_84items')
+      .select(`
+        completed_at, 
+        overall_score,
+        student_id
+      `)
+      .not('completed_at', 'is', null)
+      .not('overall_score', 'is', null)
+      .not('student_id', 'is', null);
+
+    // For ryff_history, get student_id and risk_level to join manually
+    let queryHistory = supabaseAdmin
+      .from('ryff_history')
+      .select(`
+        completed_at, 
+        overall_score,
+        risk_level,
+        student_id
+      `)
+      .not('completed_at', 'is', null)
+      .not('student_id', 'is', null);
+
+    const [data42, data84, dataHistory] = await Promise.all([
+      retrySupabaseQuery(() => query42, 'assessments_42items overall risk'),
+      retrySupabaseQuery(() => query84, 'assessments_84items overall risk'),
+      retrySupabaseQuery(() => queryHistory, 'ryff_history overall risk')
+    ]);
+
+    // Get all unique student IDs
+    const allStudentIds = new Set();
+    [...(data42.data || []), ...(data84.data || []), ...(dataHistory.data || [])].forEach(item => {
+      if (item.student_id) allStudentIds.add(item.student_id);
+    });
+
+    // Fetch student data for college information
+    let studentsQuery = supabaseAdmin
+      .from('students')
+      .select('id, college')
+      .in('id', Array.from(allStudentIds))
+      .not('college', 'is', null);
+
+    // Apply college filter if specified
+    if (college && college !== 'all') {
+      studentsQuery = studentsQuery.eq('college', college);
+    }
+
+    const studentsData = await retrySupabaseQuery(() => studentsQuery, 'students data for overall risk');
+    
+    // Create a map of student_id to college
+    const studentCollegeMap = {};
+    (studentsData.data || []).forEach(student => {
+      studentCollegeMap[student.id] = student.college;
+    });
+
+    // Combine all data with manual college mapping
+    const allData = [
+      // Transform assessments_42items data to include college from manual join
+      ...(data42.data || []).map(item => ({
+        completed_at: item.completed_at,
+        overall_score: item.overall_score,
+        college: studentCollegeMap[item.student_id]
+      })).filter(item => item.college), // Only include items with valid college
+      // Transform assessments_84items data to include college from manual join
+      ...(data84.data || []).map(item => ({
+        completed_at: item.completed_at,
+        overall_score: item.overall_score,
+        college: studentCollegeMap[item.student_id]
+      })).filter(item => item.college), // Only include items with valid college
+      // Transform ryff_history data to include college from manual join
+      ...(dataHistory.data || []).map(item => ({
+        completed_at: item.completed_at,
+        overall_score: item.overall_score,
+        risk_level: item.risk_level,
+        college: studentCollegeMap[item.student_id]
+      })).filter(item => item.college) // Only include items with valid college
+    ];
+
+    // Group by year and count at-risk students
+    const yearlyRiskCounts = {};
+    
+    allData.forEach(item => {
+      if (item.completed_at) {
+        const year = new Date(item.completed_at).getFullYear();
+        
+        if (!yearlyRiskCounts[year]) {
+          yearlyRiskCounts[year] = { year, atRiskCount: 0, totalCount: 0 };
+        }
+        
+        yearlyRiskCounts[year].totalCount++;
+        
+        // For ryff_history data, use risk_level column ('high' means at-risk)
+        // For assessments_42items and assessments_84items, use overall_score < 30
+        if (item.risk_level) {
+          // This is from ryff_history - 'high' means at-risk
+          if (item.risk_level === 'high') {
+            yearlyRiskCounts[year].atRiskCount++;
+          }
+        } else if (item.overall_score !== null) {
+          // This is from assessments tables - use proper overall score thresholds
+          // Overall score thresholds: ryff_42: ≤111 (at-risk), ryff_84: ≤223 (at-risk)
+          // Since we don't have assessment_type here, assume ryff_42 (most common)
+          // and use conservative threshold that works for both types
+          if (item.overall_score <= 111) {
+            yearlyRiskCounts[year].atRiskCount++;
+          }
+        }
+      }
+    });
+
+    // Convert to array and sort by year
+    const result = Object.values(yearlyRiskCounts)
+      .sort((a, b) => a.year - b.year);
+    
+    console.log('✅ Overall risk data by years:', result);
+
+    // Cache the result
+    await cacheManager.set(cacheKey, result, CACHE_TTL.AT_RISK_DATA);
+    console.log(`💾 Cached overall risk data: ${cacheKey}`);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('Error fetching overall risk data:', error);
+    
+    // Check if it's a network/connection error
+    const isNetworkError = error.message?.includes('fetch failed') || 
+                          error.message?.includes('ECONNREFUSED') ||
+                          error.message?.includes('ENOTFOUND') ||
+                          error.code === 'ECONNREFUSED' ||
+                          error.code === 'ENOTFOUND';
+    
+    if (isNetworkError) {
+      console.warn('Network connectivity issue detected in overall risk');
+      res.status(503).json({
+        success: false,
+        message: 'Database connection temporarily unavailable. Please try again later.',
+        error: 'NETWORK_ERROR'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching overall risk data',
+        error: 'INTERNAL_ERROR'
+      });
+    }
+  }
+});
+
+/**
  * Get list of available years for trend analysis
  */
 router.get('/available-years', async (req, res) => {
@@ -727,6 +915,150 @@ router.get('/available-years', async (req, res) => {
       res.status(500).json({
         success: false,
         message: 'Internal server error while fetching available years',
+        error: 'INTERNAL_ERROR'
+      });
+    }
+  }
+});
+
+// GET /api/yearly-trends/colleges-with-assessments - Get colleges that have assessment records
+router.get('/colleges-with-assessments', async (req, res) => {
+  try {
+    console.log('🔍 Fetching colleges with assessment records');
+
+    // Check cache first
+    const cacheKey = 'colleges_with_assessments';
+    const cachedData = await cacheManager.get(cacheKey);
+    
+    if (cachedData) {
+      console.log(`📦 Cache hit for colleges with assessments: ${cacheKey}`);
+      return res.json({
+        success: true,
+        colleges: cachedData,
+        cached: true
+      });
+    }
+    
+    console.log(`🔍 Cache miss for colleges with assessments: ${cacheKey}`);
+
+    // Get colleges from all assessment tables using manual joins
+    const [colleges42, colleges84, collegesHistory] = await Promise.all([
+      retrySupabaseQuery(() => 
+        supabaseAdmin
+          .from('assessments_42items')
+          .select('student_id')
+          .not('completed_at', 'is', null)
+          .not('student_id', 'is', null), 
+        'assessments_42items colleges'
+      ),
+      retrySupabaseQuery(() => 
+        supabaseAdmin
+          .from('assessments_84items')
+          .select('student_id')
+          .not('completed_at', 'is', null)
+          .not('student_id', 'is', null), 
+        'assessments_84items colleges'
+      ),
+      retrySupabaseQuery(() => 
+        supabaseAdmin
+          .from('ryff_history')
+          .select('student_id')
+          .not('completed_at', 'is', null)
+          .not('student_id', 'is', null), 
+        'ryff_history colleges'
+      )
+    ]);
+
+    // Get all unique student IDs from assessments
+    const assessmentStudentIds = new Set();
+    
+    // Add student IDs from 42-item assessments
+    (colleges42.data || []).forEach(item => {
+      if (item.student_id) assessmentStudentIds.add(item.student_id);
+    });
+    
+    // Add student IDs from 84-item assessments
+    (colleges84.data || []).forEach(item => {
+      if (item.student_id) assessmentStudentIds.add(item.student_id);
+    });
+    
+    // Add student IDs from ryff_history
+    (collegesHistory.data || []).forEach(item => {
+      if (item.student_id) assessmentStudentIds.add(item.student_id);
+    });
+
+    // Fetch students with colleges for these student IDs
+    const studentsWithColleges = await retrySupabaseQuery(() => 
+      supabaseAdmin
+        .from('students')
+        .select('id, college')
+        .in('id', Array.from(assessmentStudentIds))
+        .not('college', 'is', null), 
+      'students with colleges'
+    );
+
+    // Combine and deduplicate colleges
+    const allColleges = new Set();
+    
+    // Add colleges from students who have assessments
+    (studentsWithColleges.data || []).forEach(student => {
+      if (student.college) allColleges.add(student.college);
+    });
+
+    // College code to full name mapping
+    const collegeMapping = {
+      'CCS': 'College of Computing and Information Sciences',
+      'CABE': 'College of Architecture and Built Environment',
+      'CEA': 'College of Engineering and Architecture',
+      'CN': 'College of Nursing',
+      'CAH': 'College of Arts and Humanities',
+      'CPC': 'College of Public Communication',
+      'CMBS': 'College of Management and Business Studies'
+    };
+
+    // Convert to array and format
+    const result = [
+      { name: 'all', code: 'all', fullName: 'All Colleges', totalUsers: 0 },
+      ...Array.from(allColleges).map(code => ({
+        name: code,
+        code: code,
+        fullName: collegeMapping[code] || code,
+        totalUsers: 1 // Placeholder since we know they have assessments
+      }))
+    ];
+    
+    console.log('✅ Colleges with assessments:', result);
+
+    // Cache the result
+    await cacheManager.set(cacheKey, result, CACHE_TTL.AVAILABLE_YEARS);
+    console.log(`💾 Cached colleges with assessments: ${cacheKey}`);
+
+    res.json({
+      success: true,
+      colleges: result
+    });
+
+  } catch (error) {
+    console.error('Error fetching colleges with assessments:', error);
+    
+    // Check if it's a network/connection error
+    const isNetworkError = error.message?.includes('fetch failed') || 
+                          error.message?.includes('ECONNREFUSED') ||
+                          error.message?.includes('ENOTFOUND') ||
+                          error.code === 'ECONNREFUSED' ||
+                          error.code === 'ENOTFOUND';
+    
+    if (isNetworkError) {
+      console.warn('Network connectivity issue detected in colleges with assessments');
+      res.status(503).json({
+        success: false,
+        message: 'Database connection temporarily unavailable. Please try again later.',
+        error: 'NETWORK_ERROR'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching colleges with assessments',
         error: 'INTERNAL_ERROR'
       });
     }
