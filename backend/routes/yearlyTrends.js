@@ -744,7 +744,7 @@ router.get('/overall-risk', async (req, res) => {
         yearlyRiskCounts[year].totalCount++;
         
         // For ryff_history data, use risk_level column ('high' means at-risk)
-        // For assessments_42items and assessments_84items, use overall_score < 30
+        // For assessments_42items and assessments_84items, use proper overall_score thresholds
         if (item.risk_level) {
           // This is from ryff_history - 'high' means at-risk
           if (item.risk_level === 'high') {

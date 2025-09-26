@@ -138,18 +138,7 @@
                     </div>
                     <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                 </div>
-                <div class="assessment-card fade-in">
-                    <div class="assessment-icon">
-                        <i class="fas fa-search-plus"></i>
-                    </div>
-                    <h4>54-Item Assessment</h4>
-                    <p>Extended version with 9 items per dimension. Provides more nuanced insights.</p>
-                    <div class="assessment-meta">
-                        <div class="meta-item"><i class="fas fa-clock"></i> 20-25 min</div>
-                        <div class="meta-item"><i class="fas fa-chart-bar"></i> Comprehensive</div>
-                    </div>
-                    <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
-                </div>
+
                 <div class="assessment-card fade-in">
                     <div class="assessment-icon">
                         <i class="fas fa-microscope"></i>
@@ -252,19 +241,7 @@
                     </ul>
                     <a @click="navigateToLogin" class="cta-button">Student Login</a>
                 </div>
-                <div class="role-card">
-                    <div class="role-icon">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <h4>For Employees</h4>
-                    <ul class="role-features">
-                        <li><i class="fas fa-check"></i> Confidential well-being assessment</li>
-                        <li><i class="fas fa-check"></i> Stress management insights</li>
-                        <li><i class="fas fa-check"></i> Work-life balance guidance</li>
-                        <li><i class="fas fa-check"></i> Professional development support</li>
-                    </ul>
-                    <a @click="navigateToLogin" class="cta-button">Employee Login</a>
-                </div>
+
                 <div class="role-card slide-in-right">
                     <div class="role-icon">
                         <i class="fas fa-user-md"></i>
@@ -501,10 +478,7 @@
                         <i class="fas fa-user-md"></i>
                         <span>For Counselors</span>
                     </div>
-                    <div class="training-tab" data-training="hr">
-                        <i class="fas fa-briefcase"></i>
-                        <span>For HR Personnel</span>
-                    </div>
+
                 </div>
                 
                 <div class="training-panels">
@@ -561,58 +535,7 @@
                         </div>
                     </div>
                     
-                    <div class="training-panel" id="hr-panel">
-                        <div class="training-panel-content">
-                            <h4>HR Professional Training Program</h4>
-                            <p>Equip your HR team with the knowledge and tools to implement EUNOIA for employee well-being monitoring and workplace wellness initiatives.</p>
-                            
-                            <div class="training-modules">
-                                <div class="training-module">
-                                    <div class="module-icon">
-                                        <i class="fas fa-users-cog"></i>
-                                    </div>
-                                    <div class="module-content">
-                                        <h5>Employee Well-being Management</h5>
-                                        <p>Learn to administer assessments and interpret results to support employee mental health and professional development.</p>
-                                        <div class="module-meta">
-                                            <span><i class="fas fa-clock"></i> 5 hours</span>
-                                            <span><i class="fas fa-certificate"></i> Certificate</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="training-module">
-                                    <div class="module-icon">
-                                        <i class="fas fa-chart-line"></i>
-                                    </div>
-                                    <div class="module-content">
-                                        <h5>Organizational Analytics</h5>
-                                        <p>Develop skills to analyze college-level trends and implement data-driven wellness initiatives.</p>
-                                        <div class="module-meta">
-                                            <span><i class="fas fa-clock"></i> 4 hours</span>
-                                            <span><i class="fas fa-certificate"></i> Certificate</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="training-module">
-                                    <div class="module-icon">
-                                        <i class="fas fa-shield-alt"></i>
-                                    </div>
-                                    <div class="module-content">
-                                        <h5>Privacy & Ethical Considerations</h5>
-                                        <p>Understand best practices for maintaining confidentiality and ethical handling of psychological data.</p>
-                                        <div class="module-meta">
-                                            <span><i class="fas fa-clock"></i> 3 hours</span>
-                                            <span><i class="fas fa-certificate"></i> Certificate</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <a @click="navigateToLogin" class="cta-button">Register for Training</a>
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </div>

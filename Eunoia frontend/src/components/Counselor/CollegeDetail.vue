@@ -82,21 +82,11 @@
           <div class="metric-row">
             <div class="metric-item">
                 <span class="metric-label">Students Year</span>
-                <div class="dropdown-container">
-                  <select v-model="selectedYear" class="metric-dropdown" :disabled="!selectedAssessmentName || loadingYears">
-                    <option value="">{{ loadingYears ? 'Loading years...' : (selectedAssessmentName ? 'All Years' : 'Select Assessment First') }}</option>
-                    <option v-for="year in availableYears" :key="year" :value="year">{{ getYearDisplayName(year) }}</option>
-                  </select>
-                </div>
+                <span class="metric-value">{{ selectedYear ? getYearDisplayName(selectedYear) : 'All Years' }}</span>
               </div>
             <div class="metric-item" v-show="selectedYear && selectedAssessmentName">
               <span class="metric-label">Sections</span>
-              <div class="dropdown-container">
-                <select v-model="selectedSection" class="metric-dropdown" :disabled="!selectedAssessmentName || loadingSections || !selectedYear">
-                  <option value="">{{ loadingSections ? 'Loading sections...' : 'All Sections' }}</option>
-                  <option v-for="section in filteredSections" :key="section" :value="section">{{ section }}</option>
-                </select>
-              </div>
+              <span class="metric-value">{{ selectedSection || 'All Sections' }}</span>
             </div>
           </div>
           <div class="metric-row">
@@ -212,8 +202,6 @@
                   <th>Date</th>
                   <th>Assessment Name</th>
                   <th>Completion Rate</th>
-                  <th>Overall Score</th>
-                  <th>At Risk Count</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -222,8 +210,6 @@
                   <td>{{ formatDate(history.date) }}</td>
                   <td>{{ history.assessmentName }}</td>
                   <td>{{ getAggregatedCompletionRate(history) }}</td>
-                  <td>{{ getAggregatedOverallScore(history) }}</td>
-                  <td>{{ getAggregatedAtRiskCount(history) }}</td>
                   <td>
                     <button class="view-details-btn" @click="viewHistoryDetails(history)">
                       <i class="fas fa-eye"></i>

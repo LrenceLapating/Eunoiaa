@@ -23,6 +23,7 @@ const counselorManagementRoutes = require('./routes/counselorManagement');
 const aiInterventionRoutes = require('./routes/aiInterventions');
 const riskAlertsRoutes = require('./routes/riskAlerts');
 const yearlyTrendsRoutes = require('./routes/yearlyTrends');
+const demographicTrendsRoutes = require('./routes/demographicTrends');
 const academicSettingsRoutes = require('./routes/academicSettings');
 const assessmentTrackerRoutes = require('./routes/assessmentTracker');
 const { supabase } = require('./config/database');
@@ -200,6 +201,7 @@ app.use('/api/counselor-management', counselorManagementRoutes);
 app.use('/api/ai-interventions', aiInterventionRoutes);
 app.use('/api/risk-alerts', riskAlertsRoutes);
 app.use('/api/yearly-trends', yearlyTrendsRoutes);
+app.use('/api/demographic-trends', demographicTrendsRoutes);
 app.use('/api/academic-settings', academicSettingsRoutes);
 app.use('/api/assessment-tracker', assessmentTrackerRoutes);
 

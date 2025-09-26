@@ -809,7 +809,8 @@ export default {
               { key: 'self_acceptance', name: 'Self Acceptance' }
             ];
             
-            const maxScore = assessment.assessmentTypeRaw === '42-item' ? 42 : 84;
+            const overallMaxScore = assessment.assessmentTypeRaw === '42-item' ? 42 : 84;
+            const dimensionMaxScore = assessment.assessmentTypeRaw === '42-item' ? 42 : 84; // Each dimension max score
             
             // Table header
             pdf.setFillColor(52, 73, 94); // Dark blue header
@@ -820,35 +821,31 @@ export default {
             pdf.setFont('helvetica', 'bold');
             pdf.text('Dimension', 20, yPosition + 8);
             pdf.text('Score', 80, yPosition + 8);
-            pdf.text('Percentage', 110, yPosition + 8);
-            pdf.text('Status', 150, yPosition + 8);
-            pdf.text('Visual', 175, yPosition + 8);
+            pdf.text('Status', 130, yPosition + 8);
             
             yPosition += 12;
             pdf.setTextColor(0, 0, 0);
             
             subscales.forEach((subscale, index) => {
               const score = scores[subscale.key] || 'N/A';
-              const percentage = score !== 'N/A' ? ((score / maxScore) * 100).toFixed(1) : 'N/A';
               
               // Determine health status and color
               let healthStatus = 'Unknown';
               let statusColor = [128, 128, 128]; // Gray
-              let barColor = [200, 200, 200]; // Light gray
               
               if (score !== 'N/A') {
-                if (percentage >= 70) {
+                const numericScore = parseFloat(score);
+                const percentageValue = (numericScore / dimensionMaxScore) * 100;
+                
+                if (percentageValue >= 70) {
                   healthStatus = 'Healthy';
                   statusColor = [39, 174, 96]; // Green
-                  barColor = [39, 174, 96];
-                } else if (percentage >= 50) {
+                } else if (percentageValue >= 50) {
                   healthStatus = 'Moderate';
                   statusColor = [243, 156, 18]; // Orange
-                  barColor = [243, 156, 18];
                 } else {
                   healthStatus = 'At Risk';
                   statusColor = [231, 76, 60]; // Red
-                  barColor = [231, 76, 60];
                 }
               }
               
@@ -868,20 +865,10 @@ export default {
               pdf.setTextColor(0, 0, 0);
               pdf.text(subscale.name, 20, yPosition + 6);
               pdf.text(score.toString(), 80, yPosition + 6);
-              pdf.text(percentage !== 'N/A' ? `${percentage}%` : 'N/A', 110, yPosition + 6);
               
               pdf.setTextColor(...statusColor);
               pdf.setFont('helvetica', 'bold');
-              pdf.text(healthStatus, 150, yPosition + 6);
-              
-              // Visual bar indicator
-              if (percentage !== 'N/A') {
-                const barWidth = (percentage / 100) * 15;
-                pdf.setFillColor(...barColor);
-                pdf.rect(175, yPosition + 2, barWidth, 6, 'F');
-                pdf.setDrawColor(150, 150, 150);
-                pdf.rect(175, yPosition + 2, 15, 6, 'S');
-              }
+              pdf.text(healthStatus, 130, yPosition + 6);
               
               yPosition += 10;
             });
@@ -1047,8 +1034,56 @@ export default {
       pdf.text(`Colleges: ${collegeNames}`, pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 10;
       
-      const periodNames = selectedPeriods.map(p => assessmentPeriods.find(ap => ap.id === p)?.name || p).join(', ');
-      pdf.text(`Assessment Periods: ${periodNames}`, pageWidth / 2, yPosition, { align: 'center' });
+      const periodNames = selectedPeriods.map(p => {
+        const period = assessmentPeriods.find(ap => ap.id === p);
+        if (period?.name) {
+          // Shorten long period names
+          let name = period.name;
+          if (name.length > 50) {
+            // Extract key parts: semester and year
+            const semesterMatch = name.match(/(\d{4}-\d{4}\s+\d+\w+\s+Semester)/);
+            const collegeMatch = name.match(/([A-Z]{2,4})(?:\s+\(Historical\))?/);
+            if (semesterMatch && collegeMatch) {
+              name = `${semesterMatch[1]} - ${collegeMatch[1]}`;
+            } else if (name.includes('Historical')) {
+              name = name.replace(/.*?(\d{4}-\d{4}.*?)\s+-\s+.*/, '$1 (Hist.)');
+            }
+          }
+          return name;
+        }
+        return p;
+      }).join(', ');
+      
+      // Split long assessment periods text into multiple lines if needed
+      const maxLineLength = 80;
+      if (periodNames.length > maxLineLength) {
+        const words = periodNames.split(', ');
+        let currentLine = '';
+        let lines = [];
+        
+        for (const word of words) {
+          if ((currentLine + word).length > maxLineLength && currentLine) {
+            lines.push(currentLine.slice(0, -2)); // Remove trailing comma
+            currentLine = word + ', ';
+          } else {
+            currentLine += word + ', ';
+          }
+        }
+        if (currentLine) {
+          lines.push(currentLine.slice(0, -2)); // Remove trailing comma
+        }
+        
+        // Display multiple lines
+        pdf.setFontSize(10);
+        lines.forEach((line, index) => {
+          pdf.text(`${index === 0 ? 'Assessment Periods: ' : ''}${line}`, pageWidth / 2, yPosition, { align: 'center' });
+          yPosition += 8;
+        });
+        pdf.setFontSize(12);
+      } else {
+        pdf.text(`Assessment Periods: ${periodNames}`, pageWidth / 2, yPosition, { align: 'center' });
+        yPosition += 10;
+      }
       yPosition += 20;
       
       // Process each college
@@ -1188,7 +1223,7 @@ export default {
             }
             
             // Dimension box with enhanced layout
-            const riskColor = this.getRiskLevelColor(riskLevel);
+            const riskColor = this.getHealthStatusColor(riskLevel);
             pdf.setFillColor(riskColor.r, riskColor.g, riskColor.b);
             pdf.rect(15, yPosition - 3, 5, 25, 'F');
             
@@ -1226,11 +1261,10 @@ export default {
               interpretationY += 8;
             });
             
-            // Add risk level and student count info
+            // Add student count info (removed Risk Level text)
             pdf.setFont('helvetica', 'normal');
             pdf.setFontSize(10);
-            pdf.text(`Risk Level: ${riskLevel}`, 25, interpretationY + 5);
-            pdf.text(`Students: ${studentCount}`, 100, interpretationY + 5);
+            pdf.text(`Students: ${studentCount}`, 25, interpretationY + 5);
             
             // Update yPosition to account for interpretation text and additional info
             yPosition = interpretationY + 15;
@@ -1279,14 +1313,14 @@ export default {
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
         
-        // Page number
+        // Page number (moved up to avoid overlap)
         pdf.setFontSize(10);
         pdf.setTextColor(100, 100, 100);
-        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 30, pageHeight - 10);
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 30, pageHeight - 20);
         
-        // Date
+        // Date (moved to top left to avoid overlap with page numbers)
         const dateText = `Generated: ${reportDate}`;
-        pdf.text(dateText, 195 - pdf.getTextWidth(dateText), pageHeight - 10);
+        pdf.text(dateText, 15, 15);
         
         // Warning text
         pdf.setFontSize(8);
@@ -1314,7 +1348,8 @@ export default {
     },
     
     getHealthStatusColor(status) {
-      switch (status?.toLowerCase()) {
+      const normalizedStatus = status?.toLowerCase().replace(/[-_]/g, ' ');
+      switch (normalizedStatus) {
         case 'healthy':
           return { r: 76, g: 175, b: 80 }; // Green
         case 'moderate':

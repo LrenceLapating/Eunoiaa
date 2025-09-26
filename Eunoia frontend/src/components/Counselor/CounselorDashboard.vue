@@ -187,41 +187,8 @@
               </div>
             </div>
 
-            <!-- College Assessment Overview -->
-            <div class="section college-section">
-              <div class="section-header">
-                <div class="section-title">
-                  <div class="section-icon dept-icon">
-                    <i class="fas fa-building"></i>
-                  </div>
-                  <div>
-                    <h3>College Assessment Overview</h3>
-                    <p>Assessment participation and low scores by college</p>
-                  </div>
-                </div>
-
-              </div>
-
-              <div class="table-container">
-                <table class="college-table">
-                  <thead>
-                    <tr>
-                      <th>College</th>
-                      <th>Total Test Takers</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="college in collegeOverviewData" :key="college.name">
-                      <td :data-college="college.name">{{ college.name }}</td>
-                      <td>{{ college.totalTestTakers }}</td>
-                    </tr>
-                    <tr v-if="collegeOverviewData.length === 0">
-                      <td colspan="2" style="text-align: center; color: #999;">No college data available</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <!-- Demographic Trend Analysis -->
+            <DemographicTrendGraph />
           </div>
 
           <!-- Yearly Trend Analysis -->
@@ -284,6 +251,7 @@ import YearlyTrendAnalysis from './YearlyTrendAnalysis.vue'
 import RyffScoring from './RyffScoring.vue'
 import BulkAssessment from './BulkAssessment.vue'
 import IndividualAssessment from './IndividualAssessment.vue'
+import DemographicTrendGraph from './DemographicTrendGraph.vue'
 
 import AssessmentTracker from './AssessmentTracker.vue'
 import AccountManagement from './AccountManagement.vue'
@@ -303,6 +271,7 @@ export default {
     RyffScoring,
     BulkAssessment,
     IndividualAssessment,
+    DemographicTrendGraph,
 
     AssessmentTracker,
     AccountManagement,

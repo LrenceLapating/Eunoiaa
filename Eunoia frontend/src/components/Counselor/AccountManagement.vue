@@ -288,11 +288,13 @@
                 >
               </div>
               <div class="form-group">
-                <label for="student-semester">Semester</label>
-                <select id="student-semester" v-model="studentForm.semester">
-                  <option value="1st Semester">1st Semester</option>
-                  <option value="2nd Semester">2nd Semester</option>
-                  <option value="Summer">Summer</option>
+                <label for="student-gender">Gender *</label>
+                <select id="student-gender" v-model="studentForm.gender" required>
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
                 </select>
               </div>
             </div>
@@ -1014,7 +1016,8 @@ export default {
         id_number: user.id,
         year_level: user.yearLevel,
         semester: user.semester || '1st Semester',
-        customCollege: ''
+        customCollege: '',
+        gender: user.gender || ''
       };
       this.editingStudentId = user.id;
       
@@ -1087,7 +1090,8 @@ export default {
         year_level: '',
         semester: '1st Semester',
         customCollege: '',
-        customSection: ''
+        customSection: '',
+        gender: ''
       };
       this.availableCourses = [];
       this.availableSections = [];
@@ -1098,7 +1102,7 @@ export default {
       try {
         // Validate form
         if (!this.studentForm.name || !this.studentForm.email || !this.studentForm.id_number || 
-            !this.studentForm.college || !this.studentForm.year_level) {
+            !this.studentForm.college || !this.studentForm.year_level || !this.studentForm.gender) {
           this.showNotification('Please fill in all required fields', 'error', 'fas fa-exclamation-circle');
           return;
         }
@@ -1143,7 +1147,8 @@ export default {
           course: courseName,
           id_number: this.studentForm.id_number.trim(),
           year_level: this.studentForm.year_level,
-          semester: this.studentForm.semester
+          semester: this.studentForm.semester,
+          gender: this.studentForm.gender
         };
 
         let response;

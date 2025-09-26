@@ -804,6 +804,7 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
             id_number: student.id_number,
             year_level: student.year_level,
             college: student.college,
+            gender: student.gender, // Include the gender field
             semester: student.semester,
             status: 'active',
             updated_at: new Date().toISOString()
@@ -881,11 +882,11 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
 // POST /api/accounts/students - Create a new student
 router.post('/students', async (req, res) => {
   try {
-    const { name, email, section, college, course, id_number, year_level, semester } = req.body;
+    const { name, email, section, college, course, id_number, year_level, semester, gender } = req.body;
 
     // Validate required fields
-    if (!name || !email || !id_number || !college || !year_level) {
-      return res.status(400).json({ error: 'Missing required fields: name, email, id_number, college, year_level' });
+    if (!name || !email || !id_number || !college || !year_level || !gender) {
+      return res.status(400).json({ error: 'Missing required fields: name, email, id_number, college, year_level, gender' });
     }
 
     // Check if student with same ID number already exists
@@ -914,6 +915,7 @@ router.post('/students', async (req, res) => {
       id_number: id_number.trim(),
       year_level: year_level,
       semester: semester || '1st',
+      gender: gender,
       status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -944,7 +946,7 @@ router.put('/students/:id', async (req, res) => {
     const updates = req.body;
 
     // Validate update data
-    const allowedFields = ['name', 'email', 'section', 'year_level', 'college', 'course'];
+    const allowedFields = ['name', 'email', 'section', 'year_level', 'college', 'course', 'gender'];
     const filteredUpdates = {};
     
     for (const field of allowedFields) {
@@ -1095,7 +1097,7 @@ router.get('/csv-template', async (req, res) => {
       currentColumn++;
     });
     
-    // Set up headers in the requested order: Name, College, Course, Year Level, Section, ID Number, Email, Semester
+    // Set up headers in the requested order: Name, College, Course, Year Level, Section, ID Number, Email, Gender, Semester
     worksheet.columns = [
       { header: 'Name', key: 'name', width: 20 },
       { header: 'College', key: 'college', width: 15 },
@@ -1104,6 +1106,7 @@ router.get('/csv-template', async (req, res) => {
       { header: 'Section', key: 'section', width: 15 },
       { header: 'ID Number', key: 'idNumber', width: 15 },
       { header: 'Email', key: 'email', width: 25 },
+      { header: 'Gender', key: 'gender', width: 12 },
       { header: 'Semester', key: 'semester', width: 15 }
     ];
     
@@ -1117,6 +1120,7 @@ router.get('/csv-template', async (req, res) => {
         section: 'BSIT-4A',
         idNumber: '2020-12345',
         email: 'john.doe@student.edu',
+        gender: 'Male',
         semester: '1st Semester'
       },
       {
@@ -1127,6 +1131,7 @@ router.get('/csv-template', async (req, res) => {
         section: 'BSCS-3B',
         idNumber: '2021-67890',
         email: 'jane.smith@student.edu',
+        gender: 'Female',
         semester: '1st Semester'
       },
       {
@@ -1137,6 +1142,7 @@ router.get('/csv-template', async (req, res) => {
         section: 'BSCE-2A',
         idNumber: '2022-11111',
         email: 'mike.johnson@student.edu',
+        gender: 'Male',
         semester: '1st Semester'
       },
       {
@@ -1147,6 +1153,7 @@ router.get('/csv-template', async (req, res) => {
         section: 'BSA-1A',
         idNumber: '2023-22222',
         email: 'sarah.wilson@student.edu',
+        gender: 'Female',
         semester: '1st Semester'
       },
       {
@@ -1157,6 +1164,7 @@ router.get('/csv-template', async (req, res) => {
         section: 'BSN-2B',
         idNumber: '2022-33333',
         email: 'alex.brown@student.edu',
+        gender: 'Male',
         semester: '1st Semester'
       }
     ]);
@@ -1212,8 +1220,19 @@ router.get('/csv-template', async (req, res) => {
       error: 'Please select a valid year level (1-4).'
     });
     
-    // Add validation for semester (column H)
+    // Add validation for gender (column H)
     worksheet.dataValidations.add('H2:H1000', {
+      type: 'list',
+      allowBlank: false,
+      formulae: ['"Male,Female"'],
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: 'Invalid Gender',
+      error: 'Please select either Male or Female.'
+    });
+    
+    // Add validation for semester (column I)
+    worksheet.dataValidations.add('I2:I1000', {
       type: 'list',
       allowBlank: false,
       formulae: ['"1st Semester,2nd Semester,Summer"'],
@@ -1290,7 +1309,7 @@ router.get('/csv-template', async (req, res) => {
     
     // Apply borders to the header row and sample data rows
     for (let row = 1; row <= worksheet.rowCount; row++) {
-      for (let col = 1; col <= 8; col++) { // A to H columns
+      for (let col = 1; col <= 9; col++) { // A to I columns (including Gender)
         worksheet.getCell(row, col).border = borderStyle;
       }
     }
@@ -1300,7 +1319,7 @@ router.get('/csv-template', async (req, res) => {
     instructionsSheet.addRows([
       ['STUDENT TEMPLATE INSTRUCTIONS'],
       [''],
-      ['Column Order: Name | College | Course | Year Level | Section | ID Number | Email | Semester'],
+      ['Column Order: Name | College | Course | Year Level | Section | ID Number | Email | Gender | Semester'],
       [''],
       ['How to use this template:'],
       ['1. Fill in student information in the "Student Template" sheet'],

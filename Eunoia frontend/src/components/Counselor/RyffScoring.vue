@@ -362,9 +362,6 @@
           <div class="history-table-container">
             <div class="history-header">
               <h5>Assessment History</h5>
-              <button class="view-complete-history-btn" @click="showCompleteHistoryModal = true" v-if="getStudentAssessmentHistory(selectedStudentForHistory).length > 0">
-                <i class="fas fa-chart-line"></i> View Comprehensive Report
-              </button>
             </div>
             <table class="history-table">
               <thead>

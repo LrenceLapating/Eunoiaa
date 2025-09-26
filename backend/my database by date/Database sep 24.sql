@@ -907,9 +907,25 @@ create table public.students (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   course character varying(255) null,
+  gender character varying(20) null default 'Not specified'::character varying,
   constraint students_pkey primary key (id),
   constraint students_email_key unique (email),
   constraint students_id_number_key unique (id_number),
+  constraint students_gender_check check (
+    (
+      (gender)::text = any (
+        (
+          array[
+            'Male'::character varying,
+            'Female'::character varying,
+            'Other'::character varying,
+            'Prefer not to say'::character varying,
+            'Not specified'::character varying
+          ]
+        )::text[]
+      )
+    )
+  ),
   constraint students_status_check check (
     (
       (status)::text = any (
@@ -921,6 +937,8 @@ create table public.students (
     )
   )
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_students_gender on public.students using btree (gender) TABLESPACE pg_default;
 
 create index IF not exists idx_students_email on public.students using btree (email) TABLESPACE pg_default;
 
@@ -939,8 +957,6 @@ create index IF not exists idx_students_college_course_filters on public.student
 create trigger trigger_students_updated_at BEFORE
 update on students for EACH row
 execute FUNCTION update_updated_at_column ();
-
-
 
 
 

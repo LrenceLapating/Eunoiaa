@@ -8,7 +8,7 @@ const validator = require('validator');
  */
 const validateStudentData = (row, rowNumber) => {
   const errors = [];
-  const requiredFields = ['Name', 'Section', 'College', 'Course', 'ID Number', 'Email', 'Year Level'];
+  const requiredFields = ['Name', 'Section', 'College', 'Course', 'ID Number', 'Email', 'Year Level', 'Gender'];
   
   // Check for required fields
   for (const field of requiredFields) {
@@ -27,6 +27,14 @@ const validateStudentData = (row, rowNumber) => {
     const yearLevel = parseInt(row['Year Level']);
     if (isNaN(yearLevel) || yearLevel < 1 || yearLevel > 6) {
       errors.push(`Row ${rowNumber}: Year Level must be between 1 and 6, got '${row['Year Level']}'`);
+    }
+  }
+  
+  // Validate gender (should be Male or Female)
+  if (row['Gender']) {
+    const gender = row['Gender'].toString().trim();
+    if (!['Male', 'Female'].includes(gender)) {
+      errors.push(`Row ${rowNumber}: Gender must be either 'Male' or 'Female', got '${gender}'`);
     }
   }
   
@@ -98,6 +106,7 @@ const sanitizeStudentData = (row) => {
     id_number: validator.escape(row['ID Number'].toString().trim()),
     year_level: parseInt(row['Year Level']),
     college: finalCollege,
+    gender: row['Gender'] ? validator.escape(row['Gender'].toString().trim()) : 'Not specified',
     semester: semester,
     status: 'active',
     created_at: new Date().toISOString(),
@@ -131,6 +140,13 @@ const validateUpdateData = (data) => {
     }
     if (name.length < 2 || name.length > 100) {
       errors.push('Name must be between 2 and 100 characters');
+    }
+  }
+  
+  if (data.gender) {
+    const gender = data.gender.toString().trim();
+    if (!['Male', 'Female', 'Not specified'].includes(gender)) {
+      errors.push('Gender must be either Male, Female, or Not specified');
     }
   }
   
