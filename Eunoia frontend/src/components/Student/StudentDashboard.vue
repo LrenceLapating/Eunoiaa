@@ -46,11 +46,12 @@
             </a>
           </li>
           <li class="logout-item">
-            <a @click="logout(); closeMobileNav()" class="menu-item">
+            <a @click="logout(); closeMobileNav()" class="menu-item" :class="{ 'logging-out': isLoggingOut }">
               <div class="menu-icon logout-icon">
-                <i class="fas fa-sign-out-alt"></i>
+                <i v-if="!isLoggingOut" class="fas fa-sign-out-alt"></i>
+                <i v-else class="fas fa-spinner fa-spin"></i>
               </div>
-              <span>Logout</span>
+              <span>{{ isLoggingOut ? 'Logging out...' : 'Logout' }}</span>
             </a>
           </li>
         </ul>
@@ -643,6 +644,7 @@ export default {
     return {
       currentView: 'assessment', // 'assessment', 'ai-interventions', 'settings', 'taking-assessment', 'assessment-complete'
       isLoading: false,
+      isLoggingOut: false,
       hasAssignedAssessments: false,
       assignedAssessments: [],
       selectedAssessmentType: 'ryff_42', // Default to 42-item
@@ -1028,6 +1030,8 @@ export default {
     },
 
     async logout() {
+      this.isLoggingOut = true;
+      
       // Animation before logout
       const sidebar = document.querySelector('.sidebar');
       const mainContent = document.querySelector('.main-content');
@@ -1038,10 +1042,12 @@ export default {
         
         setTimeout(async () => {
           await authService.logout();
+          this.isLoggingOut = false;
         }, 500); // Wait for animation to complete
       } else {
         // Fallback if elements not found
         await authService.logout();
+        this.isLoggingOut = false;
       }
     },
 

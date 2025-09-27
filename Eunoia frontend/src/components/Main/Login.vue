@@ -55,7 +55,13 @@
             <a href="#" class="forgot-password">Forgot password?</a>
           </div>
           
-          <button type="submit" class="login-button">Sign In</button>
+          <button type="submit" class="login-button" :disabled="isLoading">
+            <span v-if="!isLoading">Sign In</span>
+            <span v-else class="loading-content">
+              <i class="fas fa-spinner fa-spin"></i>
+              Signing In...
+            </span>
+          </button>
         </form>
         
         <div class="login-footer">
@@ -326,12 +332,32 @@ export default {
   cursor: pointer;
   transition: all 0.3s;
   font-size: 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.login-button:hover {
+.login-button:hover:not(:disabled) {
   background-color: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(0, 179, 176, 0.3);
+}
+
+.login-button:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-content i {
+  font-size: 14px;
 }
 
 .login-footer {

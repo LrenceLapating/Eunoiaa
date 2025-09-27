@@ -8,12 +8,21 @@ const { formatDimensionName, getDimensionColor, getAtRiskDimensions } = require(
 router.get('/results', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const { page = 1, limit = 20, riskLevel, assessmentType, college } = req.query;
+    const { page = 1, limit = 50, riskLevel, assessmentType, college } = req.query;
+    
+    // Performance safeguard: Limit maximum records per request
+    const maxLimit = 100;
+    const safeLimit = Math.min(parseInt(limit), maxLimit);
     
 
     
-    const offset = (page - 1) * parseInt(limit);
-    const limitNum = parseInt(limit);
+    const offset = (page - 1) * safeLimit;
+    const limitNum = safeLimit;
+
+    // Performance safeguard: Add query timeout
+    const queryTimeout = setTimeout(() => {
+      console.warn('⚠️ Ryff Scoring query taking longer than 10 seconds');
+    }, 10000);
 
     // Determine which table to query based on assessment type
     let tableName = 'assessments'; // Default to unified view
@@ -378,14 +387,24 @@ router.get('/results', verifyCounselorSession, async (req, res) => {
       };
     });
 
+    // Clear query timeout
+    clearTimeout(queryTimeout);
+
+    // Performance safeguard: Log warning if too many records
+    if (enrichedAssessments.length > 500) {
+      console.warn(`⚠️ Large dataset returned: ${enrichedAssessments.length} records. Consider adding more filters.`);
+    }
+
     res.json({
       success: true,
       data: enrichedAssessments,
       pagination: {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: safeLimit,
         total: totalCount || 0,
-        totalPages: Math.ceil((totalCount || 0) / parseInt(limit))
+        totalPages: Math.ceil((totalCount || 0) / safeLimit),
+        hasNextPage: (parseInt(page) * safeLimit) < (totalCount || 0),
+        hasPreviousPage: parseInt(page) > 1
       }
     });
 
@@ -393,6 +412,12 @@ router.get('/results', verifyCounselorSession, async (req, res) => {
 
   } catch (error) {
     console.error('Error in assessment results:', error);
+    
+    // Clear timeout in case of error
+    if (typeof queryTimeout !== 'undefined') {
+      clearTimeout(queryTimeout);
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Internal server error'

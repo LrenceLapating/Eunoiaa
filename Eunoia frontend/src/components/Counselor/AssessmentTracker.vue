@@ -57,8 +57,8 @@
           <label>Assessment Type:</label>
           <select v-model="selectedAssessmentType" class="filter-select">
             <option value="all">All Types</option>
-            <option value="42">42 item</option>
-            <option value="84">84 item</option>
+            <option value="ryff_42">42 item</option>
+            <option value="ryff_84">84 item</option>
           </select>
         </div>
 
@@ -72,12 +72,12 @@
       </div>
 
       <!-- Summary Stats -->
-      <div class="summary-stats">
-        <div class="stat-card incomplete-card">
-          <div class="stat-number">{{ filteredStudents.length }}</div>
-          <div class="stat-label">Incomplete Assessments</div>
+        <div class="summary-stats">
+          <div class="stat-card incomplete-card">
+            <div class="stat-number">{{ totalCount }}</div>
+            <div class="stat-label">Incomplete Assessments</div>
+          </div>
         </div>
-      </div>
     </div>
 
     <!-- Loading State -->
@@ -113,8 +113,9 @@
 
         <div 
           v-for="student in paginatedStudents" 
-          :key="student.id"
+          :key="student.assignment_id"
           class="table-row"
+          :class="{ 'urgent-row': student.days_pending >= 7 }"
         >
           <div class="table-cell student-col">
             <div class="student-name">{{ student.student_name }}</div>
@@ -161,9 +162,9 @@
           <i class="fas fa-angle-left"></i>
         </button>
         
-        <span class="page-info">
-          Page {{ currentPage }} of {{ totalPages }} ({{ filteredStudents.length }} total)
-        </span>
+        <div class="page-info">
+          Page {{ currentPage }} of {{ totalPages }} ({{ totalCount }} total)
+        </div>
         
         <button 
           @click="currentPage++" 
@@ -203,77 +204,40 @@ export default {
       selectedSection: 'all',
       selectedAssessmentType: 'all',
 
+      // Server-side pagination
       currentPage: 1,
       itemsPerPage: 20,
+      totalPages: 1,
+      totalCount: 0,
       refreshInterval: null
     }
   },
   computed: {
+    // Remove client-side filtering since we'll use server-side pagination
     filteredStudents() {
-      let filtered = this.students
-
-      // Search filter
-      if (this.searchQuery.trim()) {
-        const query = this.searchQuery.toLowerCase()
-        filtered = filtered.filter(student => 
-          (student.student_name && student.student_name.toLowerCase().includes(query)) ||
-          (student.college && student.college.toLowerCase().includes(query)) ||
-          (student.course && student.course.toLowerCase().includes(query)) ||
-          (student.section && student.section.toLowerCase().includes(query))
-        )
-      }
-
-      // College filter
-      if (this.selectedCollege !== 'all') {
-        filtered = filtered.filter(student => student.college === this.selectedCollege)
-      }
-
-      // Course filter
-      if (this.selectedCourse !== 'all') {
-        filtered = filtered.filter(student => student.course === this.selectedCourse)
-      }
-
-      // Section filter
-      if (this.selectedSection !== 'all') {
-        filtered = filtered.filter(student => student.section === this.selectedSection)
-      }
-
-      // Assessment type filter
-      if (this.selectedAssessmentType !== 'all') {
-        filtered = filtered.filter(student => {
-          const type = student.assessment_type || 'ryff'
-          return type === this.selectedAssessmentType
-        })
-      }
-
-
-
-      return filtered
+      return this.students
     },
+    
+    // Pagination computed properties
     paginatedStudents() {
-      const start = (this.currentPage - 1) * this.itemsPerPage
-      const end = start + this.itemsPerPage
-      return this.filteredStudents.slice(start, end)
+      return this.students
     },
+    
     totalPages() {
-      return Math.ceil(this.filteredStudents.length / this.itemsPerPage)
+      return this.totalPages || 1
     },
+
     availableCourses() {
-      if (this.selectedCollege === 'all') {
-        return []
-      }
-      // Get unique courses for the selected college
+      if (this.selectedCollege === 'all') return []
       const coursesForCollege = this.students
         .filter(student => student.college === this.selectedCollege)
         .map(student => student.course)
         .filter(course => course && course !== 'N/A')
       return [...new Set(coursesForCollege)].sort()
     },
+
     availableSections() {
-      if (this.selectedCourse === 'all') {
-        return []
-      }
-      // Get unique sections for the selected college and course
+      if (this.selectedCourse === 'all') return []
       const sectionsForCourse = this.students
         .filter(student => 
           student.college === this.selectedCollege && 
@@ -286,21 +250,35 @@ export default {
 
   },
   watch: {
-    // Reset to first page when filters change
-    searchQuery() { this.currentPage = 1 },
+    // Reset to first page and reload data when filters change
+    searchQuery() { 
+      this.currentPage = 1
+      this.loadData()
+    },
     selectedCollege() { 
       this.currentPage = 1
       // Reset dependent filters when college changes
       this.selectedCourse = 'all'
       this.selectedSection = 'all'
+      this.loadData()
     },
     selectedCourse() { 
       this.currentPage = 1
       // Reset section when course changes
       this.selectedSection = 'all'
+      this.loadData()
     },
-    selectedSection() { this.currentPage = 1 },
-    selectedAssessmentType() { this.currentPage = 1 }
+    selectedSection() { 
+      this.currentPage = 1
+      this.loadData()
+    },
+    selectedAssessmentType() { 
+      this.currentPage = 1
+      this.loadData()
+    },
+    currentPage() {
+      this.loadData()
+    }
   },
   async mounted() {
     await this.loadData()
@@ -322,21 +300,79 @@ export default {
       this.error = null
 
       try {
-        const response = await fetch(apiUrl('assessment-tracker/incomplete'), {
-          credentials: 'include'
+        // Performance safeguard: Add request timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+          console.warn('⚠️ Request taking too long, aborting...');
+        }, 30000); // 30 second timeout
+
+        // Build query parameters for server-side filtering and pagination
+        const params = new URLSearchParams({
+          page: this.currentPage.toString(),
+          limit: this.itemsPerPage.toString()
         })
+
+        // Add filters if they're not 'all'
+        if (this.selectedCollege !== 'all') {
+          params.append('college', this.selectedCollege)
+        }
+        if (this.selectedCourse !== 'all') {
+          params.append('course', this.selectedCourse)
+        }
+        if (this.selectedSection !== 'all') {
+          params.append('section', this.selectedSection)
+        }
+        if (this.selectedAssessmentType !== 'all') {
+          params.append('assessment_type', this.selectedAssessmentType)
+        }
+        if (this.searchQuery.trim()) {
+          params.append('search', this.searchQuery.trim())
+        }
+
+        const response = await fetch(apiUrl(`assessment-tracker/incomplete?${params.toString()}`), {
+          credentials: 'include',
+          signal: controller.signal
+        })
+
+        // Clear timeout since request completed
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error(`Failed to load data: ${response.statusText}`)
         }
 
         const data = await response.json()
+        
+        // Performance safeguard: Check for large datasets
+        if (data.pagination?.totalCount > 5000) {
+          console.warn(`⚠️ Large dataset: ${data.pagination.totalCount} total records. Consider adding filters.`)
+        }
+        
+        // Update data with server response
         this.students = data.data || []
-        this.colleges = [...new Set(this.students.map(s => s.college))].sort()
+        this.totalCount = data.pagination?.totalCount || 0
+        this.totalPages = data.pagination?.totalPages || 1
+        
+        // Update colleges list for filter dropdown (only on first load)
+        if (this.currentPage === 1 && this.selectedCollege === 'all') {
+          this.colleges = [...new Set(this.students.map(s => s.college))].sort()
+        }
 
       } catch (error) {
         console.error('Error loading assessment tracker data:', error)
-        this.error = error.message || 'Failed to load assessment data'
+        
+        // Handle different error types
+        if (error.name === 'AbortError') {
+          this.error = 'Request timed out. Please try again or add more filters to reduce data size.'
+        } else {
+          this.error = error.message || 'Failed to load assessment data'
+        }
+        
+        // Reset data on error
+        this.students = []
+        this.totalCount = 0
+        this.totalPages = 1
       } finally {
         this.loading = false
       }

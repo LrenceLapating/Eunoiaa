@@ -83,7 +83,7 @@
               </tr>
             </thead>
             <transition-group name="row-fade-slide" tag="tbody">
-              <tr v-for="user in filteredUsers" :key="user.id">
+              <tr v-for="user in paginatedUsers" :key="user.id">
                 <td>{{ user.id }}</td>
                 <td>{{ user.name }}</td>
                 <td>{{ user.yearLevel }}</td>
@@ -101,6 +101,53 @@
               </tr>
             </transition-group>
           </table>
+          
+          <!-- Pagination Controls -->
+          <div v-if="totalPages > 1" class="pagination-container">
+            <div class="pagination-info">
+              Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredUsers.length) }} of {{ filteredUsers.length }} students
+            </div>
+            <div class="pagination-controls">
+              <button 
+                class="pagination-btn" 
+                :disabled="currentPage === 1" 
+                @click="prevPage"
+                title="Previous Page"
+              >
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              
+              <template v-for="page in Math.min(totalPages, 5)" :key="page">
+                <button 
+                  v-if="page <= totalPages"
+                  class="pagination-btn page-number" 
+                  :class="{ active: currentPage === page }"
+                  @click="goToPage(page)"
+                >
+                  {{ page }}
+                </button>
+              </template>
+              
+              <span v-if="totalPages > 5" class="pagination-ellipsis">...</span>
+              
+              <button 
+                v-if="totalPages > 5 && currentPage < totalPages - 2"
+                class="pagination-btn page-number" 
+                @click="goToPage(totalPages)"
+              >
+                {{ totalPages }}
+              </button>
+              
+              <button 
+                class="pagination-btn" 
+                :disabled="currentPage === totalPages" 
+                @click="nextPage"
+                title="Next Page"
+              >
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </transition>
@@ -459,6 +506,9 @@ export default {
 
       selectedCollege: null,
       searchQuery: '',
+      currentPage: 1,
+      itemsPerPage: 50, // Limit items per page for better performance
+      searchTimeout: null, // For debouncing search
       notification: {
         show: false,
         message: '',
@@ -578,6 +628,18 @@ export default {
         );
       });
     },
+    
+    // Add pagination for better performance with large datasets
+    paginatedUsers() {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
+      return this.filteredUsers.slice(start, end);
+    },
+    
+    totalPages() {
+      return Math.ceil(this.filteredUsers.length / this.itemsPerPage);
+    },
+    
     isLongCourseName() {
       if (!this.studentForm.course) return false;
       
@@ -587,6 +649,15 @@ export default {
       
       // Consider course names longer than 35 characters as "long"
       return selectedCourse.name.length > 35;
+    }
+  },
+  watch: {
+    // Add debounced search watcher for better performance
+    searchQuery(newQuery) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.currentPage = 1; // Reset to first page on search
+      }, 300);
     }
   },
   methods: {
@@ -625,8 +696,28 @@ export default {
     async viewCollegeUsers(collegeName) {
       this.selectedCollege = collegeName;
       this.searchQuery = '';
+      this.currentPage = 1; // Reset pagination
       // Load students for the selected college from backend
       await this.loadStudentsFromBackend(collegeName, this.searchQuery);
+    },
+    
+    // Add pagination methods for better UX
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+    
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+    
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
     },
     
     handleFileUpload(event) {
@@ -2107,6 +2198,78 @@ export default {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Pagination Styles */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.pagination-info {
+  color: #6b7280;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-btn {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f9fafb;
+}
+
+.pagination-btn.page-number.active {
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
+  color: white;
+  border-color: #00b3b0;
+  box-shadow: 0 2px 4px rgba(0, 179, 176, 0.2);
+}
+
+.pagination-ellipsis {
+  color: #9ca3af;
+  padding: 0 8px;
+  font-weight: 500;
+}
+
+/* Performance optimizations */
+.account-table tbody tr {
+  will-change: transform;
+}
+
+.account-table tr:hover {
+  will-change: transform, background-color;
 }
 
 </style>

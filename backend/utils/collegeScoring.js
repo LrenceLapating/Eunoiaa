@@ -147,15 +147,24 @@ async function getAssessmentCompletionCounts(assessmentName = null, yearLevel = 
 }
 
 /**
- * Calculate risk level based on raw score (7-42 range)
+ * Calculate risk level based on raw score
  * Uses exact calculated average before rounding for categorization
- * @param {number} rawScore - Raw score from 7-42
- * @returns {string} Risk level: 'At Risk', 'Moderate', or 'Healthy'
+ * @param {number} rawScore - Raw score (7-42 for 42-item, 14-84 for 84-item)
+ * @param {string} assessmentType - 'ryff_42' or 'ryff_84'
+ * @returns {string} Risk level: 'at-risk', 'moderate', or 'healthy'
  */
-function getCollegeDimensionRiskLevel(rawScore) {
-  if (rawScore <= 18) return 'at-risk';   // ≤18 = At-Risk
-  if (rawScore <= 30) return 'moderate';  // 19-30 = Moderate  
-  return 'healthy';                       // ≥31 = Healthy
+function getCollegeDimensionRiskLevel(rawScore, assessmentType = 'ryff_42') {
+  if (assessmentType === 'ryff_84') {
+    // 84-item assessment: 14 items per dimension (14-84 range)
+    if (rawScore <= 36) return 'at-risk';   // ≤36 = At-Risk
+    if (rawScore <= 59) return 'moderate';  // 37-59 = Moderate  
+    return 'healthy';                       // ≥60 = Healthy
+  } else {
+    // 42-item assessment: 7 items per dimension (7-42 range)
+    if (rawScore <= 18) return 'at-risk';   // ≤18 = At-Risk
+    if (rawScore <= 30) return 'moderate';  // 19-30 = Moderate  
+    return 'healthy';                       // ≥31 = Healthy
+  }
 }
 
 /**
@@ -385,7 +394,7 @@ async function computeAndStoreCollegeScores(collegeName = null, assessmentType =
       // Calculate average scores for each dimension
       Object.keys(RYFF_DIMENSIONS).forEach(dimension => {
         const averageScore = data.dimensionTotals[dimension] / data.studentCount;
-        const riskLevel = getCollegeDimensionRiskLevel(averageScore);
+        const riskLevel = getCollegeDimensionRiskLevel(averageScore, assessmentType);
         
         collegeScores.push({
           college_name: college,
@@ -871,7 +880,7 @@ async function computeDynamicCollegeScores(collegeName = null, assessmentType = 
       // Calculate average scores for each dimension
       Object.keys(RYFF_DIMENSIONS).forEach(dimension => {
         const averageScore = data.dimensionTotals[dimension] / data.studentCount;
-        const riskLevel = getCollegeDimensionRiskLevel(averageScore);
+        const riskLevel = getCollegeDimensionRiskLevel(averageScore, assessmentType);
         
         collegeScores[college].dimensions[dimension] = {
           score: Math.round(averageScore * 100) / 100, // Round to 2 decimal places

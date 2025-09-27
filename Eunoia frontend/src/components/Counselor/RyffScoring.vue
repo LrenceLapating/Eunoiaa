@@ -858,9 +858,10 @@ export default {
     }
   },
   watch: {
-    // Watch for tab changes to load historical data when needed
+    // Watch for tab changes to load historical data when needed (lazy loading)
     currentTab(newTab) {
-      if (newTab === 'history' && this.allHistoricalStudents.length === 0) {
+      if (newTab === 'history' && this.allHistoricalStudents.length === 0 && !this.isLoadingHistory) {
+        console.log('📊 Lazy loading historical data for first time access');
         // Load historical data only when history tab is accessed for the first time
         this.fetchHistoricalResults();
       }
@@ -974,6 +975,14 @@ export default {
         // Create new AbortController for this request
         this.abortController = new AbortController();
         
+        // Add request timeout safeguard (30 seconds)
+        const requestTimeout = setTimeout(() => {
+          if (this.abortController) {
+            this.abortController.abort();
+            console.warn('⚠️ Request timeout: Historical results request took longer than 30 seconds');
+          }
+        }, 30000);
+        
         const queryParams = new URLSearchParams(params);
         
         // Request historical data from the new history endpoint
@@ -985,6 +994,9 @@ export default {
           credentials: 'include',
           signal: this.abortController.signal
         });
+
+        // Clear timeout on successful response
+        clearTimeout(requestTimeout);
 
         if (response.ok) {
           const apiResponse = await response.json();
@@ -1036,6 +1048,11 @@ export default {
             
             console.log('Transformed historical students data:', transformedHistoricalStudents);
             
+            // Performance safeguard: Warn if historical dataset is large
+            if (transformedHistoricalStudents.length > 1000) {
+              console.warn(`⚠️ Large historical dataset loaded: ${transformedHistoricalStudents.length} records. Performance may be affected.`);
+            }
+            
             // Store historical data
             this.allHistoricalStudents = transformedHistoricalStudents;
             
@@ -1056,10 +1073,17 @@ export default {
           this.allHistoricalStudents = [];
         }
       } catch (error) {
+        // Clear timeout in case of error
+        if (typeof requestTimeout !== 'undefined') {
+          clearTimeout(requestTimeout);
+        }
+        
         // Don't log error if request was aborted
         if (error.name !== 'AbortError') {
           console.error('Error fetching historical results:', error);
           this.allHistoricalStudents = [];
+        } else {
+          console.log('Historical request was aborted (timeout or navigation)');
         }
       } finally {
         this.isLoadingHistory = false;
@@ -1103,6 +1127,14 @@ export default {
         // Create new AbortController for this request
         this.abortController = new AbortController();
         
+        // Add request timeout safeguard (30 seconds)
+        const requestTimeout = setTimeout(() => {
+          if (this.abortController) {
+            this.abortController.abort();
+            console.warn('⚠️ Request timeout: Assessment results request took longer than 30 seconds');
+          }
+        }, 30000);
+        
         const queryParams = new URLSearchParams(params);
         
         // Request all results by setting a high limit
@@ -1114,6 +1146,9 @@ export default {
           credentials: 'include', // Use session-based authentication
           signal: this.abortController.signal // Add abort signal
         });
+
+        // Clear timeout on successful response
+        clearTimeout(requestTimeout);
 
         if (response.ok) {
           const apiResponse = await response.json();
@@ -1166,6 +1201,11 @@ export default {
             
             console.log('Transformed students data:', transformedStudents);
             
+            // Performance safeguard: Warn if dataset is large
+            if (transformedStudents.length > 1000) {
+              console.warn(`⚠️ Large dataset loaded: ${transformedStudents.length} records. Performance may be affected.`);
+            }
+            
             // Store original data and update filtered data
             this.allStudents = transformedStudents;
             this.filteredStudents = [...transformedStudents];
@@ -1194,12 +1234,19 @@ export default {
           this.filteredStudents = [...this.students];
         }
       } catch (error) {
+        // Clear timeout in case of error
+        if (typeof requestTimeout !== 'undefined') {
+          clearTimeout(requestTimeout);
+        }
+        
         // Don't log error if request was aborted (user navigated away or new request started)
         if (error.name !== 'AbortError') {
           console.error('Error fetching assessment results:', error);
           // Fallback to prop data if API fails
           this.allStudents = [...this.students];
           this.filteredStudents = [...this.students];
+        } else {
+          console.log('Request was aborted (timeout or navigation)');
         }
       } finally {
         this.isLoading = false;

@@ -1,0 +1,71 @@
+/* Pagination Styles for AccountManagement Component */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.pagination-info {
+  color: #6b7280;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-btn {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f9fafb;
+}
+
+.pagination-btn.page-number.active {
+  background: linear-gradient(135deg, #00b3b0 0%, #00a09d 100%);
+  color: white;
+  border-color: #00b3b0;
+  box-shadow: 0 2px 4px rgba(0, 179, 176, 0.2);
+}
+
+.pagination-ellipsis {
+  color: #9ca3af;
+  padding: 0 8px;
+  font-weight: 500;
+}
+
+/* Performance optimizations */
+.account-table tbody tr {
+  will-change: transform;
+}
+
+.account-table tr:hover {
+  will-change: transform, background-color;
+}

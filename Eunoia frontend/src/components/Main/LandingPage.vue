@@ -558,6 +558,54 @@
         </div>
     </section>
 
+    <!-- Developer Team Section -->
+    <section id="team" class="team-section">
+        <div class="container">
+            <div class="section-title">
+                <h3>Developer Team</h3>
+                <p>Meet the talented developers behind EUNOIA</p>
+            </div>
+            <div class="team-grid">
+                <div class="team-member fade-in">
+                    <div class="member-image">
+                        <img src="@/assets/lemuel.png" alt="Team Member 1">
+                    </div>
+                    <div class="member-info">
+                        <h4>Lemuel Bayson</h4>
+                        <p>Lead Developer</p>
+                    </div>
+                </div>
+                <div class="team-member fade-in">
+                    <div class="member-image">
+                        <img src="@/assets/Lapating.png" alt="Team Member 2">
+                    </div>
+                    <div class="member-info">
+                        <h4>Marc Laurence Lapating</h4>
+                        <p>Frontend Developer</p>
+                    </div>
+                </div>
+                <div class="team-member fade-in">
+                    <div class="member-image">
+                        <img src="@/assets/Dosdos.png" alt="Team Member 3">
+                    </div>
+                    <div class="member-info">
+                        <h4>Josiephous Pierre Dosdos</h4>
+                        <p>Backend Developer</p>
+                    </div>
+                </div>
+                <div class="team-member fade-in">
+                    <div class="member-image">
+                        <img src="@/assets/Batoy.png" alt="Team Member 4">
+                    </div>
+                    <div class="member-info">
+                        <h4>Reuben Rex Batoy</h4>
+                        <p>UI/UX Designer</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- CTA Section -->
     <section class="cta">
         <div class="cta-particles">
@@ -3657,6 +3705,132 @@ export default {
   .container {
     padding: 0 10px;
   }
+}
+
+/* Team Section Styles */
+.team-section {
+    padding: 100px 0;
+    background-color: var(--light);
+    position: relative;
+    overflow: hidden;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    margin-top: 50px;
+}
+
+.team-member {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 30px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.team-member:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.member-image {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--primary);
+    transition: all 0.3s ease;
+}
+
+.team-member:hover .member-image {
+    transform: scale(1.05);
+    border-color: var(--secondary);
+}
+
+.member-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.3s ease;
+}
+
+.member-info h4 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 8px;
+}
+
+.member-info p {
+    font-size: 14px;
+    color: var(--primary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Team Section Mobile Styles */
+@media (max-width: 768px) {
+    .team-section {
+        padding: 60px 0;
+    }
+    
+    .team-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 25px;
+        margin-top: 30px;
+    }
+    
+    .team-member {
+        padding: 25px 20px;
+    }
+    
+    .member-image {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 15px;
+    }
+    
+    .member-info h4 {
+        font-size: 18px;
+        margin-bottom: 6px;
+    }
+    
+    .member-info p {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .team-member {
+        padding: 20px 15px;
+    }
+    
+    .member-image {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 12px;
+    }
+    
+    .member-info h4 {
+        font-size: 16px;
+        margin-bottom: 5px;
+    }
+    
+    .member-info p {
+        font-size: 12px;
+    }
 }
 
 /* Add this style to the <style> section of the component */

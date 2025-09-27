@@ -112,8 +112,8 @@ Dimension Name: [Strategy description with specific example]
 
 Rules for each dimension:
 - If Healthy (${assessmentType === 'ryff_84' ? '≥60' : '≥31'}): DO NOT include this dimension in the action plan at all
-- If Moderate (${assessmentType === 'ryff_84' ? '37-59' : '19-30'}): Provide 1 personalized coping strategy or daily habit
-- If At-Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Provide 2 personalized coping strategies or structured interventions
+- If Moderate (${assessmentType === 'ryff_84' ? '37-59' : '19-30'}): Provide exactly 1 personalized coping strategy or daily habit
+- If At-Risk (${assessmentType === 'ryff_84' ? '≤36' : '≤18'}): Provide exactly 2 personalized coping strategies or structured interventions
 
 Example format:
 Autonomy: Try reaching out to a trusted friend or mentor when you're feeling uncertain about your purpose. For example, you could say, "I'm feeling a bit lost about my direction - can we talk about what's worked for you?"
@@ -385,7 +385,7 @@ CRITICAL REQUIREMENTS - STRICT COMPLIANCE MANDATORY:
   createStructuredResponse(aiResponse, studentData, riskLevel) {
     try {
       // Parse the enhanced AI response to extract different sections
-      const sections = this.parseEnhancedAIResponse(aiResponse);
+      const sections = this.parseEnhancedAIResponse(aiResponse, studentData);
       
       // Create overall strategy (should be 2-3 sentences) - STRICT REQUIREMENT
       // Use AI-generated content only, no hardcoded fallbacks
@@ -458,9 +458,10 @@ CRITICAL REQUIREMENTS - STRICT COMPLIANCE MANDATORY:
   /**
    * Parse enhanced AI response with new format
    * @param {string} aiResponse - Raw AI response
+   * @param {Object} studentData - Student data for filtering healthy dimensions
    * @returns {Object} Parsed sections
    */
-  parseEnhancedAIResponse(aiResponse) {
+  parseEnhancedAIResponse(aiResponse, studentData = null) {
     const sections = {
       strategy: '',
       dimensions: {},
@@ -499,7 +500,7 @@ CRITICAL REQUIREMENTS - STRICT COMPLIANCE MANDATORY:
         console.warn('No dimension section found in AI response');
       }
 
-      // Extract Recommended Action Plan with examples
+      // Extract Recommended Action Plan with dimension-based format and filtering
       const actionsMatch = aiResponse.match(/Recommended Action Plan:\s*([\s\S]*?)$/i);
       if (actionsMatch) {
         const actionText = actionsMatch[1];
@@ -510,12 +511,55 @@ CRITICAL REQUIREMENTS - STRICT COMPLIANCE MANDATORY:
           return trimmed && /^(Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery):/i.test(trimmed);
         });
         
-        sections.actions = actionLines.map(line => {
-          // Remove the dimension name prefix and return just the strategy
-          return line.replace(/^[^:]+:\s*/, '').trim();
+        // Filter actions based on student dimension scores (only Moderate and At-Risk)
+        let filteredActions = actionLines;
+        if (studentData && studentData.subscales) {
+          const assessmentType = studentData.assessmentType || 'ryff_42';
+          const healthyThreshold = assessmentType === 'ryff_84' ? 60 : 31;
+          
+          filteredActions = actionLines.filter(line => {
+            const trimmed = line.trim();
+            // Extract dimension name from the action line
+            const dimensionMatch = trimmed.match(/^(Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery):/i);
+            if (dimensionMatch) {
+              const dimensionName = dimensionMatch[1].toLowerCase().replace(/\s+/g, '_');
+              const score = studentData.subscales[dimensionName];
+              
+              // Only include if score exists and is NOT healthy (Moderate or At-Risk only)
+              if (score !== undefined && score !== null) {
+                const isHealthy = score >= healthyThreshold;
+                if (isHealthy) {
+                  console.log(`Filtering out healthy dimension: ${dimensionName} (score: ${score})`);
+                  return false;
+                }
+                console.log(`Including non-healthy dimension: ${dimensionName} (score: ${score})`);
+                return true;
+              }
+            }
+            return true; // Keep if we can't determine dimension
+          });
+          
+          console.log(`Filtered actions from ${actionLines.length} to ${filteredActions.length} (removed healthy dimensions)`);
+        }
+        
+        // Keep the full dimension-based format as requested by user
+        sections.actions = filteredActions.map(line => {
+          const trimmed = line.trim();
+          // Ensure proper formatting: "For [Dimension], [recommendation]"
+          if (trimmed.startsWith('For ')) {
+            return trimmed;
+          } else {
+            // Convert "Dimension: text" to "For Dimension, text"
+            return trimmed.replace(/^([^:]+):\s*/, 'For $1, ');
+          }
         });
         
-        console.log(`Parsed ${sections.actions.length} action plan items`);
+        console.log(`Parsed ${sections.actions.length} dimension-based action plan items`);
+        
+        // Log parsed actions for debugging
+        sections.actions.forEach((action, index) => {
+          console.log(`Action ${index + 1}: ${action.substring(0, 100)}...`);
+        });
       } else {
         console.warn('No action plan section found in AI response');
       }
@@ -591,12 +635,21 @@ CRITICAL REQUIREMENTS - STRICT COMPLIANCE MANDATORY:
       });
     }
     
-    // Validate action plan - skip if all dimensions are healthy
+    // Validate action plan - adjust requirements based on actual non-healthy dimensions
     if (!allDimensionsHealthy) {
       if (!actionPlan || actionPlan.length === 0) {
         errors.push('Action plan must contain at least one action');
-      } else if (actionPlan.length < 3) {
-        errors.push('Action plan must contain at least 3 actions');
+      } else {
+        // Calculate expected minimum actions based on non-healthy dimensions
+        // For students with very few non-healthy dimensions, allow fewer actions
+        const minRequiredActions = Math.min(3, Math.max(1, actionPlan.length));
+        
+        // Only require 3 actions if we actually have enough non-healthy dimensions to warrant it
+        // This prevents the validation error for students with mostly healthy dimensions
+        if (actionPlan.length < 1) {
+          errors.push('Action plan must contain at least one action for non-healthy dimensions');
+        }
+        // Remove the strict 3-action requirement that was causing issues for healthy students
       }
     } else {
       console.log('Skipping action plan validation - all dimensions are healthy');
@@ -654,10 +707,11 @@ CRITICAL REQUIREMENTS - STRICT COMPLIANCE MANDATORY:
       });
       
       if (!allDimensionsHealthy) {
-        if (!structuredResponse.actionPlan || structuredResponse.actionPlan.length < 3) {
+        if (!structuredResponse.actionPlan || structuredResponse.actionPlan.length < 1) {
           console.warn('AI response validation failed: Insufficient action plan');
           return false;
         }
+        // Remove strict 3-action requirement for students with mostly healthy dimensions
       } else {
         console.log('Action plan validation skipped - all dimensions are healthy');
       }

@@ -393,6 +393,15 @@ router.get('/student/:studentId/latest', verifyCounselorSession, async (req, res
     // Use the structured data directly from database columns
     let transformedIntervention;
     
+    // DEBUG: Log the actual database values
+    console.log('DEBUG - Raw database intervention for student:', studentId);
+    console.log('- overall_strategy:', intervention.overall_strategy);
+    console.log('- dimension_interventions:', intervention.dimension_interventions);
+    console.log('- action_plan:', intervention.action_plan);
+    console.log('- action_plan type:', typeof intervention.action_plan);
+    console.log('- action_plan is array:', Array.isArray(intervention.action_plan));
+    console.log('- action_plan length:', intervention.action_plan ? intervention.action_plan.length : 'null/undefined');
+    
     // Check if we have meaningful structured data in separate columns (new format)
     const hasOverallStrategy = intervention.overall_strategy && intervention.overall_strategy.trim().length > 0;
     const hasDimensionInterventions = intervention.dimension_interventions && 

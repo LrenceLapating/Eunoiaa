@@ -527,7 +527,9 @@ export default {
     getDimensionColor(dimension) {
       const score = dimension?.score || 0;
       if (score > 0) {
-        return getCollegeDimensionColor(score, this.assessmentType);
+        // Convert assessmentType format: "42-item" -> "ryff_42", "84-item" -> "ryff_84"
+        const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+        return getCollegeDimensionColor(score, dbAssessmentType);
       }
       return '#6c757d'; // Gray for no data
     },

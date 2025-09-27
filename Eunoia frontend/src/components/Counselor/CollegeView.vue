@@ -74,12 +74,24 @@ export default {
       collegesFromBackend: [], // Store colleges fetched from backend
       collegeScores: [], // Store computed college scores from backend
       assessmentTypeFilter: '42-item', // Default to 42-item
-
+      // Performance optimization variables
+      loadingColleges: false,
+      loadingScores: false,
+      requestController: null, // For request cancellation
+      requestTimeout: 30000, // 30 second timeout
+      lastLoadTime: null,
+      cacheTimeout: 5 * 60 * 1000, // 5 minutes cache
     };
   },
   async mounted() {
     await this.loadCollegesFromBackend();
     await this.loadCollegeScores();
+  },
+  beforeUnmount() {
+    // Clean up any pending requests
+    if (this.requestController) {
+      this.requestController.abort();
+    }
   },
   watch: {
     // Watch for changes in collegeScores to ensure reactivity
@@ -167,40 +179,137 @@ export default {
   },
   methods: {
     async loadCollegesFromBackend() {
+      // Check if we're already loading to prevent duplicate requests
+      if (this.loadingColleges) {
+        console.log('⏸️ College loading already in progress, skipping duplicate request');
+        return;
+      }
+
+      // Check cache validity (5 minutes)
+      if (this.collegesFromBackend.length > 0 && this.lastLoadTime && 
+          (Date.now() - this.lastLoadTime) < this.cacheTimeout) {
+        console.log('📋 Using cached college data');
+        return;
+      }
+
+      this.loadingColleges = true;
+      this.error = null;
+
+      // Cancel any existing request
+      if (this.requestController) {
+        this.requestController.abort();
+      }
+
+      // Create new AbortController for this request
+      this.requestController = new AbortController();
+
       try {
-        const response = await fetch(apiUrl('accounts/colleges'));
+        console.log('🔄 Loading colleges from backend...');
+        
+        const timeoutId = setTimeout(() => {
+          if (this.requestController) {
+            this.requestController.abort();
+          }
+        }, this.requestTimeout);
+
+        const response = await fetch(apiUrl('accounts/colleges'), {
+          signal: this.requestController.signal,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        clearTimeout(timeoutId);
+
         if (response.ok) {
           const data = await response.json();
+          
+          // Performance safeguard: warn for large datasets
+          if (data.colleges && data.colleges.length > 50) {
+            console.warn(`⚠️ Large college dataset detected: ${data.colleges.length} colleges. Consider pagination.`);
+          }
+
           this.collegesFromBackend = data.colleges.map(college => ({
             name: college.name,
             users: college.totalUsers
           }));
+          
+          this.lastLoadTime = Date.now();
+          console.log(`✅ Loaded ${this.collegesFromBackend.length} colleges successfully`);
         } else {
           console.error('Failed to load colleges from backend');
           this.error = 'Failed to load college data from server';
         }
       } catch (error) {
-        console.error('Error loading colleges:', error);
-        this.error = 'Network error. Please check if the backend server is running.';
+        if (error.name === 'AbortError') {
+          console.log('🚫 College loading request was cancelled');
+        } else if (error.name === 'TimeoutError') {
+          console.error('⏰ College loading request timed out');
+          this.error = 'Request timed out. Please try again.';
+        } else {
+          console.error('Error loading colleges:', error);
+          this.error = 'Network error. Please check if the backend server is running.';
+        }
+      } finally {
+        this.loadingColleges = false;
+        this.requestController = null;
       }
     },
     async loadCollegeScores() {
+      // Check if we're already loading to prevent duplicate requests
+      if (this.loadingScores) {
+        console.log('⏸️ College scores loading already in progress, skipping duplicate request');
+        return;
+      }
+
+      this.loadingScores = true;
+      this.error = null;
+
+      // Cancel any existing request
+      if (this.requestController) {
+        this.requestController.abort();
+      }
+
+      // Create new AbortController for this request
+      this.requestController = new AbortController();
+
       try {
         // Convert frontend filter format to backend format
         const assessmentType = this.assessmentTypeFilter === '42-item' ? 'ryff_42' : 'ryff_84';
         console.log(`🔍 Loading college scores for assessment type: ${assessmentType}`);
         
+        const timeoutId = setTimeout(() => {
+          if (this.requestController) {
+            this.requestController.abort();
+          }
+        }, this.requestTimeout);
+
         // Fetch the computed scores with assessment type filter
         // Note: We removed the automatic compute-scores call because:
         // 1. It was causing "General Assessment" records due to missing assessmentName
         // 2. College scores should be computed when assessments are submitted, not on-demand
         // 3. The getCollegeScores function can handle dynamic computation if needed
         console.log(`📥 Fetching computed scores for ${assessmentType}...`);
-        const response = await fetch(apiUrl(`accounts/colleges/scores?assessmentType=${assessmentType}`));
+        const response = await fetch(apiUrl(`accounts/colleges/scores?assessmentType=${assessmentType}`), {
+          signal: this.requestController.signal,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        clearTimeout(timeoutId);
+
         if (response.ok) {
           const data = await response.json();
           console.log(`✅ Received ${data.colleges?.length || 0} colleges for ${assessmentType}:`, data.colleges?.map(c => c.name));
           
+          // Performance safeguard: warn for large datasets
+          if (data.colleges && data.colleges.length > 50) {
+            console.warn(`⚠️ Large college scores dataset detected: ${data.colleges.length} colleges. Consider pagination.`);
+          }
+
           // Clear old data first to ensure reactivity
           this.collegeScores = [];
           this.$nextTick(() => {
@@ -212,8 +321,18 @@ export default {
           this.error = 'Failed to load college scores from server';
         }
       } catch (error) {
-        console.error('Error loading college scores:', error);
-        this.error = 'Network error while loading college scores.';
+        if (error.name === 'AbortError') {
+          console.log('🚫 College scores loading request was cancelled');
+        } else if (error.name === 'TimeoutError') {
+          console.error('⏰ College scores loading request timed out');
+          this.error = 'Request timed out. Please try again.';
+        } else {
+          console.error('Error loading college scores:', error);
+          this.error = 'Network error while loading college scores.';
+        }
+      } finally {
+        this.loadingScores = false;
+        this.requestController = null;
       }
     },
     generateCollegeCode(collegeName) {

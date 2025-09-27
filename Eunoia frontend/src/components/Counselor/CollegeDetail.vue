@@ -82,11 +82,21 @@
           <div class="metric-row">
             <div class="metric-item">
                 <span class="metric-label">Students Year</span>
-                <span class="metric-value">{{ selectedYear ? getYearDisplayName(selectedYear) : 'All Years' }}</span>
+                <div class="dropdown-container">
+                  <select v-model="selectedYear" class="metric-dropdown" :disabled="!selectedAssessmentName || loadingYears">
+                    <option value="">{{ loadingYears ? 'Loading years...' : (selectedAssessmentName ? 'All Years' : 'Select Assessment First') }}</option>
+                    <option v-for="year in availableYears" :key="year" :value="year">{{ getYearDisplayName(year) }}</option>
+                  </select>
+                </div>
               </div>
             <div class="metric-item" v-show="selectedYear && selectedAssessmentName">
               <span class="metric-label">Sections</span>
-              <span class="metric-value">{{ selectedSection || 'All Sections' }}</span>
+              <div class="dropdown-container">
+                <select v-model="selectedSection" class="metric-dropdown" :disabled="!selectedYear || loadingSections">
+                  <option value="">{{ loadingSections ? 'Loading sections...' : 'All Sections' }}</option>
+                  <option v-for="section in filteredSections" :key="section" :value="section">{{ section }}</option>
+                </select>
+              </div>
             </div>
           </div>
           <div class="metric-row">
@@ -278,6 +288,10 @@ export default {
       },
       loadingRiskDistribution: false,
       assessmentHistory: [],
+      // Performance optimization: debouncing and request cancellation
+      filterDebounceTimer: null,
+      currentScoresController: null,
+      currentRiskController: null,
       loadingHistory: false,
       
     };
@@ -732,6 +746,22 @@ export default {
     }
   },
   methods: {
+    // Debounced method to handle filter changes
+    debouncedFilterUpdate() {
+      // Clear existing timer
+      if (this.filterDebounceTimer) {
+        clearTimeout(this.filterDebounceTimer);
+      }
+      
+      // Set new timer with 300ms delay
+      this.filterDebounceTimer = setTimeout(() => {
+        if (this.selectedAssessmentName) {
+          console.log('🔄 Debounced filter update triggered');
+          this.fetchCollegeScores();
+          this.fetchRiskDistribution();
+        }
+      }, 300);
+    },
     goBack() {
       // Emit the event for parent component to handle
       this.$emit('go-back');
@@ -792,7 +822,9 @@ export default {
       const actualScore = dimension ? (dimension.score || dimension.averageScore || 0) : 0;
       
       if (actualScore > 0) {
-        return getCollegeDimensionColor(actualScore, this.assessmentType);
+        // Convert assessmentType format: "42-item" -> "ryff_42", "84-item" -> "ryff_84"
+        const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+        return getCollegeDimensionColor(actualScore, dbAssessmentType);
       }
       return '#6c757d'; // Gray for no data
     },
@@ -1028,6 +1060,14 @@ export default {
          return;
        }
        
+       // Cancel previous request if it exists
+       if (this.currentScoresController) {
+         this.currentScoresController.abort();
+       }
+       
+       // Create new AbortController for this request
+       this.currentScoresController = new AbortController();
+       
        try {
          // Convert assessment type to backend format
          const dbAssessmentType = this.assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
@@ -1070,7 +1110,8 @@ export default {
            credentials: 'include',
            headers: {
              'Content-Type': 'application/json'
-           }
+           },
+           signal: this.currentScoresController.signal
          });
          
          if (response.ok) {
@@ -1139,9 +1180,6 @@ export default {
                   // Trigger reactive update
                   this.completionDataUpdateTrigger++;
                 }
-                
-                // Fetch risk distribution after college scores are updated
-                this.fetchRiskDistribution();
              } else {
                console.log('❌ No college data found for:', this.selectedCollege.name);
                // Clear all data when no college data is found for the selected filters
@@ -1191,10 +1229,17 @@ export default {
            }
          }
        } catch (error) {
+         if (error.name === 'AbortError') {
+           console.log('🚫 College scores request was cancelled');
+           return;
+         }
          console.error('Error fetching college scores for assessment:', error);
          // Set completion data to null on error to stop loading state
          this.selectedCollege.completionData = null;
          this.completionDataUpdateTrigger++;
+       } finally {
+         // Clear the controller reference
+         this.currentScoresController = null;
        }
      },
      getAggregatedCompletionRate(history) {
@@ -1440,6 +1485,14 @@ export default {
           return;
         }
         
+        // Cancel previous request if it exists
+        if (this.currentRiskController) {
+          this.currentRiskController.abort();
+        }
+        
+        // Create new AbortController for this request
+        this.currentRiskController = new AbortController();
+        
         this.loadingRiskDistribution = true;
         
         try {
@@ -1479,7 +1532,8 @@ export default {
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json'
-            }
+            },
+            signal: this.currentRiskController.signal
           });
           
           if (response.ok) {
@@ -1513,10 +1567,16 @@ export default {
             this.riskDistribution = { atRisk: 0, moderate: 0, healthy: 0 };
           }
         } catch (error) {
+          if (error.name === 'AbortError') {
+            console.log('🚫 Risk distribution request was cancelled');
+            return;
+          }
           console.error('❌ Error fetching risk distribution:', error);
           this.riskDistribution = { atRisk: 0, moderate: 0, healthy: 0 };
         } finally {
           this.loadingRiskDistribution = false;
+          // Clear the controller reference
+          this.currentRiskController = null;
         }
       }
   },
@@ -1539,22 +1599,19 @@ export default {
     // Watch for course, year and section changes to update both risk distribution and dimension scores
     selectedCourse() {
       if (this.selectedAssessmentName) {
-        this.fetchCollegeScores(); // Update dimension analysis scores
-        this.fetchRiskDistribution(); // Update risk distribution
+        this.debouncedFilterUpdate();
       }
     },
     
     selectedYear() {
       if (this.selectedAssessmentName) {
-        this.fetchCollegeScores(); // Update dimension analysis scores
-        this.fetchRiskDistribution(); // Update risk distribution
+        this.debouncedFilterUpdate();
       }
     },
     
     selectedSection() {
       if (this.selectedAssessmentName) {
-        this.fetchCollegeScores(); // Update dimension analysis scores
-        this.fetchRiskDistribution(); // Update risk distribution
+        this.debouncedFilterUpdate();
       }
     }
   },
@@ -1576,6 +1633,21 @@ export default {
       this.fetchRiskDistribution();
     } else {
       console.log('⏸️ Not auto-fetching - college:', !!this.selectedCollege, 'assessment:', !!this.selectedAssessmentName);
+    }
+  },
+  beforeUnmount() {
+    // Clean up debounce timer
+    if (this.filterDebounceTimer) {
+      clearTimeout(this.filterDebounceTimer);
+    }
+    
+    // Cancel any pending requests
+    if (this.currentScoresController) {
+      this.currentScoresController.abort();
+    }
+    
+    if (this.currentRiskController) {
+      this.currentRiskController.abort();
     }
   }
 };

@@ -11,16 +11,22 @@ const router = express.Router();
  */
 router.get('/incomplete', verifyCounselorSession, async (req, res) => {
   try {
-    const { college_id, counselor_id } = req.query;
+    const { college_id, counselor_id, assessment_type, page, limit } = req.query;
     
     // Build filters object
     const filters = {};
     if (college_id) filters.college_id = college_id;
     if (counselor_id) filters.counselor_id = counselor_id;
+    if (assessment_type) filters.assessment_type = assessment_type;
     
-    console.log(`🔍 Fetching incomplete assessments for counselor ${req.user.id}`, filters);
+    // Build pagination object
+    const pagination = {};
+    if (page) pagination.page = page;
+    if (limit) pagination.limit = limit;
     
-    const result = await assessmentTrackerService.getIncompleteAssessments(filters);
+    console.log(`🔍 Fetching incomplete assessments for counselor ${req.user.id}`, { filters, pagination });
+    
+    const result = await assessmentTrackerService.getIncompleteAssessments(filters, pagination);
     
     if (!result.success) {
       return res.status(500).json({
@@ -33,8 +39,9 @@ router.get('/incomplete', verifyCounselorSession, async (req, res) => {
     res.json({
       success: true,
       data: result.data,
+      pagination: result.pagination,
       summary: result.summary,
-      message: `Found ${result.data.length} incomplete assessments`
+      message: `Found ${result.summary.total_incomplete} incomplete assessments`
     });
     
   } catch (error) {

@@ -1034,6 +1034,12 @@ export default {
       pdf.text(`Colleges: ${collegeNames}`, pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 10;
       
+      // Add Assessment Type information
+      const assessmentType = this.determineAssessmentTypeFromPeriods();
+      const assessmentTypeDisplay = assessmentType === 'ryff_84' ? '84-Item Assessment' : '42-Item Assessment';
+      pdf.text(`Assessment Type: ${assessmentTypeDisplay}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 10;
+      
       const periodNames = selectedPeriods.map(p => {
         const period = assessmentPeriods.find(ap => ap.id === p);
         if (period?.name) {
@@ -1134,9 +1140,20 @@ export default {
         
         // Overall score interpretation (updated thresholds for SUM-based scoring)
         let overallInterpretation = 'Unknown';
-        if (overallScore >= 182) overallInterpretation = 'Healthy';      // ≥182: Healthy (for 42-item)
-        else if (overallScore >= 112) overallInterpretation = 'Moderate'; // 112-181: Moderate
-        else if (overallScore > 0) overallInterpretation = 'At Risk';     // ≤111: At Risk
+        const assessmentType = college.assessmentType || 'ryff_42'; // Default to 42-item if not specified
+        
+        // Use different thresholds based on assessment type
+        if (assessmentType === 'ryff_84') {
+          // 84-item thresholds (doubled from 42-item)
+          if (overallScore >= 364) overallInterpretation = 'Healthy';      // ≥364: Healthy (for 84-item)
+          else if (overallScore >= 224) overallInterpretation = 'Moderate'; // 224-363: Moderate
+          else if (overallScore > 0) overallInterpretation = 'At Risk';     // ≤223: At Risk
+        } else {
+          // 42-item thresholds (original)
+          if (overallScore >= 182) overallInterpretation = 'Healthy';      // ≥182: Healthy (for 42-item)
+          else if (overallScore >= 112) overallInterpretation = 'Moderate'; // 112-181: Moderate
+          else if (overallScore > 0) overallInterpretation = 'At Risk';     // ≤111: At Risk
+        }
         
         pdf.setFont('helvetica', 'normal');
         pdf.text(`Interpretation: ${overallInterpretation}`, 120, yPosition + 25);
@@ -1431,9 +1448,12 @@ export default {
           
           console.log('Fetching historical data for college:', college, 'assessments:', selectedAssessmentNames);
           
+          // Determine assessment type from assessment names
+          const assessmentType = this.determineAssessmentTypeFromNames(selectedAssessmentNames);
+          
           // Fetch college historical data for each assessment (contains complete dimensions and scores)
           const assessmentDataPromises = selectedAssessmentNames.map(async (assessmentName) => {
-            const response = await fetch(apiUrl(`/accounts/colleges/history?college=${encodeURIComponent(college)}&assessmentType=ryff_42&assessmentName=${encodeURIComponent(assessmentName)}`), {
+            const response = await fetch(apiUrl(`/accounts/colleges/history?college=${encodeURIComponent(college)}&assessmentType=${assessmentType}&assessmentName=${encodeURIComponent(assessmentName)}`), {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json'
@@ -1519,11 +1539,14 @@ export default {
       async fetchCurrentCollegeData() {
         console.log('Fetching current college data for:', this.selectedColleges);
         
+        // Determine assessment type from selected periods
+        const assessmentType = this.determineAssessmentTypeFromPeriods();
+        
         // Fetch current college data using the scores endpoint
         const collegeDataPromises = this.selectedColleges.map(async (college) => {
           try {
             // Use the same endpoint as CollegeView.vue for current data
-            const response = await fetch(apiUrl(`/accounts/colleges/scores?assessmentType=ryff_42`), {
+            const response = await fetch(apiUrl(`/accounts/colleges/scores?assessmentType=${assessmentType}`), {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json'
@@ -1549,7 +1572,7 @@ export default {
                     completionData: collegeData.completionData || { total: 0, completed: 0 },
                     completionDataByAssessment: collegeData.completionDataByAssessment || {},
                     riskDistribution: collegeData.riskDistribution || { at_risk: 0, moderate: 0, healthy: 0 },
-                    assessmentType: 'ryff_42'
+                    assessmentType: assessmentType
                   };
                 } else {
                   console.warn(`College ${college} not found in current data`);
@@ -1733,6 +1756,25 @@ export default {
         return words[0].substring(0, 3).toUpperCase();
       }
       return words.map(word => word.charAt(0)).join('').toUpperCase();
+    },
+
+    // Helper method to determine assessment type from assessment names
+    determineAssessmentTypeFromNames(assessmentNames) {
+      // Check if any assessment name contains "84" or "84-item" or "84 Items"
+      const has84Item = assessmentNames.some(name => 
+        name && (name.includes('84') || name.toLowerCase().includes('84-item') || name.toLowerCase().includes('84 items'))
+      );
+      return has84Item ? 'ryff_84' : 'ryff_42';
+    },
+
+    // Helper method to determine assessment type from selected periods
+    determineAssessmentTypeFromPeriods() {
+      const selectedAssessmentNames = this.selectedPeriods.map(periodId => {
+        const period = this.assessmentPeriods.find(p => p.id === periodId);
+        return period?.name;
+      }).filter(name => name);
+      
+      return this.determineAssessmentTypeFromNames(selectedAssessmentNames);
     }
   },
   watch: {

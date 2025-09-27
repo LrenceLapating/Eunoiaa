@@ -152,9 +152,9 @@
 
       <!-- Bulk Actions for Healthy Students -->
       <div class="bulk-actions" v-if="currentView === 'healthy' && filteredCurrentStudents.length > 0">
-        <button class="bulk-send-btn" @click="bulkSendHealthyInterventions" :disabled="isBulkGenerating">
-          <i class="fas" :class="isBulkGenerating ? 'fa-spinner fa-spin' : 'fa-robot'"></i>
-          {{ isBulkGenerating ? 'Generating AI Interventions...' : `Generate AI Interventions (${filteredCurrentStudents.length} students)` }}
+        <button class="bulk-send-btn" @click="bulkSendExistingInterventions" :disabled="isBulkGenerating">
+          <i class="fas" :class="isBulkGenerating ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
+          {{ isBulkGenerating ? 'Sending Interventions...' : `Send All Interventions (${getStudentsWithInterventions().length} available)` }}
         </button>
       </div>
 
@@ -360,6 +360,11 @@
             
             <!-- Read-only view -->
             <div class="action-items" v-if="!isEditingActionPlan">
+              <!-- Show message if no action plan items -->
+              <div v-if="editableActionPlan.length === 0" class="no-action-items">
+                <p>Good Job! You're doing great!</p>
+              </div>
+              <!-- Show action items -->
               <div class="action-item" v-for="(action, index) in editableActionPlan" :key="index">
                 <i class="fas fa-check-circle"></i>
                 <span>{{ action }}</span>
@@ -387,9 +392,17 @@
             
             <!-- Send to Student Button -->
             <div class="action-plan-footer">
-              <button class="send-to-student-btn" @click="sendToStudent" :disabled="isEditingActionPlan || isSendingIntervention">
-                <i class="fas" :class="isSendingIntervention ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
-                {{ isSendingIntervention ? 'Sending...' : 'Send to Student' }}
+              <button 
+                class="send-to-student-btn" 
+                @click="sendToStudent" 
+                :disabled="isEditingActionPlan || isSendingIntervention || hasInterventionSent(selectedStudent)"
+              >
+                <i class="fas" :class="isSendingIntervention ? 'fa-spinner fa-spin' : hasInterventionSent(selectedStudent) ? 'fa-check' : 'fa-paper-plane'"></i>
+                {{ 
+                  isSendingIntervention ? 'Sending...' : 
+                  hasInterventionSent(selectedStudent) ? 'Already Sent' : 
+                  'Send to Student' 
+                }}
               </button>
             </div>
           </div>
@@ -423,6 +436,12 @@ export default {
       isBulkGenerating: false, // Loading state for bulk intervention generation
       isGeneratingIntervention: false, // Loading state for individual intervention generation
       generatingStudents: new Set(), // Track which students are currently having interventions generated
+
+      // Request management for optimization
+      abortController: null,
+      requestCache: new Map(),
+      lastRequestTime: new Map(),
+      activeRequests: new Set(), // Track active requests to prevent duplicates
 
       // Notification system
       notification: {
@@ -469,6 +488,16 @@ export default {
     await this.fetchSentInterventions();
     await this.fetchExistingInterventions();
   },
+  beforeUnmount() {
+    // Clean up any ongoing requests
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+    // Clear cache to prevent memory leaks
+    this.requestCache.clear();
+    this.lastRequestTime.clear();
+    this.activeRequests.clear();
+  },
   computed: {
     // These are now data properties fetched from backend
     notificationIcon() {
@@ -514,52 +543,104 @@ export default {
         console.log('No assessment type selected, returning');
         return; // Don't fetch if no assessment type is selected
       }
+
+      // Prevent duplicate requests
+      const requestKey = `students-by-risk-${this.assessmentTypeFilter}`;
+      if (this.activeRequests.has(requestKey)) {
+        console.log('Request already in progress, skipping duplicate');
+        return;
+      }
+
+      // Check cache first
+      const cacheKey = this.getCacheKey('students-by-risk', { assessmentType: this.assessmentTypeFilter });
+      const cachedData = this.getCachedData(cacheKey);
+      if (cachedData) {
+        this.atRiskStudents = cachedData.atRisk || [];
+        this.moderateStudents = cachedData.moderate || [];
+        this.healthyStudents = cachedData.healthy || [];
+        return;
+      }
+
+      this.activeRequests.add(requestKey);
       this.isLoading = true;
+      
+      // Cancel any existing request
+      if (this.abortController) {
+        this.abortController.abort();
+      }
+      this.abortController = new AbortController();
+
       try {
         // Build query parameters
         const assessmentTypeParam = `&assessmentType=${this.assessmentTypeFilter}`;
         
+        // Create timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 seconds
+        });
+
         // Fetch at-risk students
-        const atRiskResponse = await fetch(apiUrl(`counselor-assessments/students/at-risk?${assessmentTypeParam}`), {
+        const atRiskPromise = fetch(apiUrl(`counselor-assessments/students/at-risk?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
+          signal: this.abortController.signal,
           headers: {
             'Content-Type': 'application/json'
           }
         });
         
+        const atRiskResponse = await Promise.race([atRiskPromise, timeoutPromise]);
+        let atRiskStudents = [];
         if (atRiskResponse.ok) {
           const atRiskData = await atRiskResponse.json();
-          this.atRiskStudents = this.mapAssessmentData(atRiskData.data || []);
+          atRiskStudents = this.mapAssessmentData(atRiskData.data || []);
         }
         
         // Fetch moderate students
-        const moderateResponse = await fetch(apiUrl(`counselor-assessments/students/moderate?${assessmentTypeParam}`), {
+        const moderatePromise = fetch(apiUrl(`counselor-assessments/students/moderate?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
+          signal: this.abortController.signal,
           headers: {
             'Content-Type': 'application/json'
           }
         });
         
+        const moderateResponse = await Promise.race([moderatePromise, timeoutPromise]);
+        let moderateStudents = [];
         if (moderateResponse.ok) {
           const moderateData = await moderateResponse.json();
-          this.moderateStudents = this.mapAssessmentData(moderateData.data || []);
+          moderateStudents = this.mapAssessmentData(moderateData.data || []);
         }
         
         // Fetch healthy students
-        const healthyResponse = await fetch(apiUrl(`counselor-assessments/students/healthy?${assessmentTypeParam}`), {
+        const healthyPromise = fetch(apiUrl(`counselor-assessments/students/healthy?${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
+          signal: this.abortController.signal,
           headers: {
             'Content-Type': 'application/json'
           }
         });
         
+        const healthyResponse = await Promise.race([healthyPromise, timeoutPromise]);
+        let healthyStudents = [];
         if (healthyResponse.ok) {
           const healthyData = await healthyResponse.json();
-          this.healthyStudents = this.mapAssessmentData(healthyData.data || []);
+          healthyStudents = this.mapAssessmentData(healthyData.data || []);
         }
+
+        // Update data
+        this.atRiskStudents = atRiskStudents;
+        this.moderateStudents = moderateStudents;
+        this.healthyStudents = healthyStudents;
+
+        // Cache the results
+        this.setCachedData(cacheKey, {
+          atRisk: atRiskStudents,
+          moderate: moderateStudents,
+          healthy: healthyStudents
+        });
         
         console.log('Student data loaded:', {
           atRisk: this.atRiskStudents.length,
@@ -571,8 +652,17 @@ export default {
         await this.fetchSentInterventions();
         
       } catch (error) {
-        console.error('Error fetching student data:', error);
+        if (error.name === 'AbortError') {
+          console.log('Request was cancelled');
+        } else if (error.message === 'Request timeout') {
+          console.error('Request timed out after 30 seconds');
+          this.showNotification('error', 'Request Timeout', 'The request took too long to complete. Please try again.');
+        } else {
+          console.error('Error fetching student data:', error);
+          this.showNotification('error', 'Error', 'Failed to load student data. Please try again.');
+        }
       } finally {
+        this.activeRequests.delete(requestKey);
         this.isLoading = false;
       }
     },
@@ -1128,6 +1218,103 @@ export default {
       }
     },
     
+    getStudentsWithInterventions() {
+      // Return students who have interventions available but not yet sent
+      return this.filteredCurrentStudents.filter(student => 
+        this.hasInterventionAvailable(student) && !this.hasInterventionSent(student)
+      );
+    },
+
+    async bulkSendExistingInterventions() {
+      const studentsWithInterventions = this.getStudentsWithInterventions();
+      
+      if (studentsWithInterventions.length === 0) {
+        this.showNotification(
+          'info',
+          'No Interventions to Send',
+          'All available interventions have already been sent to students.'
+        );
+        return;
+      }
+      
+      try {
+        // Show loading state
+        this.isBulkGenerating = true;
+        
+        let successCount = 0;
+        let failedCount = 0;
+        const errors = [];
+        
+        // Send interventions one by one to ensure safety
+        for (const student of studentsWithInterventions) {
+          try {
+            const response = await fetch(apiUrl('/counselor-interventions/send-existing'), {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                studentId: student.id
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              // Mark intervention as sent
+              this.sentInterventions.add(student.id);
+              successCount++;
+            } else {
+              failedCount++;
+              errors.push(`${student.name}: ${result.error}`);
+            }
+          } catch (error) {
+            failedCount++;
+            errors.push(`${student.name}: Network error`);
+            console.error(`Error sending intervention to ${student.name}:`, error);
+          }
+        }
+        
+        // Refresh intervention data to update button states
+        await this.fetchSentInterventions();
+        await this.fetchExistingInterventions();
+        
+        // Show results notification
+        if (failedCount === 0) {
+          this.showNotification(
+            'success',
+            'All Interventions Sent Successfully!',
+            `${successCount} interventions have been sent to students. They will receive their personalized mental health recommendations.`,
+            6000
+          );
+        } else if (successCount > 0) {
+          this.showNotification(
+            'warning',
+            'Bulk Send Completed with Some Errors',
+            `${successCount} interventions sent successfully, ${failedCount} failed. Check console for details.`,
+            7000
+          );
+          console.log('Failed interventions:', errors);
+        } else {
+          this.showNotification(
+            'error',
+            'Failed to Send Interventions',
+            'Unable to send any interventions. Please check your connection and try again.'
+          );
+        }
+      } catch (error) {
+        console.error('Error in bulk send interventions:', error);
+        this.showNotification(
+          'error',
+          'Bulk Send Error',
+          'An unexpected error occurred. Please try again.'
+        );
+      } finally {
+        this.isBulkGenerating = false;
+      }
+    },
+    
     // Intervention Methods
     getOverallRiskClass(student) {
       const overallScore = this.calculateOverallScore(student);
@@ -1162,35 +1349,8 @@ export default {
         return aiIntervention.overallStrategy;
       }
       
-      // Provide meaningful fallback strategy based on student's risk level and scores
-      if (!student || !student.subscales) {
-        return "A comprehensive mental health strategy will be developed based on your assessment results. Please ensure your assessment is completed for personalized recommendations.";
-      }
-      
-      const riskLevel = student.riskLevel || this.determineRiskLevel(student);
-      const atRiskDimensions = this.getAtRiskDimensionsForStudent(student);
-      const moderateDimensions = this.getModerateDimensionsForStudent(student);
-      
-      let strategy = "";
-      
-      if (riskLevel === 'at-risk' || atRiskDimensions.length > 0) {
-        strategy = `Based on your assessment results, you show some areas that need immediate attention across ${atRiskDimensions.length} dimension(s). `;
-        strategy += "Your mental health strategy should focus on building resilience and developing coping mechanisms in these key areas. ";
-        strategy += "It's recommended to work closely with a counselor to address these concerns and develop personalized interventions. ";
-        strategy += "Remember that seeking help is a sign of strength, and with proper support, significant improvement is achievable.";
-      } else if (riskLevel === 'moderate' || moderateDimensions.length > 0) {
-        strategy = `Your assessment shows moderate scores in ${moderateDimensions.length} dimension(s), indicating areas for growth and improvement. `;
-        strategy += "Your mental health strategy should focus on preventive measures and skill-building to maintain and enhance your well-being. ";
-        strategy += "This is an excellent opportunity to develop healthy habits and coping strategies before any issues become more serious. ";
-        strategy += "Consider engaging in wellness activities and maintaining regular check-ins with support systems.";
-      } else {
-        strategy = "Your assessment results indicate healthy functioning across all dimensions of psychological well-being. ";
-        strategy += "Your mental health strategy should focus on maintaining these positive patterns and continuing personal growth. ";
-        strategy += "Consider this an opportunity to further develop your strengths and perhaps support others in their wellness journey. ";
-        strategy += "Regular self-reflection and continued engagement in meaningful activities will help sustain your well-being.";
-      }
-      
-      return strategy;
+      // No fallback - only show AI-generated content
+      return "Loading AI-generated overall mental health strategy...";
     },
     
     getAtRiskDimensionsForStudent(student) {
@@ -1262,54 +1422,8 @@ export default {
         return aiIntervention.actionPlan;
       }
       
-      // Provide meaningful fallback action plan based on student's risk level and scores
-      if (!student || !student.subscales) {
-        return [
-          "Complete your psychological well-being assessment (Example: Take the full assessment to get personalized recommendations)",
-          "Schedule a consultation with your counselor (Example: Book a 30-minute session within the next week)",
-          "Begin a daily self-reflection practice (Example: Write in a journal for 10 minutes each evening)"
-        ];
-      }
-      
-      const riskLevel = student.riskLevel || this.determineRiskLevel(student);
-      const atRiskDimensions = this.getAtRiskDimensionsForStudent(student);
-      const moderateDimensions = this.getModerateDimensionsForStudent(student);
-      
-      let actionPlan = [];
-      
-      if (riskLevel === 'at-risk' || atRiskDimensions.length > 0) {
-        actionPlan = [
-          "Schedule an immediate consultation with a counselor (Example: Book an appointment within 48 hours to discuss your results)",
-          "Develop a daily stress management routine (Example: Practice deep breathing exercises for 10 minutes each morning)",
-          "Build a support network (Example: Reach out to 2-3 trusted friends or family members this week)",
-          "Engage in regular physical activity (Example: Take a 20-minute walk daily or join a fitness class)",
-          "Practice mindfulness and relaxation techniques (Example: Use a meditation app for 15 minutes before bed)",
-          "Establish healthy sleep habits (Example: Go to bed and wake up at the same time daily, aim for 7-8 hours)",
-          "Monitor your progress weekly (Example: Keep a mood diary and review it with your counselor)"
-        ];
-      } else if (riskLevel === 'moderate' || moderateDimensions.length > 0) {
-        actionPlan = [
-          "Schedule a check-in with a counselor (Example: Book a session within 2 weeks to discuss improvement strategies)",
-          "Develop personal growth goals (Example: Set 3 specific, measurable goals for the next month)",
-          "Practice regular self-care activities (Example: Dedicate 30 minutes daily to activities you enjoy)",
-          "Strengthen social connections (Example: Plan weekly social activities with friends or join a club)",
-          "Engage in meaningful activities (Example: Volunteer for 2 hours weekly or pursue a hobby)",
-          "Maintain physical wellness (Example: Exercise 3 times per week for at least 30 minutes)",
-          "Practice stress prevention techniques (Example: Learn and use time management strategies)"
-        ];
-      } else {
-        actionPlan = [
-          "Continue your current positive practices (Example: Maintain the healthy habits that are working well for you)",
-          "Set new personal development goals (Example: Learn a new skill or take on a leadership role)",
-          "Share your wellness strategies with others (Example: Mentor a peer or participate in wellness programs)",
-          "Engage in community service (Example: Volunteer 4 hours monthly for a cause you care about)",
-          "Pursue advanced personal growth (Example: Take a course in emotional intelligence or mindfulness)",
-          "Maintain work-life balance (Example: Set clear boundaries between study/work time and personal time)",
-          "Regular wellness check-ins (Example: Schedule quarterly self-assessments to maintain your well-being)"
-        ];
-      }
-      
-      return actionPlan;
+      // No fallback - only show AI-generated content
+      return [];
     },
     
     createComprehensiveIntervention(student, overallIntervention, dimensionInterventions, actionPlan) {
@@ -1345,11 +1459,8 @@ export default {
           comprehensive += `${index + 1}. ${action}\n`;
         });
       } else {
-        // Use generated action plan if no custom one provided
-        const generatedActions = this.getActionPlan(student);
-        generatedActions.forEach((action, index) => {
-          comprehensive += `${index + 1}. ${action}\n`;
-        });
+        // No fallback - only show AI-generated content
+        comprehensive += "*AI-generated action plan is being generated...*\n";
       }
       
       comprehensive += "\n---\n";
@@ -1390,7 +1501,7 @@ export default {
             id: intervention.id, // Include intervention ID for saving
             overallStrategy: intervention.overall_strategy,
             dimensionInterventions: intervention.dimension_interventions,
-            actionPlan: intervention.action_plan
+            action_plan: intervention.action_plan // Keep snake_case to match backend
           });
           
           // Update action plan if this is the currently selected student
@@ -1403,7 +1514,7 @@ export default {
           this.aiGeneratedInterventions.set(studentId, {
             overallStrategy: null,
             dimensionInterventions: {},
-            actionPlan: []
+            action_plan: [] // Keep snake_case to match backend
           });
         } else {
           console.error('Failed to fetch AI intervention:', result.error || 'Unknown error');
@@ -1411,7 +1522,7 @@ export default {
           this.aiGeneratedInterventions.set(studentId, {
             overallStrategy: null,
             dimensionInterventions: {},
-            actionPlan: []
+            action_plan: [] // Keep snake_case to match backend
           });
         }
       } catch (error) {
@@ -1484,13 +1595,74 @@ export default {
       if (!this.selectedStudent) return;
       
       const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
-      if (aiIntervention && aiIntervention.actionPlan && aiIntervention.actionPlan.length > 0) {
-        // Use AI-generated action plan if available
-        this.editableActionPlan = [...aiIntervention.actionPlan];
+      
+      // DEBUG: Log the actual data structure
+      console.log('DEBUG - updateEditableActionPlan for student:', this.selectedStudent.id);
+      console.log('- aiIntervention:', aiIntervention);
+      console.log('- aiIntervention.actionPlan:', aiIntervention?.actionPlan);
+      console.log('- aiIntervention.action_plan:', aiIntervention?.action_plan);
+      console.log('- aiIntervention.action_plan type:', typeof aiIntervention?.action_plan);
+      console.log('- aiIntervention.action_plan is array:', Array.isArray(aiIntervention?.action_plan));
+      console.log('- aiIntervention.action_plan length:', aiIntervention?.action_plan?.length);
+      
+      if (aiIntervention && aiIntervention.action_plan && Array.isArray(aiIntervention.action_plan)) {
+        // Use action_plan (snake_case) from backend
+        this.editableActionPlan = [...aiIntervention.action_plan];
+        console.log('- Set editableActionPlan to:', this.editableActionPlan);
       } else {
-        // Use fallback action plan only if no AI intervention exists
-        this.editableActionPlan = [...this.getActionPlan(this.selectedStudent)];
+        // No fallback - only show AI-generated content
+        this.editableActionPlan = [];
+        console.log('- Set editableActionPlan to empty array');
       }
+    },
+
+    // Generate dimension-based action plan from AI interventions
+    generateDimensionBasedActionPlan(student, aiIntervention) {
+      if (!student || !student.subscales) {
+        return [];
+      }
+
+      const actionPlan = [];
+      const assessmentType = student.assessmentType || 'ryff_42';
+      const thresholds = this.riskThresholds[assessmentType];
+
+      // Iterate through each dimension
+      this.ryffDimensionsList.forEach(dimension => {
+        const score = student.subscales[dimension.key];
+        if (score === undefined || score === null) return;
+
+        // Skip healthy dimensions (only show moderate and at-risk)
+        if (score > thresholds.q4) return; // Skip healthy dimensions
+
+        // Determine risk level and number of strategies needed
+        const isAtRisk = score <= thresholds.q1;
+        const isModerate = score > thresholds.q1 && score <= thresholds.q4;
+        const strategiesNeeded = isAtRisk ? 2 : 1;
+
+        let strategies = [];
+
+        // Try to get AI intervention for this dimension
+        const dimensionIntervention = aiIntervention?.dimensionInterventions?.[dimension.key];
+        
+        if (dimensionIntervention && typeof dimensionIntervention === 'string') {
+          // Extract strategies from AI intervention text
+          const sentences = dimensionIntervention
+            .split(/[.!?]+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 20 && !s.toLowerCase().includes('your score'));
+
+          strategies = sentences.slice(0, strategiesNeeded);
+        }
+
+        // Only add to action plan if we have AI-generated strategies
+        strategies.forEach(strategy => {
+          if (strategy && strategy.trim().length > 0) {
+            actionPlan.push(`${dimension.name}: ${strategy.trim()}`);
+          }
+        });
+      });
+
+      return actionPlan;
     },
     
     // Notification methods
@@ -1531,6 +1703,31 @@ export default {
       } else {
         return 'View student intervention details';
       }
+    },
+
+    // Cache management methods
+    getCacheKey(url, params = {}) {
+      return `${url}_${JSON.stringify(params)}`;
+    },
+
+    isCacheValid(cacheKey) {
+      const lastRequest = this.lastRequestTime.get(cacheKey);
+      if (!lastRequest) return false;
+      
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      return (Date.now() - lastRequest) < fiveMinutes;
+    },
+
+    getCachedData(cacheKey) {
+      if (this.isCacheValid(cacheKey)) {
+        return this.requestCache.get(cacheKey);
+      }
+      return null;
+    },
+
+    setCachedData(cacheKey, data) {
+      this.requestCache.set(cacheKey, data);
+      this.lastRequestTime.set(cacheKey, Date.now());
     }
 
   },
