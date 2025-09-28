@@ -34,7 +34,7 @@
                     <li><a href="#training" @click="scrollToSection('training')">Training</a></li>
                     <li><a href="#about" @click="scrollToSection('about')">About</a></li>
                     <li><a href="#contact" @click="scrollToSection('contact')">Contact</a></li>
-                    <li><a @click="navigateToLogin; closeMobileMenu()" class="mobile-login-btn">Login</a></li>
+                    <li><a @click="navigateToLogin(); closeMobileMenu()" class="mobile-login-btn">Login</a></li>
                 </ul>
             </nav>
             
@@ -3022,13 +3022,22 @@ export default {
   display: none;
   flex-direction: column;
   justify-content: space-around;
-  width: 30px;
-  height: 30px;
-  background: transparent;
-  border: none;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid var(--primary);
+  border-radius: 8px;
   cursor: pointer;
-  padding: 0;
+  padding: 8px;
   z-index: 1001;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transform: scale(1.05);
 }
 
 .mobile-menu-toggle span {
@@ -3038,6 +3047,16 @@ export default {
   border-radius: 2px;
   transition: all 0.3s ease;
   transform-origin: center;
+}
+
+.mobile-menu-toggle.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.mobile-menu-toggle.active span {
+  background-color: white;
 }
 
 .mobile-menu-toggle.active span:nth-child(1) {
@@ -3057,17 +3076,18 @@ export default {
   position: fixed;
   top: 0;
   right: -100%;
-  width: 250px;
-  max-width: 75vw;
+  width: 280px;
+  max-width: 80vw;
   height: 100vh;
   background: white;
-  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   transition: right 0.3s ease;
   padding-top: 80px;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  border-left: 3px solid var(--primary);
 }
 
 .mobile-nav.active {
@@ -3091,36 +3111,42 @@ export default {
 
 .mobile-nav ul li a {
   display: block;
-  padding: 16px 20px;
+  padding: 18px 25px;
   text-decoration: none;
   color: var(--text);
   font-weight: 500;
   transition: all 0.3s ease;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.4;
-  width: 100%;
   box-sizing: border-box;
   white-space: nowrap;
+  border-left: 3px solid transparent;
 }
 
 .mobile-nav ul li a:hover {
-  background-color: var(--light);
+  background-color: rgba(0, 179, 176, 0.05);
   color: var(--primary);
+  border-left-color: var(--primary);
+  padding-left: 22px;
 }
 
 .mobile-login-btn {
   background: var(--primary) !important;
   color: white !important;
-  margin: 15px 20px 30px 20px !important;
+  margin: 15px 20px 25px 20px !important;
   border-radius: 25px !important;
   text-align: center !important;
   font-weight: 600 !important;
   padding: 12px 20px !important;
-  font-size: 15px !important;
+  font-size: 14px !important;
+  box-shadow: 0 3px 12px rgba(0, 179, 176, 0.3) !important;
+  transition: all 0.3s ease !important;
 }
 
 .mobile-login-btn:hover {
   background: var(--primary-dark) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 5px 18px rgba(0, 179, 176, 0.4) !important;
 }
 
 .mobile-overlay {
@@ -3175,16 +3201,35 @@ export default {
   
   .header-container {
     padding: 10px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
   }
-  
+
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  }
+
   .logo h1 {
     font-size: 20px;
+    text-align: center;
   }
-  
+
   .logo-svg {
     height: 36px;
     width: 36px;
     margin-right: 8px;
+  }
+
+  .mobile-menu-toggle {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
   }
   
   /* Hero Section Mobile */

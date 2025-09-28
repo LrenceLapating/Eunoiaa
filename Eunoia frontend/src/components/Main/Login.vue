@@ -106,7 +106,7 @@
         </div>
         <div class="logo-container">
           <div class="logo-animation">
-            <img src="https://via.placeholder.com/120x120/00b3b0/ffffff?text=EUNOIA" alt="EUNOIA">
+            <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="main-logo">
           </div>
         </div>
       </div>
@@ -613,21 +613,26 @@ export default {
 }
 
 .logo-animation {
-  background: white;
+  background: transparent;
   width: 120px;
   height: 120px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-  animation: pulse-shadow 2s infinite;
+  animation: scale-pulse 2s infinite alternate;
 }
 
 .logo-animation img {
   width: 80%;
   height: auto;
   animation: scale-pulse 2s infinite alternate;
+}
+
+.main-logo {
+  width: 100%;
+  height: auto;
+  filter: brightness(1.1);
 }
 
 @keyframes pulse-shadow {
@@ -708,7 +713,7 @@ export default {
   }
   
   .login-right {
-    min-height: 300px;
+    display: none;
   }
 }
 

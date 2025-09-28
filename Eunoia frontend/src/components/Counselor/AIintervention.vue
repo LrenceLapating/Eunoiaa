@@ -139,11 +139,9 @@
           <div class="filter-dropdown">
             <select v-model="collegeFilter" @change="filterCurrentStudents">
               <option value="all">All Colleges</option>
-              <option value="CCS">CCS</option>
-              <option value="CN">CN</option>
-              <option value="CBA">CBA</option>
-              <option value="COE">COE</option>
-              <option value="CAS">CAS</option>
+              <option v-for="college in availableColleges" :key="college" :value="college">
+                {{ college }}
+              </option>
             </select>
             <i class="fas fa-chevron-down"></i>
           </div>
@@ -499,6 +497,30 @@ export default {
     this.activeRequests.clear();
   },
   computed: {
+    // Dynamically get available colleges based on current student data
+    availableColleges() {
+      let colleges = [];
+      
+      // Get colleges from all current student data based on current view
+      if (this.currentView === 'at-risk' && this.atRiskStudents.length > 0) {
+        colleges = [...new Set(this.atRiskStudents.map(student => student.college).filter(Boolean))];
+      } else if (this.currentView === 'moderate' && this.moderateStudents.length > 0) {
+        colleges = [...new Set(this.moderateStudents.map(student => student.college).filter(Boolean))];
+      } else if (this.currentView === 'healthy' && this.healthyStudents.length > 0) {
+        colleges = [...new Set(this.healthyStudents.map(student => student.college).filter(Boolean))];
+      } else {
+        // For dashboard view or when no specific view data, combine all available data
+        const allStudents = [
+          ...this.atRiskStudents,
+          ...this.moderateStudents,
+          ...this.healthyStudents
+        ];
+        colleges = [...new Set(allStudents.map(student => student.college).filter(Boolean))];
+      }
+      
+      return colleges.sort();
+    },
+
     // These are now data properties fetched from backend
     notificationIcon() {
       switch (this.notification.type) {

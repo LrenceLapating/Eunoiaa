@@ -68,7 +68,7 @@
         </div>
         <div class="nav-actions">
           <div class="user-profile">
-            <div class="user-avatar">
+            <div class="user-avatar" @click="currentView = 'settings'" title="Go to Settings">
               <i class="fas fa-user-circle"></i>
             </div>
           </div>
@@ -87,9 +87,12 @@
             </div>
             <div class="welcome-illustration">
               <div class="floating-elements">
-                <div class="element element-1"><i class="fas fa-brain"></i></div>
-                <div class="element element-2"><i class="fas fa-heart"></i></div>
-                <div class="element element-3"><i class="fas fa-leaf"></i></div>
+                <div class="element element-1" title="Autonomy"><i class="fas fa-user-shield"></i></div>
+                <div class="element element-2" title="Environmental Mastery"><i class="fas fa-cogs"></i></div>
+                <div class="element element-3" title="Personal Growth"><i class="fas fa-seedling"></i></div>
+                <div class="element element-4" title="Positive Relations"><i class="fas fa-users"></i></div>
+                <div class="element element-5" title="Purpose in Life"><i class="fas fa-compass"></i></div>
+                <div class="element element-6" title="Self-Acceptance"><i class="fas fa-heart"></i></div>
               </div>
             </div>
           </div>
@@ -558,57 +561,64 @@
                 </div>
                 <div class="form-group">
                   <label for="current-password">Current Password</label>
-                  <input 
-                    type="password" 
-                    id="current-password" 
-                    v-model="userSettings.currentPassword" 
-                    placeholder="Enter current password"
-                  >
+                  <div class="password-input-container">
+                    <input 
+                      :type="showCurrentPassword ? 'text' : 'password'" 
+                      id="current-password" 
+                      v-model="userSettings.currentPassword" 
+                      placeholder="Enter current password"
+                    >
+                    <button 
+                      type="button" 
+                      class="password-toggle-btn" 
+                      @click="showCurrentPassword = !showCurrentPassword"
+                      :title="showCurrentPassword ? 'Hide password' : 'Show password'"
+                    >
+                      <i :class="showCurrentPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="new-password">New Password</label>
-                  <input 
-                    type="password" 
-                    id="new-password" 
-                    v-model="userSettings.newPassword" 
-                    placeholder="Enter new password"
-                  >
+                  <div class="password-input-container">
+                    <input 
+                      :type="showNewPassword ? 'text' : 'password'" 
+                      id="new-password" 
+                      v-model="userSettings.newPassword" 
+                      placeholder="Enter new password"
+                    >
+                    <button 
+                      type="button" 
+                      class="password-toggle-btn" 
+                      @click="showNewPassword = !showNewPassword"
+                      :title="showNewPassword ? 'Hide password' : 'Show password'"
+                    >
+                      <i :class="showNewPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="confirm-password">Confirm New Password</label>
-                  <input 
-                    type="password" 
-                    id="confirm-password" 
-                    v-model="userSettings.confirmPassword" 
-                    placeholder="Confirm new password"
-                  >
+                  <div class="password-input-container">
+                    <input 
+                      :type="showConfirmPassword ? 'text' : 'password'" 
+                      id="confirm-password" 
+                      v-model="userSettings.confirmPassword" 
+                      placeholder="Confirm new password"
+                    >
+                    <button 
+                      type="button" 
+                      class="password-toggle-btn" 
+                      @click="showConfirmPassword = !showConfirmPassword"
+                      :title="showConfirmPassword ? 'Hide password' : 'Show password'"
+                    >
+                      <i :class="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <!-- Preferences -->
-              <div class="settings-section">
-                <h4>Preferences</h4>
-                <div class="preference-item">
-                  <div class="preference-info">
-                    <label>Email Notifications</label>
-                    <small>Receive assessment reminders and updates via email</small>
-                  </div>
-                  <div class="toggle-switch">
-                    <input type="checkbox" id="notifications" v-model="userSettings.notifications">
-                    <label for="notifications"></label>
-                  </div>
-                </div>
-                <div class="preference-item">
-                  <div class="preference-info">
-                    <label>Assessment Reminders</label>
-                    <small>Get notified about upcoming assessment deadlines</small>
-                  </div>
-                  <div class="toggle-switch">
-                    <input type="checkbox" id="reminders" v-model="userSettings.reminders">
-                    <label for="reminders"></label>
-                  </div>
-                </div>
-              </div>
+
 
               <div class="settings-actions">
                 <button class="save-btn" @click="saveSettings" :disabled="isLoading">
@@ -671,11 +681,12 @@ export default {
         email: '',
         currentPassword: '',
         newPassword: '',
-        confirmPassword: '',
-        notifications: true,
-        reminders: true
+        confirmPassword: ''
       },
       originalSettings: {},
+      showCurrentPassword: false,
+      showNewPassword: false,
+      showConfirmPassword: false,
       
     };
   },
@@ -945,32 +956,60 @@ export default {
     },
     
     async saveSettings() {
-      if (this.userSettings.newPassword && this.userSettings.newPassword !== this.userSettings.confirmPassword) {
-        alert('New passwords do not match!');
-        return;
-      }
-
-      this.isLoading = true;
+      // Check if password change is being attempted
+      const isPasswordChange = this.userSettings.newPassword || this.userSettings.confirmPassword || this.userSettings.currentPassword;
       
-      try {
-        // Here you would implement the actual save functionality
-        // For now, we'll just simulate a save operation
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      if (isPasswordChange) {
+        // Validate password change
+        if (!this.userSettings.currentPassword) {
+          alert('Please enter your current password');
+          return;
+        }
         
-        // Update original settings
-        this.originalSettings = { ...this.userSettings };
+        if (!this.userSettings.newPassword) {
+          alert('Please enter a new password');
+          return;
+        }
         
-        // Clear password fields
-        this.userSettings.currentPassword = '';
-        this.userSettings.newPassword = '';
-        this.userSettings.confirmPassword = '';
+        if (this.userSettings.newPassword !== this.userSettings.confirmPassword) {
+          alert('New passwords do not match');
+          return;
+        }
         
-        alert('Settings saved successfully!');
-      } catch (error) {
-        console.error('Error saving settings:', error);
-        alert('Failed to save settings. Please try again.');
-      } finally {
-        this.isLoading = false;
+        if (this.userSettings.newPassword.length < 6) {
+          alert('New password must be at least 6 characters long');
+          return;
+        }
+
+        // Attempt to change password
+        this.isLoading = true;
+        
+        try {
+          const result = await authService.changeStudentPassword(
+            this.studentProfile.id_number || this.studentProfile.email,
+            this.userSettings.currentPassword,
+            this.userSettings.newPassword
+          );
+          
+          if (result.success) {
+            // Clear password fields
+            this.userSettings.currentPassword = '';
+            this.userSettings.newPassword = '';
+            this.userSettings.confirmPassword = '';
+            
+            alert('Password changed successfully!');
+          } else {
+            alert(result.error || 'Failed to change password');
+          }
+        } catch (error) {
+          console.error('Error changing password:', error);
+          alert('Failed to change password. Please try again.');
+        } finally {
+          this.isLoading = false;
+        }
+      } else {
+        // No password change, just show message
+        alert('No changes to save');
       }
     },
     
@@ -1535,6 +1574,7 @@ export default {
   font-size: 20px;
   box-shadow: 0 2px 10px rgba(0, 179, 176, 0.3);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .user-avatar:hover {
@@ -1590,8 +1630,8 @@ export default {
 
 .welcome-illustration {
   position: relative;
-  width: 120px;
-  height: 80px;
+  width: 240px;
+  height: 120px;
 }
 
 .floating-elements {
@@ -1612,21 +1652,54 @@ export default {
   font-size: 14px;
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.element:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .element-1 {
   top: 10px;
-  left: 20px;
+  left: 5px;
+  animation: float 3s ease-in-out infinite;
 }
 
 .element-2 {
-  top: 30px;
-  right: 15px;
+  top: 10px;
+  left: 70px;
+  animation: float 3s ease-in-out infinite 0.5s;
 }
 
 .element-3 {
+  top: 10px;
+  right: 70px;
+  animation: float 3s ease-in-out infinite 1s;
+}
+
+.element-4 {
+  top: 10px;
+  right: 5px;
+  animation: float 3s ease-in-out infinite 1.5s;
+}
+
+.element-5 {
   bottom: 10px;
-  left: 40px;
+  left: 35px;
+  animation: float 3s ease-in-out infinite 2s;
+}
+
+.element-6 {
+  bottom: 10px;
+  right: 35px;
+  animation: float 3s ease-in-out infinite 2.5s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
 }
 
 /* Assessment Type Selector */
@@ -2352,6 +2425,44 @@ export default {
   background: #f8f9fa;
   color: var(--text-light);
   cursor: not-allowed;
+}
+
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-container input {
+  padding-right: 50px !important;
+  flex: 1;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-light);
+  font-size: 16px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.password-toggle-btn:hover {
+  color: var(--primary);
+  background: rgba(0, 179, 176, 0.1);
+}
+
+.password-toggle-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 179, 176, 0.2);
 }
 
 .form-note {
@@ -3516,14 +3627,224 @@ export default {
 
 /* Responsive Design for AI Interventions */
 @media (max-width: 768px) {
-  .interventions-grid {
-    grid-template-columns: 1fr;
+  /* Guidance Feedback View Mobile Styles */
+  .guidance-feedback-view {
+    padding: 15px;
+    min-height: auto;
+  }
+  
+  .guidance-content {
+    max-width: 100%;
+    margin: 0;
+  }
+  
+  /* Guidance Header Mobile */
+  .guidance-header {
+    padding: 20px 15px;
+    margin-bottom: 20px;
+    flex-direction: column;
     gap: 20px;
+    text-align: center;
+  }
+  
+  .header-info h2 {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+  
+  .header-info p {
+    font-size: 14px;
   }
   
   .summary-stats {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 10px;
+    width: 100%;
+  }
+  
+  .stat-item {
+    padding: 15px 10px;
+    min-width: 80px;
+    flex: 1;
+  }
+  
+  .stat-number {
+    font-size: 24px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  /* Professional Intervention Cards Mobile */
+  .professional-intervention-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+  }
+  
+  .intervention-header {
+    padding: 20px 15px;
+    flex-direction: column;
     gap: 15px;
+    text-align: center;
+  }
+  
+  .student-info {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .student-avatar {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .student-avatar i {
+    font-size: 20px;
+  }
+  
+  .student-details h3 {
+    font-size: 18px;
+  }
+  
+  .student-details p {
+    font-size: 13px;
+  }
+  
+  .intervention-meta {
+    gap: 15px;
+    justify-content: center;
+  }
+  
+  .score-value {
+    font-size: 20px;
+  }
+  
+  /* Intervention Content Mobile */
+  .intervention-content {
+    padding: 20px 15px;
+  }
+  
+  .dimension-section {
+    margin-bottom: 20px;
+  }
+  
+  .dimension-header h4 {
+    font-size: 16px;
+  }
+  
+  .dimension-score {
+    font-size: 18px;
+  }
+  
+  .dimension-description {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .recommendations-section h4 {
+    font-size: 16px;
+  }
+  
+  .recommendation-item {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .recommendation-title {
+    font-size: 15px;
+  }
+  
+  .recommendation-description {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .action-steps {
+    margin-top: 15px;
+  }
+  
+  .action-steps h5 {
+    font-size: 14px;
+  }
+  
+  .action-steps ul {
+    padding-left: 20px;
+  }
+  
+  .action-steps li {
+    font-size: 13px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  
+  /* Intervention Footer Mobile */
+  .intervention-footer {
+    padding: 15px;
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .counselor-info {
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .counselor-details {
+    text-align: center;
+  }
+  
+  .counselor-label {
+    font-size: 12px;
+  }
+  
+  .counselor-name {
+    font-size: 14px;
+  }
+  
+  .action-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .mark-reviewed-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .reviewed-indicator {
+    justify-content: center;
+    font-size: 14px;
+  }
+  
+  /* Loading and Empty States Mobile */
+  .loading-card, .empty-card {
+    padding: 30px 20px;
+    margin: 20px 0;
+  }
+  
+  .loading-card h3, .empty-card h3 {
+    font-size: 20px;
+  }
+  
+  .loading-card p, .empty-card p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .cta-button {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+  
+  /* Legacy styles for backward compatibility */
+  .interventions-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
   
   .card-header {
