@@ -32,13 +32,13 @@ export const ryff84ItemQuestionnaire = {
       id: 3,
       text: "My decisions are not usually influenced by what everyone else is doing.",
       dimension: "autonomy",
-      reverse: false
+      reverse: true
     },
     {
       id: 4,
       text: "I tend to worry about what other people think of me.",
       dimension: "autonomy",
-      reverse: true
+      reverse: false
     },
     {
       id: 5,
@@ -50,7 +50,7 @@ export const ryff84ItemQuestionnaire = {
       id: 6,
       text: "I tend to be influenced by people with strong opinions.",
       dimension: "autonomy",
-      reverse: true
+      reverse: false
     },
     {
       id: 7,
@@ -74,7 +74,7 @@ export const ryff84ItemQuestionnaire = {
       id: 10,
       text: "I am not the kind of person who gives in to social pressures to think or act in certain ways.",
       dimension: "autonomy",
-      reverse: false
+      reverse: true
     },
     {
       id: 11,
@@ -92,7 +92,7 @@ export const ryff84ItemQuestionnaire = {
       id: 13,
       text: "It's difficult for me to voice my own opinions on controversial matters.",
       dimension: "autonomy",
-      reverse: true
+      reverse: false
     },
     {
       id: 14,
@@ -124,7 +124,7 @@ export const ryff84ItemQuestionnaire = {
       id: 18,
       text: "I am quite good at managing the many responsibilities of my daily life.",
       dimension: "environmentalMastery",
-      reverse: false
+      reverse: true
     },
     {
       id: 19,
@@ -142,13 +142,13 @@ export const ryff84ItemQuestionnaire = {
       id: 21,
       text: "I generally do a good job of taking care of my personal finances and affairs.",
       dimension: "environmentalMastery",
-      reverse: false
+      reverse: true
     },
     {
       id: 22,
       text: "I find it stressful that I can't keep up with all of the things I have to do each day.",
       dimension: "environmentalMastery",
-      reverse: true
+      reverse: false
     },
     {
       id: 23,
@@ -160,25 +160,25 @@ export const ryff84ItemQuestionnaire = {
       id: 24,
       text: "My daily life is busy, but I derive a sense of satisfaction from keeping up with everything.",
       dimension: "environmentalMastery",
-      reverse: false
+      reverse: true
     },
     {
       id: 25,
       text: "I get frustrated when trying to plan my daily activities because I never accomplish the things I set out to do.",
       dimension: "environmentalMastery",
-      reverse: true
+      reverse: false
     },
     {
       id: 26,
       text: "My efforts to find the kinds of activities and relationships that I need have been quite successful.",
       dimension: "environmentalMastery",
-      reverse: false
+      reverse: true
     },
     {
       id: 27,
       text: "I have difficulty arranging my life in a way that is satisfying to me.",
       dimension: "environmentalMastery",
-      reverse: true
+      reverse: false
     },
     {
       id: 28,
@@ -204,19 +204,19 @@ export const ryff84ItemQuestionnaire = {
       id: 31,
       text: "I am the kind of person who likes to give new things a try.",
       dimension: "personalGrowth",
-      reverse: false
+      reverse: true
     },
     {
       id: 32,
       text: "I don't want to try new ways of doing things—my life is fine the way it is.",
       dimension: "personalGrowth",
-      reverse: true
+      reverse: false
     },
     {
       id: 33,
       text: "I think it is important to have new experiences that challenge how you think about yourself and the world.",
       dimension: "personalGrowth",
-      reverse: false
+      reverse: true
     },
     {
       id: 34,
@@ -228,7 +228,7 @@ export const ryff84ItemQuestionnaire = {
       id: 35,
       text: "In my view, people of every age are able to continue growing and developing.",
       dimension: "personalGrowth",
-      reverse: false
+      reverse: true
     },
     {
       id: 36,
@@ -246,7 +246,7 @@ export const ryff84ItemQuestionnaire = {
       id: 38,
       text: "I do not enjoy being in new situations that require me to change my old familiar ways of doing things.",
       dimension: "personalGrowth",
-      reverse: true
+      reverse: false
     },
     {
       id: 39,
@@ -273,12 +273,12 @@ export const ryff84ItemQuestionnaire = {
       reverse: true
     },
 
-    // Positive Relations with Others items (14 items)
+    // Positive Relations items (14 items)
     {
       id: 43,
       text: "Most people see me as loving and affectionate.",
       dimension: "positiveRelations",
-      reverse: false
+      reverse: true
     },
     {
       id: 44,
@@ -290,13 +290,13 @@ export const ryff84ItemQuestionnaire = {
       id: 45,
       text: "I often feel lonely because I have few close friends with whom to share my concerns.",
       dimension: "positiveRelations",
-      reverse: true
+      reverse: false
     },
     {
       id: 46,
       text: "I enjoy personal and mutual conversations with family members or friends.",
       dimension: "positiveRelations",
-      reverse: false
+      reverse: true
     },
     {
       id: 47,
@@ -308,7 +308,7 @@ export const ryff84ItemQuestionnaire = {
       id: 48,
       text: "I don't have many people who want to listen when I need to talk.",
       dimension: "positiveRelations",
-      reverse: true
+      reverse: false
     },
     {
       id: 49,
@@ -320,7 +320,7 @@ export const ryff84ItemQuestionnaire = {
       id: 50,
       text: "It seems to me that most other people have more friends than I do.",
       dimension: "positiveRelations",
-      reverse: true
+      reverse: false
     },
     {
       id: 51,
@@ -332,7 +332,7 @@ export const ryff84ItemQuestionnaire = {
       id: 52,
       text: "I have not experienced many warm and trusting relationships with others.",
       dimension: "positiveRelations",
-      reverse: true
+      reverse: false
     },
     {
       id: 53,
@@ -364,7 +364,7 @@ export const ryff84ItemQuestionnaire = {
       id: 57,
       text: "I feel good when I think of what I've done in the past and what I hope to do in the future.",
       dimension: "purposeInLife",
-      reverse: false
+      reverse: true
     },
     {
       id: 58,
@@ -376,13 +376,13 @@ export const ryff84ItemQuestionnaire = {
       id: 59,
       text: "I tend to focus on the present, because the future nearly always brings me problems.",
       dimension: "purposeInLife",
-      reverse: true
+      reverse: false
     },
     {
       id: 60,
       text: "I have a sense of direction and purpose in life.",
       dimension: "purposeInLife",
-      reverse: false
+      reverse: true
     },
     {
       id: 61,
@@ -400,31 +400,31 @@ export const ryff84ItemQuestionnaire = {
       id: 63,
       text: "I used to set goals for myself, but that now seems like a waste of time.",
       dimension: "purposeInLife",
-      reverse: true
+      reverse: false
     },
     {
       id: 64,
       text: "I enjoy making plans for the future and working to make them a reality.",
       dimension: "purposeInLife",
-      reverse: false
+      reverse: true
     },
     {
       id: 65,
       text: "I am an active person in carrying out the plans I set for myself.",
       dimension: "purposeInLife",
-      reverse: false
+      reverse: true
     },
     {
       id: 66,
       text: "Some people wander aimlessly through life, but I am not one of them.",
       dimension: "purposeInLife",
-      reverse: false
+      reverse: true
     },
     {
       id: 67,
       text: "I sometimes feel as if I've done all there is to do in life.",
       dimension: "purposeInLife",
-      reverse: true
+      reverse: false
     },
     {
       id: 68,
@@ -442,7 +442,7 @@ export const ryff84ItemQuestionnaire = {
       id: 70,
       text: "In the final analysis, I'm not so sure that my life adds up to much.",
       dimension: "purposeInLife",
-      reverse: true
+      reverse: false
     },
 
     // Self-Acceptance items (14 items)
@@ -456,13 +456,13 @@ export const ryff84ItemQuestionnaire = {
       id: 72,
       text: "I feel like many of the people I know have gotten more out of life than I have.",
       dimension: "selfAcceptance",
-      reverse: true
+      reverse: false
     },
     {
       id: 73,
       text: "In general, I feel confident and positive about myself.",
       dimension: "selfAcceptance",
-      reverse: false
+      reverse: true
     },
     {
       id: 74,
@@ -474,19 +474,19 @@ export const ryff84ItemQuestionnaire = {
       id: 75,
       text: "I like most aspects of my personality.",
       dimension: "selfAcceptance",
-      reverse: false
+      reverse: true
     },
     {
       id: 76,
       text: "I made some mistakes in the past, but I feel that all in all everything has worked out for the best.",
       dimension: "selfAcceptance",
-      reverse: false
+      reverse: true
     },
     {
       id: 77,
       text: "In many ways, I feel disappointed about my achievements in life.",
       dimension: "selfAcceptance",
-      reverse: true
+      reverse: false
     },
     {
       id: 78,
@@ -498,13 +498,13 @@ export const ryff84ItemQuestionnaire = {
       id: 79,
       text: "I envy many people for the lives they lead.",
       dimension: "selfAcceptance",
-      reverse: true
+      reverse: false
     },
     {
       id: 80,
       text: "My attitude about myself is probably not as positive as most people feel about themselves.",
       dimension: "selfAcceptance",
-      reverse: true
+      reverse: false
     },
     {
       id: 81,
@@ -522,7 +522,7 @@ export const ryff84ItemQuestionnaire = {
       id: 83,
       text: "When I compare myself to friends and acquaintances, it makes me feel good about who I am.",
       dimension: "selfAcceptance",
-      reverse: false
+      reverse: true
     },
     {
       id: 84,

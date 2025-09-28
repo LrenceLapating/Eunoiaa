@@ -144,6 +144,13 @@ Chart.register(nullContextPlugin);
 
 export default {
   name: 'YearlyTrendAnalysis',
+  props: {
+    assessmentType: {
+      type: String,
+      default: '42-item',
+      validator: (value) => ['42-item', '84-item'].includes(value)
+    }
+  },
   data() {
     return {
       loading: true,
@@ -169,6 +176,16 @@ export default {
     };
   },
   watch: {
+    assessmentType: {
+      handler(newType, oldType) {
+        if (newType !== oldType && this.isMounted && !this.initialLoad) {
+          console.log('📊 Assessment type changed from', oldType, 'to', newType);
+          this.fetchTrendData();
+          this.fetchOverallRiskData();
+        }
+      },
+      immediate: false
+    },
     selectedDimension() {
       this.onFilterChange();
     },
@@ -240,11 +257,12 @@ export default {
       this.error = null;
       
       try {
-        console.log('Fetching data for dimension:', this.selectedDimension, 'year:', this.selectedYear);
+        console.log('Fetching data for dimension:', this.selectedDimension, 'year:', this.selectedYear, 'assessmentType:', this.assessmentType);
         const atRiskResponse = await axios.get(apiUrl('yearly-trends/at-risk'), {
           params: {
             dimension: this.selectedDimension,
-            year: this.selectedYear
+            year: this.selectedYear,
+            assessmentType: this.assessmentType
           },
           signal: this.abortController.signal
         });
@@ -522,6 +540,9 @@ export default {
         if (this.selectedCollegeForTrend && this.selectedCollegeForTrend !== 'all') {
           params.append('college', this.selectedCollegeForTrend);
         }
+        
+        // Add assessment type
+        params.append('assessmentType', this.assessmentType);
 
         const response = await fetch(apiUrl(`yearly-trends/overall-risk?${params.toString()}`), {
           method: 'GET',

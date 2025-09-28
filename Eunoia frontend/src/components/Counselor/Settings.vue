@@ -78,12 +78,7 @@
               </div>
             </div>
             
-            <div class="form-group">
-              <label for="bio">Bio</label>
-              <textarea id="bio" v-model="accountSettings.bio" 
-                        placeholder="Brief description about yourself" rows="3"></textarea>
-            </div>
-            
+
             <div class="form-actions">
               <button class="btn-primary" type="button" @click="saveAccountSettings" :disabled="isLoading">
                 <i class="fas fa-spinner fa-spin" v-if="isLoading"></i>
@@ -192,7 +187,7 @@
                 </div>
               </div>
               
-              <button class="add-semester-btn" @click="addSemester" type="button">
+              <button class="add-semester-btn" @click="addSemester" type="button" style="display: none;">
                 <i class="fas fa-plus"></i>
                 Add New Semester
               </button>
@@ -274,8 +269,7 @@ export default {
         fullName: '',
         email: '',
         college: '',
-        position: '',
-        bio: ''
+        position: ''
       },
       
       securitySettings: {
@@ -297,13 +291,18 @@ export default {
             name: '2nd Semester', 
             startDate: '',
             endDate: ''
+          },
+          {
+            name: 'Summer',
+            startDate: '',
+            endDate: ''
           }
         ]
       },
       
       showAddYearModal: false,
       newSchoolYear: '',
-      semesterCounter: 2
+      semesterCounter: 3
     }
   },
   
@@ -318,17 +317,18 @@ export default {
         // Load semesters for the selected school year
         const yearSettings = this.academicSettings.groupedSettings[newSchoolYear];
         if (yearSettings && yearSettings.semesters) {
-          // Normalize semester names to always be 1st and 2nd Semester
+          // Keep the original semester names from database, don't normalize them
           this.academicSettings.semesters = yearSettings.semesters.map((semester, index) => ({
-            ...semester,
-            name: `${this.getOrdinalNumber(index + 1)} Semester`
+            ...semester
+            // Remove the name normalization that was causing "Summer" to become "3rd Semester"
           }));
           this.semesterCounter = this.academicSettings.semesters.length;
         } else {
           // No semesters for this year, use defaults
           this.academicSettings.semesters = [
             { name: '1st Semester', startDate: '', endDate: '' },
-            { name: '2nd Semester', startDate: '', endDate: '' }
+            { name: '2nd Semester', startDate: '', endDate: '' },
+            { name: 'Summer', startDate: '', endDate: '' }
           ];
           this.semesterCounter = this.academicSettings.semesters.length;
         }
@@ -353,8 +353,7 @@ export default {
             fullName: profile.name || '',
             email: profile.email || '',
             college: profile.college || '',
-            position: profile.role || '',
-            bio: profile.bio || ''
+            position: profile.role || ''
           };
         }
       } catch (error) {
@@ -379,11 +378,11 @@ export default {
            // Store grouped settings for the watcher
            this.academicSettings.groupedSettings = response.data.groupedSettings || {};
            
-           // Normalize semester names to always be 1st and 2nd Semester
+           // Keep original semester names from database, don't normalize them
            if (settings.semesters && settings.semesters.length > 0) {
              this.academicSettings.semesters = settings.semesters.map((semester, index) => ({
-               ...semester,
-               name: `${this.getOrdinalNumber(index + 1)} Semester`
+               ...semester
+               // Preserve the original semester names from database (including "Summer")
              }));
            } else {
              this.academicSettings.semesters = [];
@@ -414,8 +413,7 @@ export default {
           name: this.accountSettings.fullName,
           email: this.accountSettings.email,
           college: this.accountSettings.college,
-          role: this.accountSettings.position,
-          bio: this.accountSettings.bio
+          role: this.accountSettings.position
         }, {
           withCredentials: true
         });
@@ -508,8 +506,21 @@ export default {
     addSemester() {
       // Calculate the next semester number based on existing semesters
       const nextSemesterNumber = this.academicSettings.semesters.length + 1;
+      
+      // Use specific names for the first three semesters
+      let semesterName;
+      if (nextSemesterNumber === 1) {
+        semesterName = '1st Semester';
+      } else if (nextSemesterNumber === 2) {
+        semesterName = '2nd Semester';
+      } else if (nextSemesterNumber === 3) {
+        semesterName = 'Summer';
+      } else {
+        semesterName = `${this.getOrdinalNumber(nextSemesterNumber)} Semester`;
+      }
+      
       this.academicSettings.semesters.push({
-        name: `${this.getOrdinalNumber(nextSemesterNumber)} Semester`,
+        name: semesterName,
         startDate: '',
         endDate: ''
       });
@@ -522,7 +533,16 @@ export default {
         this.academicSettings.semesters.splice(index, 1);
         // Renumber remaining semesters to maintain proper sequence
         this.academicSettings.semesters.forEach((semester, idx) => {
-          semester.name = `${this.getOrdinalNumber(idx + 1)} Semester`;
+          const semesterNumber = idx + 1;
+          if (semesterNumber === 1) {
+            semester.name = '1st Semester';
+          } else if (semesterNumber === 2) {
+            semester.name = '2nd Semester';
+          } else if (semesterNumber === 3) {
+            semester.name = 'Summer';
+          } else {
+            semester.name = `${this.getOrdinalNumber(semesterNumber)} Semester`;
+          }
         });
         // Update counter to match the new length
         this.semesterCounter = this.academicSettings.semesters.length;

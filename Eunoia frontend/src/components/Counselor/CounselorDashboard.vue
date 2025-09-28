@@ -132,7 +132,19 @@
           <p>{{ pageSubtitle }}</p>
         </div>
         <div class="nav-actions">
-          <!-- Removed notification and profile icons -->
+          <!-- Assessment Type Filter - Only show on dashboard -->
+          <div v-if="currentView === 'dashboard'" class="assessment-filter">
+            <label for="assessmentTypeFilter" class="filter-label">Assessment Type:</label>
+            <select 
+              id="assessmentTypeFilter"
+              v-model="selectedAssessmentType" 
+              @change="onAssessmentTypeChange"
+              class="assessment-type-select"
+            >
+              <option value="42-item">42-item Assessment</option>
+              <option value="84-item">84-item Assessment</option>
+            </select>
+          </div>
         </div>
       </header>
 
@@ -189,11 +201,11 @@
             </div>
 
             <!-- Demographic Trend Analysis -->
-            <DemographicTrendGraph />
+            <DemographicTrendGraph :assessmentType="selectedAssessmentType" />
           </div>
 
           <!-- Yearly Trend Analysis -->
-          <YearlyTrendAnalysis />
+          <YearlyTrendAnalysis :assessmentType="selectedAssessmentType" />
         </div>
 
         <!-- Router View for Nested Components -->
@@ -317,7 +329,9 @@ export default {
         day: 'numeric' 
       }),
 
-      academicYears: [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
+      academicYears: [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1],
+      // Assessment type filter - default to 42-item
+      selectedAssessmentType: '42-item'
     }
   },
   async created() {
@@ -541,7 +555,11 @@ export default {
     async loadRiskAlertsData() {
       this.riskAlertsLoading = true;
       try {
-        const response = await fetch(apiUrl('risk-alerts'), {
+        // Build query parameters with assessment type
+        const params = new URLSearchParams();
+        params.append('assessmentType', this.selectedAssessmentType);
+        
+        const response = await fetch(apiUrl(`risk-alerts?${params.toString()}`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -582,6 +600,32 @@ export default {
         { dimension: 'Purpose in Life', dimensionKey: 'purpose_in_life', totalAtRisk: 0, colleges: [] },
         { dimension: 'Self-Acceptance', dimensionKey: 'self_acceptance', totalAtRisk: 0, colleges: [] }
       ];
+    },
+    
+    // Handle assessment type filter change
+    onAssessmentTypeChange() {
+      console.log('Assessment type changed to:', this.selectedAssessmentType);
+      
+      // Refresh dashboard data with new assessment type
+      this.refreshDashboardData();
+    },
+    
+    // Refresh all dashboard data with current assessment type
+    async refreshDashboardData() {
+      try {
+        // Show loading state if needed
+        this.riskAlertsLoading = true;
+        
+        // Reload risk alerts data
+        await this.loadRiskAlertsData();
+        
+        // The child components (DemographicTrendGraph and YearlyTrendAnalysis) 
+        // will automatically receive the new assessmentType via props and refresh themselves
+        
+        console.log('Dashboard data refreshed for assessment type:', this.selectedAssessmentType);
+      } catch (error) {
+        console.error('Error refreshing dashboard data:', error);
+      }
     },
     
     // Handle navigation to college detail
@@ -1645,6 +1689,50 @@ export default {
   color: var(--text-light);
   font-size: 13px;
 }
+
+/* ========================================= */
+/* ASSESSMENT TYPE FILTER STYLES            */
+/* ========================================= */
+
+.assessment-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+.assessment-type-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: white;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 160px;
+}
+
+.assessment-type-select:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.assessment-type-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* ========================================= */
+/* END OF ASSESSMENT FILTER STYLES          */
+/* ========================================= */
 
 .alert-colleges span {
   font-size: 12px;

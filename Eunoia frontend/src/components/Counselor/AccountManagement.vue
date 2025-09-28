@@ -217,6 +217,38 @@
       </div>
     </div>
 
+    <!-- Upload Confirmation Modal -->
+    <div v-if="showUploadConfirmModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Confirm Upload</h3>
+          <button class="close-modal" @click="showUploadConfirmModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="warning-content">
+            <div class="warning-icon-container">
+              <i class="fas fa-exclamation-triangle warning-icon"></i>
+            </div>
+            <h4>Upload Without Deactivation</h4>
+            <p>You are about to upload student accounts without deactivating previous students who are not in the new list.</p>
+            <p><strong>This means:</strong></p>
+            <ul>
+              <li>Previous students not in the new upload will remain active</li>
+              <li>They will still be eligible for bulk assessments</li>
+              <li>You may have duplicate or outdated student records</li>
+            </ul>
+            <p>Are you sure you want to proceed without deactivating previous students?</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showUploadConfirmModal = false">Cancel</button>
+          <button class="proceed-btn" @click="proceedWithUpload">Yes, Proceed</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Student Loading Modal -->
     <div v-if="showAddStudentLoadingModal" class="modal-overlay">
       <div class="modal-content upload-loading-modal">
@@ -527,6 +559,7 @@ export default {
       deactivatePrevious: false,
       uploadedFile: null,
       uploadedFileName: '',
+      showUploadConfirmModal: false,
       showAddModal: false,
       showEditModal: false,
       showDeleteModal: false,
@@ -922,8 +955,21 @@ export default {
         return;
       }
       
-      // Close upload modal immediately and show loading modal
+      // Check if deactivate checkbox is unchecked - show confirmation modal
+      if (!this.deactivatePrevious) {
+        this.showUploadModal = false;
+        this.showUploadConfirmModal = true;
+        return;
+      }
+      
+      // If deactivate is checked, proceed directly with upload
+      this.proceedWithUpload();
+    },
+
+    async proceedWithUpload() {
+      // Close any open modals and show loading modal
       this.showUploadModal = false;
+      this.showUploadConfirmModal = false;
       this.showUploadLoadingModal = true;
       this.uploadLoadingState = 'loading';
       
@@ -2187,6 +2233,81 @@ export default {
 }
 
 @keyframes successPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Warning Modal Styles */
+.warning-content {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.warning-icon-container {
+  margin-bottom: 20px;
+}
+
+.warning-icon {
+  font-size: 3rem;
+  color: #f59e0b;
+  animation: warningPulse 0.6s ease-out;
+}
+
+.warning-content h4 {
+  margin: 0 0 15px 0;
+  font-size: 1.3rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.warning-content p {
+  margin: 0 0 15px 0;
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.warning-content ul {
+  text-align: left;
+  margin: 15px 0;
+  padding-left: 20px;
+  color: #6b7280;
+}
+
+.warning-content li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.proceed-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+.proceed-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+@keyframes warningPulse {
   0% {
     transform: scale(0.8);
     opacity: 0.5;

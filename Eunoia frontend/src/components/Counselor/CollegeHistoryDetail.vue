@@ -51,33 +51,32 @@
               <span class="metric-value">{{ getCompletionRate() }}</span>
             </div>
             <div class="metric-item">
-              <span class="metric-label">Students Year</span>
-              <div class="dropdown-container">
-                <select v-model="selectedYear" class="metric-dropdown" :disabled="loadingFilters">
-                  <option value="">All Years</option>
-                  <option v-for="year in availableYears" :key="year" :value="year">
-                    {{ getYearDisplayName(year) }}
-                  </option>
-                </select>
-              </div>
+              <span class="metric-label">Course</span>
+              <span class="metric-value">All Course</span>
             </div>
           </div>
           <div class="metric-row">
             <div class="metric-item">
+              <span class="metric-label">Students Year</span>
+              <span class="metric-value">All Years</span>
+            </div>
+            <div class="metric-item">
               <span class="metric-label">Overall Score</span>
               <span class="metric-value">{{ getOverallScore() }}</span>
             </div>
-            <div class="metric-item" v-show="selectedYear">
-              <span class="metric-label">Sections</span>
-              <div class="dropdown-container">
-                <select v-model="selectedSection" class="metric-dropdown" :disabled="loadingFilters || !selectedYear">
-                  <option value="">All Sections</option>
-                  <option v-for="section in filteredSections" :key="section" :value="section">
-                    {{ section }}
-                  </option>
-                </select>
-              </div>
-            </div>
+          </div>
+        </div>
+
+        <!-- Hidden sections dropdown - kept for backend logic but not displayed -->
+        <div style="display: none;">
+          <div class="metric-item">
+            <span class="metric-label">Sections</span>
+            <select v-model="selectedSection" @change="onSectionChange" class="metric-dropdown">
+              <option value="">All Sections</option>
+              <option v-for="section in filteredSections" :key="section" :value="section">
+                {{ section }}
+              </option>
+            </select>
           </div>
         </div>
       </div>

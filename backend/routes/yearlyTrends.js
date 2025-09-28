@@ -28,13 +28,24 @@ const RYFF_DIMENSIONS = {
 };
 
 // Risk thresholds for each dimension (scores below these are considered at-risk)
+// Risk thresholds by assessment type - scores at or below these values are considered "at risk"
 const RISK_THRESHOLDS = {
-  autonomy: 18,
-  environmental_mastery: 18,
-  personal_growth: 18,
-  positive_relations: 18,
-  purpose_in_life: 18,
-  self_acceptance: 18
+  ryff_42: {
+    autonomy: 18,
+    environmental_mastery: 18,
+    personal_growth: 18,
+    positive_relations: 18,
+    purpose_in_life: 18,
+    self_acceptance: 18
+  },
+  ryff_84: {
+    autonomy: 36,
+    environmental_mastery: 36,
+    personal_growth: 36,
+    positive_relations: 36,
+    purpose_in_life: 36,
+    self_acceptance: 36
+  }
 };
 
 /**
@@ -74,16 +85,16 @@ async function retrySupabaseQuery(queryFunction, description, maxRetries = 3, de
  */
 router.get('/at-risk', async (req, res) => {
   try {
-    const { dimension = 'autonomy', year } = req.query;
+    const { dimension = 'autonomy', year, assessmentType = '42-item' } = req.query;
     
-    console.log(`🔍 Fetching at-risk trends for dimension: ${dimension}, year: ${year || 'all years'}`);
+    console.log(`🔍 Fetching at-risk trends for dimension: ${dimension}, year: ${year || 'all years'}, assessmentType: ${assessmentType}`);
 
     // Get current and historical assessment data
     const currentYear = new Date().getFullYear();
     const targetYear = year ? parseInt(year) : currentYear;
     
-    // Check cache first
-    const cacheKey = getCacheKey.atRisk(dimension, targetYear);
+    // Check cache first - include assessmentType in cache key
+    const cacheKey = `${getCacheKey.atRisk(dimension, targetYear)}_${assessmentType}`;
     const cachedData = await cacheManager.get(cacheKey);
     
     if (cachedData) {
@@ -147,11 +158,11 @@ router.get('/at-risk', async (req, res) => {
       'current 84-item assessments'
     );
 
-    // Combine current data from both tables
+    // Combine current data from both tables with proper assessment type marking
     const currentData = {
       data: [
-        ...(current42Data.data || []),
-        ...(current84Data.data || [])
+        ...(current42Data.data || []).map(item => ({ ...item, assessment_type: '42-item' })),
+        ...(current84Data.data || []).map(item => ({ ...item, assessment_type: '84-item' }))
       ],
       error: current42Data.error || current84Data.error
     };
@@ -189,12 +200,13 @@ router.get('/at-risk', async (req, res) => {
     }
 
     // Prioritize historical data (permanent) over current data
-    const allAssessments = [
+    let allAssessments = [
       // Historical data first (permanent and can't be removed)
       ...(historicalData.data || []).map(item => ({
         ...item,
         college: studentLookup[item.student_id]?.college || 'Unknown',
-        source: 'history'
+        source: 'history',
+        assessment_type: item.assessment_type || 'historical'
       })),
       // Current data only if not already in historical data
       ...(currentData.data || []).filter(current => 
@@ -205,9 +217,23 @@ router.get('/at-risk', async (req, res) => {
       ).map(item => ({
         ...item,
         college: studentLookup[item.student_id]?.college || 'Unknown',
-        source: 'current'
+        source: 'current',
+        assessment_type: item.assessment_type
       }))
     ];
+
+    // Filter by assessment type if specified
+    if (assessmentType && assessmentType !== 'all') {
+      allAssessments = allAssessments.filter(assessment => {
+        if (assessmentType === '42-item') {
+          return assessment.assessment_type === '42-item' || assessment.assessment_type === 'historical';
+        } else if (assessmentType === '84-item') {
+          return assessment.assessment_type === '84-item';
+        }
+        return true;
+      });
+      console.log(`📊 Filtered assessments by type ${assessmentType}: ${allAssessments.length} assessments`);
+    }
 
     // College name normalization mapping
     const collegeMapping = {
@@ -257,7 +283,10 @@ router.get('/at-risk', async (req, res) => {
         const scores = assessment.scores || {};
         const dimensionScore = scores[dimension];
         if (dimensionScore !== null && dimensionScore !== undefined) {
-          isAtRisk = dimensionScore <= RISK_THRESHOLDS[dimension];
+          // Get the appropriate risk threshold based on assessment type
+          const assessmentTypeKey = assessment.assessment_type === '84-item' ? 'ryff_84' : 'ryff_42';
+          const riskThreshold = RISK_THRESHOLDS[assessmentTypeKey][dimension];
+          isAtRisk = dimensionScore <= riskThreshold;
         }
       }
 
@@ -622,11 +651,11 @@ router.get('/improvement', async (req, res) => {
  */
 router.get('/overall-risk', async (req, res) => {
   try {
-    const { college } = req.query;
-    console.log('🔍 Fetching overall risk count by years', { college });
+    const { college, assessmentType = '42-item' } = req.query;
+    console.log('🔍 Fetching overall risk count by years', { college, assessmentType });
 
-    // Check cache first
-    const cacheKey = `overall_risk_${college || 'all'}`;
+    // Check cache first - include assessmentType in cache key
+    const cacheKey = `overall_risk_${college || 'all'}_${assessmentType}`;
     const cachedData = await cacheManager.get(cacheKey);
     
     if (cachedData) {
@@ -707,28 +736,44 @@ router.get('/overall-risk', async (req, res) => {
       studentCollegeMap[student.id] = student.college;
     });
 
-    // Combine all data with manual college mapping
-    const allData = [
+    // Combine all data with manual college mapping and assessment type
+    let allData = [
       // Transform assessments_42items data to include college from manual join
       ...(data42.data || []).map(item => ({
         completed_at: item.completed_at,
         overall_score: item.overall_score,
-        college: studentCollegeMap[item.student_id]
+        college: studentCollegeMap[item.student_id],
+        assessment_type: '42-item'
       })).filter(item => item.college), // Only include items with valid college
       // Transform assessments_84items data to include college from manual join
       ...(data84.data || []).map(item => ({
         completed_at: item.completed_at,
         overall_score: item.overall_score,
-        college: studentCollegeMap[item.student_id]
+        college: studentCollegeMap[item.student_id],
+        assessment_type: '84-item'
       })).filter(item => item.college), // Only include items with valid college
       // Transform ryff_history data to include college from manual join
       ...(dataHistory.data || []).map(item => ({
         completed_at: item.completed_at,
         overall_score: item.overall_score,
         risk_level: item.risk_level,
-        college: studentCollegeMap[item.student_id]
+        college: studentCollegeMap[item.student_id],
+        assessment_type: item.assessment_type || 'historical'
       })).filter(item => item.college) // Only include items with valid college
     ];
+
+    // Filter by assessment type if specified
+    if (assessmentType && assessmentType !== 'all') {
+      allData = allData.filter(item => {
+        if (assessmentType === '42-item') {
+          return item.assessment_type === '42-item' || item.assessment_type === 'historical';
+        } else if (assessmentType === '84-item') {
+          return item.assessment_type === '84-item';
+        }
+        return true;
+      });
+      console.log(`📊 Filtered overall risk data by type ${assessmentType}: ${allData.length} items`);
+    }
 
     // Group by year and count at-risk students
     const yearlyRiskCounts = {};
@@ -751,11 +796,14 @@ router.get('/overall-risk', async (req, res) => {
             yearlyRiskCounts[year].atRiskCount++;
           }
         } else if (item.overall_score !== null) {
-          // This is from assessments tables - use proper overall score thresholds
+          // This is from assessments tables - use proper overall score thresholds based on assessment type
           // Overall score thresholds: ryff_42: ≤111 (at-risk), ryff_84: ≤223 (at-risk)
-          // Since we don't have assessment_type here, assume ryff_42 (most common)
-          // and use conservative threshold that works for both types
-          if (item.overall_score <= 111) {
+          let overallScoreThreshold = 111; // Default for 42-item
+          if (item.assessment_type === '84-item') {
+            overallScoreThreshold = 223; // Correct threshold for 84-item
+          }
+          
+          if (item.overall_score <= overallScoreThreshold) {
             yearlyRiskCounts[year].atRiskCount++;
           }
         }

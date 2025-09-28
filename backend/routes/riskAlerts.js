@@ -24,9 +24,10 @@ const DIMENSIONS = [
  */
 router.get('/', async (req, res) => {
   try {
-    console.log('Fetching risk alerts data...');
+    const { assessmentType = '42-item' } = req.query;
+    console.log('Fetching risk alerts data for assessment type:', assessmentType);
     
-    // Fetch assessments from both tables
+    // Fetch assessments from both tables and historical data
     const { data: assessments42, error: error42 } = await supabaseAdmin
       .from('assessments_42items')
       .select('id, student_id, scores, completed_at')
@@ -36,6 +37,14 @@ router.get('/', async (req, res) => {
     const { data: assessments84, error: error84 } = await supabaseAdmin
       .from('assessments_84items')
       .select('id, student_id, scores, completed_at')
+      .not('scores', 'is', null)
+      .order('completed_at', { ascending: false });
+
+    // Fetch historical 84-item assessments from ryff_history table
+    const { data: historyAssessments84, error: errorHistory } = await supabaseAdmin
+      .from('ryff_history')
+      .select('id, student_id, scores, completed_at, assessment_type')
+      .eq('assessment_type', 'ryff_84')
       .not('scores', 'is', null)
       .order('completed_at', { ascending: false });
       
@@ -53,11 +62,11 @@ router.get('/', async (req, res) => {
       });
     }
 
-    if (error42 || error84) {
-      console.error('Database error:', error42 || error84);
+    if (error42 || error84 || errorHistory) {
+      console.error('Database error:', error42 || error84 || errorHistory);
       return res.status(500).json({ 
         error: 'Failed to fetch assessment data',
-        details: error42?.message || error84?.message
+        details: error42?.message || error84?.message || errorHistory?.message
       });
     }
 
@@ -67,7 +76,7 @@ router.get('/', async (req, res) => {
       studentMap[student.id] = student;
     });
     
-    // Combine assessments from both tables
+    // Combine assessments from both tables and historical data
     const allAssessments = [];
     if (assessments42) {
       assessments42.forEach(assessment => {
@@ -91,10 +100,32 @@ router.get('/', async (req, res) => {
         }
       });
     }
+    // Add historical 84-item assessments from ryff_history
+    if (historyAssessments84) {
+      historyAssessments84.forEach(assessment => {
+        if (studentMap[assessment.student_id]) {
+          allAssessments.push({
+            ...assessment,
+            student: studentMap[assessment.student_id],
+            assessment_type: assessment.assessment_type // Already 'ryff_84' from the query filter
+          });
+        }
+      });
+    }
+    
+    // Filter assessments based on assessment type
+    let filteredAssessments = allAssessments;
+    if (assessmentType === '42-item') {
+      filteredAssessments = allAssessments.filter(assessment => assessment.assessment_type === 'ryff_42');
+    } else if (assessmentType === '84-item') {
+      filteredAssessments = allAssessments.filter(assessment => assessment.assessment_type === 'ryff_84');
+    }
+    
+    console.log(`Filtered ${filteredAssessments.length} assessments for type: ${assessmentType}`);
     
     // Get latest assessment for each student
     const latestAssessments = {};
-    allAssessments.forEach(assessment => {
+    filteredAssessments.forEach(assessment => {
       const studentId = assessment.student_id;
       if (!latestAssessments[studentId] || 
           new Date(assessment.completed_at) > new Date(latestAssessments[studentId].completed_at)) {

@@ -300,6 +300,13 @@ router.post('/school-year', requireCounselorAuth, async (req, res) => {
         start_date: `${endYear}-01-15`,
         end_date: `${endYear}-05-30`,
         created_by: req.user.userId
+      },
+      {
+        school_year: schoolYear,
+        semester_name: 'Summer',
+        start_date: `${endYear}-06-01`,
+        end_date: `${endYear}-07-31`,
+        created_by: req.user.userId
       }
     ];
 

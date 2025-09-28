@@ -109,6 +109,13 @@ Chart.register(nullContextPlugin);
 
 export default {
   name: 'DemographicTrendGraph',
+  props: {
+    assessmentType: {
+      type: String,
+      default: '42-item',
+      validator: (value) => ['42-item', '84-item'].includes(value)
+    }
+  },
   data() {
     return {
       loading: true,
@@ -175,6 +182,18 @@ export default {
     }
   },
   
+  watch: {
+    assessmentType: {
+      handler(newType, oldType) {
+        if (newType !== oldType && this.isMounted) {
+          console.log('📊 Assessment type changed from', oldType, 'to', newType);
+          this.fetchDemographicData();
+        }
+      },
+      immediate: false
+    }
+  },
+  
   mounted() {
     this.isMounted = true;
     this.fetchDemographicData();
@@ -224,7 +243,13 @@ export default {
       }
       
       try {
-        const response = await fetch(apiUrl(`demographic-trends/gender-trends?gender=all`), {
+        // Build API URL with assessment type filter
+        const assessmentTypeParam = this.assessmentType !== 'all' ? `&assessmentType=${encodeURIComponent(this.assessmentType)}` : '';
+        const apiEndpoint = `demographic-trends/gender-trends?gender=all${assessmentTypeParam}`;
+        
+        console.log('📊 Fetching demographic data with assessment type:', this.assessmentType);
+        
+        const response = await fetch(apiUrl(apiEndpoint), {
           method: 'GET',
           credentials: 'include',
           headers: {

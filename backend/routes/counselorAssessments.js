@@ -4,6 +4,12 @@ const { supabase, supabaseAdmin } = require('../config/database');
 const { verifyCounselorSession } = require('../middleware/sessionManager');
 const { formatDimensionName, getDimensionColor, getAtRiskDimensions } = require('../utils/ryffScoring');
 
+// Risk thresholds for dimension scores (per dimension)
+const RISK_THRESHOLDS = {
+  ryff_42: 18,  // 7-18: At-Risk for each dimension (7 items per dimension)
+  ryff_84: 36   // 14-36: At-Risk for each dimension (14 items per dimension)
+};
+
 // Get all assessment results for counselor's bulk assessments
 router.get('/results', verifyCounselorSession, async (req, res) => {
   try {
@@ -382,7 +388,7 @@ router.get('/results', verifyCounselorSession, async (req, res) => {
           dimension: formatDimensionName(dimension),
           score: parseFloat(score).toFixed(2),
           color: getDimensionColor(score, assessmentTypeParam),
-          is_at_risk: score <= (assessmentTypeParam === 'ryff_84' ? 36 : 18)
+          is_at_risk: score <= RISK_THRESHOLDS[assessmentTypeParam] || RISK_THRESHOLDS.ryff_42
         }))
       };
     });
@@ -556,7 +562,7 @@ router.get('/results/:assessmentId', verifyCounselorSession, async (req, res) =>
       raw_dimension: dimension,
       score: parseFloat(score).toFixed(2),
       color: getDimensionColor(score, assessmentTypeParam),
-      is_at_risk: score <= (assessmentTypeParam === 'ryff_84' ? 36 : 18)
+      is_at_risk: score <= RISK_THRESHOLDS[assessmentTypeParam] || RISK_THRESHOLDS.ryff_42
     }));
 
     // Calculate response patterns

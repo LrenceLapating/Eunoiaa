@@ -17,10 +17,35 @@ const supabaseAdmin = createClient(
   }
 );
 
-// Cache TTL constants (in seconds)
+/**
+ * Retry utility for Supabase queries with exponential backoff
+ */
+async function retrySupabaseQuery(queryFunction, description = 'query', maxRetries = 3, delay = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await queryFunction();
+      
+      if (result.error) {
+        throw new Error(`Supabase error: ${result.error.message}`);
+      }
+      
+      return result;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+}
+
+// Cache TTL constants (in seconds) - Reduced for faster refresh
 const CACHE_TTL = {
-  DEMOGRAPHIC_DATA: 1800,      // 30 minutes
-  COLLEGE_BREAKDOWN: 1800      // 30 minutes
+  DEMOGRAPHIC_DATA: 300,       // 5 minutes (was 30 minutes)
+  COLLEGE_BREAKDOWN: 300       // 5 minutes (was 30 minutes)
 };
 
 // Cache key generators
@@ -45,34 +70,27 @@ const RYFF_DIMENSIONS = [
  */
 router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
   try {
-    const { gender = 'all' } = req.query;
+    const { gender = 'all', assessmentType = 'all' } = req.query;
     
-    console.log(`🎯 Fetching demographic risk trends for gender: ${gender}`);
+    console.log(`🎯 Fetching demographic risk trends for gender: ${gender}, assessmentType: ${assessmentType}`);
 
-    // Check cache first
-    const cacheKey = getCacheKey.genderTrends(gender);
+    // Check cache first - include assessmentType in cache key
+    const cacheKey = getCacheKey.genderTrends(`${gender}_${assessmentType}`);
     const cachedData = await cacheManager.get(cacheKey);
     
     if (cachedData) {
-      console.log(`📦 Cache hit for demographic trends: ${cacheKey}`);
       return res.json({
         success: true,
         data: cachedData,
         cached: true
       });
     }
-    
-    console.log(`🔍 Cache miss for demographic trends: ${cacheKey}`);
 
-    // Define school years to analyze (6 years as requested)
+    // Define school years to analyze (2 years for faster performance)
     const currentYear = new Date().getFullYear();
     const schoolYears = [
-      { label: `${currentYear-2}-${currentYear-1}`, startDate: `${currentYear-2}-08-01`, endDate: `${currentYear-1}-07-31` },
-      { label: `${currentYear-1}-${currentYear}`, startDate: `${currentYear-1}-08-01`, endDate: `${currentYear}-07-31` },
-      { label: `${currentYear}-${currentYear+1}`, startDate: `${currentYear}-08-01`, endDate: `${currentYear+1}-07-31` },
       { label: `${currentYear+1}-${currentYear+2}`, startDate: `${currentYear+1}-08-01`, endDate: `${currentYear+2}-07-31` },
-      { label: `${currentYear+2}-${currentYear+3}`, startDate: `${currentYear+2}-08-01`, endDate: `${currentYear+3}-07-31` },
-      { label: `${currentYear+3}-${currentYear+4}`, startDate: `${currentYear+3}-08-01`, endDate: `${currentYear+4}-07-31` }
+      { label: `${currentYear+2}-${currentYear+3}`, startDate: `${currentYear+2}-08-01`, endDate: `${currentYear+3}-07-31` }
     ];
 
     // First, check if we have any data at all in the database
@@ -95,28 +113,18 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
     const demographicData = [];
 
     for (const schoolYear of schoolYears) {
-      console.log(`📅 Processing school year: ${schoolYear.label}`);
+      // Fetch all active students (we'll filter by assessment data later)
+      const students = await retrySupabaseQuery(async () => {
+        const { data, error } = await supabaseAdmin
+          .from('students')
+          .select('id, gender, college')
+          .eq('status', 'active');
+        
+        if (error) throw error;
+        return data || [];
+      });
 
-      // Step 1: Get students filtered by gender for this school year
-      // FIXED: Remove restrictive date filtering to get all available students
-      let studentsQuery = supabaseAdmin
-        .from('students')
-        .select('id, name, college, gender, created_at')
-        .eq('status', 'active');
-
-      // Apply gender filter if specified
-      if (gender !== 'all') {
-        studentsQuery = studentsQuery.eq('gender', gender);
-      }
-
-      const { data: students, error: studentsError } = await studentsQuery;
-
-      if (studentsError) {
-        console.error(`Error fetching students for ${schoolYear.label}:`, studentsError);
-        continue;
-      }
-
-      if (!students || students.length === 0) {
+      if (!students.length) {
         demographicData.push({
           schoolYear: schoolYear.label,
           totalStudents: 0,
@@ -142,10 +150,8 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
       }
 
       const studentIds = students.map(s => s.id);
-      console.log(`👥 Found ${students.length} students for ${schoolYear.label}`);
 
-      // Step 2: Fetch assessments with risk data from current and historical tables
-      // FIXED: Remove restrictive date filtering to get all available assessment data
+      // Fetch assessments with risk data from current and historical tables
       const [assessments42, assessments84, historicalAssessments] = await Promise.all([
         // From assessments_42items (current data) - get all data for these students
         supabaseAdmin
@@ -171,30 +177,18 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
           .not('scores', 'is', null)
           .not('risk_level', 'is', null)
       ]);
-      
-      console.log(`📊 Fetching all available data for ${schoolYear.label} - no date restrictions applied`);
 
-      // Combine all assessments (current and historical) - keep ALL assessments, not just latest
-      const allAssessments = [
+      // Combine all assessments (current and historical)
+      let allAssessments = [
         ...(assessments42.data || []).map(a => ({ ...a, assessment_type: 'ryff_42' })),
         ...(assessments84.data || []).map(a => ({ ...a, assessment_type: 'ryff_84' })),
         ...(historicalAssessments.data || []).map(a => ({ ...a, assessment_type: a.assessment_type }))
       ];
 
-      console.log(`📊 Total assessments found for ${schoolYear.label}:`, {
-        current42: assessments42.data?.length || 0,
-        current84: assessments84.data?.length || 0,
-        historical: historicalAssessments.data?.length || 0,
-        total: allAssessments.length
-      });
-      
-      // Debug: Log sample assessment data structure
-      if (allAssessments.length > 0) {
-        console.log(`📊 Sample assessment data for ${schoolYear.label}:`, {
-          firstAssessment: allAssessments[0],
-          hasAtRiskDimensions: allAssessments[0]?.at_risk_dimensions?.length > 0,
-          atRiskDimensionsCount: allAssessments[0]?.at_risk_dimensions?.length || 0
-        });
+      // Filter by assessment type if specified
+      if (assessmentType !== 'all') {
+        const targetType = assessmentType === '42-item' ? 'ryff_42' : 'ryff_84';
+        allAssessments = allAssessments.filter(assessment => assessment.assessment_type === targetType);
       }
 
       // Group assessments by student to analyze all their assessments in this period
@@ -243,15 +237,7 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
           const atRiskDimensionsSet = new Set();
 
           assessments.forEach(assessment => {
-            console.log(`📊 Processing assessment for student ${student.id}:`, {
-              assessmentId: assessment.id,
-              riskLevel: assessment.risk_level,
-              atRiskDimensions: assessment.at_risk_dimensions,
-              atRiskDimensionsLength: assessment.at_risk_dimensions?.length || 0,
-              overallScore: assessment.overall_score
-            });
-            
-            // FIXED: Check multiple conditions to determine if student is at-risk
+            // Check multiple conditions to determine if student is at-risk
             const isAtRiskByDimensions = assessment.at_risk_dimensions && assessment.at_risk_dimensions.length > 0;
             const isAtRiskByLevel = assessment.risk_level === 'high' || assessment.risk_level === 'at-risk';
             // Use correct thresholds: 111 for ryff_42, 223 for ryff_84
@@ -269,7 +255,6 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
                 });
               } else {
                 // If no specific dimensions but student is at-risk, add all dimensions as potentially at-risk
-                // This ensures the chart shows data even when dimension details are missing
                 RYFF_DIMENSIONS.forEach(dimension => {
                   atRiskDimensionsSet.add(dimension);
                 });
@@ -289,13 +274,12 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
             riskAnalysis.byGender[studentGender].atRisk++;
             
             // Count unique at-risk dimensions by gender
-            atRiskDimensionsSet.forEach(dimension => {
-              if (riskAnalysis.atRiskDimensions.byGender[studentGender][dimension] !== undefined) {
-                riskAnalysis.atRiskDimensions.byGender[studentGender][dimension]++;
-                riskAnalysis.atRiskDimensions.overall[dimension]++;
-                console.log(`📊 Incremented ${studentGender} ${dimension}: now ${riskAnalysis.atRiskDimensions.byGender[studentGender][dimension]}`);
-              }
-            });
+          atRiskDimensionsSet.forEach(dimension => {
+            if (riskAnalysis.atRiskDimensions.byGender[studentGender][dimension] !== undefined) {
+              riskAnalysis.atRiskDimensions.byGender[studentGender][dimension]++;
+              riskAnalysis.atRiskDimensions.overall[dimension]++;
+            }
+          });
           } else {
             // Student has assessments but no at-risk dimensions
             riskAnalysis.byGender[studentGender].healthy++;
@@ -324,20 +308,12 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
 
       riskAnalysis.mostAtRiskGender = mostAtRiskGender;
 
-      // Log the final risk analysis data for debugging
-      console.log(`📊 Final risk analysis for ${schoolYear.label}:`, {
-        byGender: riskAnalysis.byGender,
-        atRiskDimensions: riskAnalysis.atRiskDimensions
-      });
-
       demographicData.push({
         schoolYear: schoolYear.label,
         totalStudents: students.length,
-        assessmentsTaken: allAssessments.length, // Total assessments, not just unique students
+        assessmentsTaken: allAssessments.length,
         riskAnalysis
       });
-
-      console.log(`✅ ${schoolYear.label}: ${students.length} students, ${allAssessments.length} total assessments (${Object.keys(studentAssessments).length} students with assessments)`);
     }
 
     // Calculate overall summary
@@ -416,8 +392,6 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
       .slice(0, 3)
       .map(([dimension, count]) => ({ dimension, count }));
 
-    console.log(`📊 Demographic risk trends summary:`, overallSummary);
-
     // Prepare response data
     const responseData = {
       trends: demographicData,
@@ -432,7 +406,6 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
 
     // Cache the result
     await cacheManager.set(cacheKey, responseData, CACHE_TTL.DEMOGRAPHIC_DATA);
-    console.log(`💾 Cached demographic trends data: ${cacheKey}`);
 
     res.json({
       success: true,
