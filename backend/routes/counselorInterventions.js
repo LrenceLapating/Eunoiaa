@@ -312,6 +312,7 @@ router.get('/sent', verifyCounselorSession, async (req, res) => {
     
     // Get all sent interventions (removed counselor_id filter to fix session mismatch)
     // This ensures all sent interventions are visible regardless of counselor session
+    // Use direct assessment_type column to avoid data inconsistency issues with JOINs
     const { data: interventions, error } = await supabase
       .from('counselor_interventions')
       .select(`
@@ -324,6 +325,7 @@ router.get('/sent', verifyCounselorSession, async (req, res) => {
         is_read,
         student_id,
         counselor_id,
+        assessment_type,
         students!inner(name, id_number, college)
       `)
       .eq('status', 'sent')
@@ -363,14 +365,23 @@ router.get('/sent', verifyCounselorSession, async (req, res) => {
 router.get('/student/:studentId/latest', verifyCounselorSession, async (req, res) => {
   try {
     const { studentId } = req.params;
+    const { assessmentType } = req.query; // Get assessment type from query parameters
     
-    console.log('Fetching latest intervention for student:', studentId);
+    console.log('Fetching latest intervention for student:', studentId, 'assessmentType:', assessmentType);
     
-    // Fetch the latest intervention for this student
-    const { data: intervention, error } = await supabase
+    let query = supabase
       .from('counselor_interventions')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('student_id', studentId);
+    
+    // If assessment type is specified, filter by it using the new assessment_type column
+    // This is 100% safe because it falls back to existing behavior when assessmentType is not provided
+    if (assessmentType) {
+      query = query.eq('assessment_type', assessmentType);
+    }
+    
+    // Fetch the latest intervention for this student (optionally filtered by assessment type)
+    const { data: intervention, error } = await query
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -516,9 +527,8 @@ router.get('/student/:studentId/latest', verifyCounselorSession, async (req, res
 // POST /api/counselor-interventions/send-existing - Mark existing intervention as sent to student
 router.post('/send-existing', verifyCounselorSession, async (req, res) => {
   try {
-    const { studentId } = req.body;
-    
-    console.log('Marking existing intervention as sent for student:', studentId);
+    const { studentId, assessmentType } = req.body; // Add assessmentType parameter
+    console.log('Marking existing intervention as sent for student:', studentId, 'assessment type:', assessmentType);
     
     // Validate required fields
     if (!studentId) {
@@ -527,24 +537,31 @@ router.post('/send-existing', verifyCounselorSession, async (req, res) => {
         error: 'Missing required field: studentId'
       });
     }
-    
-    // Find the latest intervention for this student
-    const { data: intervention, error: fetchError } = await supabase
+
+    let query = supabase
       .from('counselor_interventions')
       .select('*')
       .eq('student_id', studentId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    // If assessmentType is provided, filter by it using the assessment_type column directly
+    // This is safer and avoids JOIN issues when assessment_id doesn't match the assessment_type
+    if (assessmentType) {
+      query = query.eq('assessment_type', assessmentType);
+    }
+
+    const { data: intervention, error: fetchError } = await query
       .limit(1)
       .single();
-    
+
     if (fetchError) {
       console.error('Error fetching intervention:', fetchError);
       return res.status(404).json({
         success: false,
-        error: 'No intervention found for this student'
+        error: 'No intervention found for this student' + (assessmentType ? ` with assessment type ${assessmentType}` : '')
       });
     }
-    
+
     // Update the intervention to mark it as sent
     const { data: updatedIntervention, error: updateError } = await supabase
       .from('counselor_interventions')
@@ -709,6 +726,201 @@ router.put('/:id/action-plan', verifyCounselorSession, async (req, res) => {
     
   } catch (error) {
     console.error('Error in update action plan route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Deactivate intervention and move to history
+router.post('/deactivate/:interventionId', verifyCounselorSession, async (req, res) => {
+  try {
+    const { interventionId } = req.params;
+    const counselorId = req.session.counselorId;
+    
+    console.log(`Deactivating intervention ${interventionId} by counselor ${counselorId}`);
+    
+    // First, get the intervention to move to history
+    const { data: intervention, error: fetchError } = await supabase
+      .from('counselor_interventions')
+      .select('*')
+      .eq('id', interventionId)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching intervention:', fetchError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch intervention'
+      });
+    }
+    
+    if (!intervention) {
+      return res.status(404).json({
+        success: false,
+        error: 'Intervention not found'
+      });
+    }
+    
+    // Start a transaction-like operation
+    // First, insert into intervention_history
+    const { data: historyRecord, error: historyError } = await supabase
+      .from('intervention_history')
+      .insert({
+        original_intervention_id: intervention.id,
+        student_id: intervention.student_id,
+        counselor_id: intervention.counselor_id,
+        assessment_id: intervention.assessment_id,
+        risk_level: intervention.risk_level, // Missing required field
+        intervention_title: intervention.intervention_title, // Missing required field
+        intervention_text: intervention.intervention_text,
+        counselor_message: intervention.counselor_message,
+        is_read: intervention.is_read,
+        read_at: intervention.read_at,
+        assessment_type: intervention.assessment_type, // Missing field
+        overall_strategy: intervention.overall_strategy,
+        dimension_interventions: intervention.dimension_interventions,
+        action_plan: intervention.action_plan,
+        status: 'deactivated',
+        created_at: intervention.created_at,
+        updated_at: intervention.updated_at,
+        deactivated_at: new Date().toISOString(),
+        deactivated_by: counselorId
+      })
+      .select()
+      .single();
+    
+    if (historyError) {
+      console.error('Error inserting into intervention_history:', historyError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create history record'
+      });
+    }
+    
+    // If history insertion successful, delete from counselor_interventions
+    const { error: deleteError } = await supabase
+      .from('counselor_interventions')
+      .delete()
+      .eq('id', interventionId);
+    
+    if (deleteError) {
+      console.error('Error deleting intervention:', deleteError);
+      
+      // If deletion fails, try to rollback by deleting the history record
+      await supabase
+        .from('intervention_history')
+        .delete()
+        .eq('id', historyRecord.id);
+      
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to deactivate intervention'
+      });
+    }
+    
+    console.log(`Intervention ${interventionId} successfully moved to history`);
+    
+    res.json({
+      success: true,
+      message: 'Intervention deactivated and moved to history',
+      historyId: historyRecord.id
+    });
+    
+  } catch (error) {
+    console.error('Error in deactivate intervention route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// GET /api/counselor-interventions/history - Get intervention history for Guidance Feedback
+router.get('/history', verifyCounselorSession, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, studentId, assessmentType } = req.query;
+    
+    console.log('Fetching intervention history with filters:', { studentId, assessmentType });
+    
+    const offset = (page - 1) * limit;
+    
+    // Build query with optional filters
+    let query = supabase
+      .from('intervention_history')
+      .select(`
+        id,
+        original_intervention_id,
+        intervention_title,
+        intervention_text,
+        counselor_message,
+        risk_level,
+        status,
+        created_at,
+        updated_at,
+        deactivated_at,
+        deactivated_by,
+        is_read,
+        read_at,
+        assessment_type,
+        overall_strategy,
+        dimension_interventions,
+        action_plan,
+        student_id,
+        counselor_id,
+        assessment_id,
+        students!inner(name, id_number, college),
+        counselors!counselor_interventions_history_counselor_id_fkey(name),
+        deactivated_counselor:counselors!counselor_interventions_history_deactivated_by_fkey(name)
+      `);
+    
+    // Apply filters if provided
+    if (studentId) {
+      query = query.eq('student_id', studentId);
+    }
+    
+    if (assessmentType) {
+      query = query.eq('assessment_type', assessmentType);
+    }
+    
+    // Order by deactivation date (most recent first) and apply pagination
+    const { data: historyRecords, error } = await query
+      .order('deactivated_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
+    if (error) {
+      console.error('Error fetching intervention history:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch intervention history'
+      });
+    }
+    
+    // Get total count for pagination (without filters for now - can be optimized later)
+    const { count, error: countError } = await supabase
+      .from('intervention_history')
+      .select('*', { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error('Error getting history count:', countError);
+    }
+    
+    console.log(`Found ${historyRecords.length} intervention history records`);
+    
+    res.json({
+      success: true,
+      data: historyRecords,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count || historyRecords.length,
+        hasMore: historyRecords.length === parseInt(limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in intervention history route:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'

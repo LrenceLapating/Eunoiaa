@@ -120,7 +120,8 @@ router.get('/at-risk', async (req, res) => {
           scores,
           at_risk_dimensions,
           completed_at,
-          archived_at
+          archived_at,
+          assessment_type
         `)
         .gte('completed_at', `${targetYear}-01-01`)
         .lt('completed_at', `${targetYear + 1}-01-01`),
@@ -206,7 +207,7 @@ router.get('/at-risk', async (req, res) => {
         ...item,
         college: studentLookup[item.student_id]?.college || 'Unknown',
         source: 'history',
-        assessment_type: item.assessment_type || 'historical'
+        assessment_type: item.assessment_type // Keep original assessment_type from ryff_history
       })),
       // Current data only if not already in historical data
       ...(currentData.data || []).filter(current => 
@@ -222,17 +223,27 @@ router.get('/at-risk', async (req, res) => {
       }))
     ];
 
+    console.log(`🔍 Total assessments collected: ${allAssessments.length}`);
+    console.log(`🔍 Historical data count: ${(historicalData.data || []).length}`);
+    console.log(`🔍 Current data count: ${(currentData.data || []).length}`);
+    console.log(`🔍 Raw historical data sample:`, (historicalData.data || []).slice(0, 3));
+    console.log(`🔍 Assessment types in collection:`, allAssessments.map(a => ({ type: a.assessment_type, source: a.source, student: a.student_id })));
+
     // Filter by assessment type if specified
     if (assessmentType && assessmentType !== 'all') {
+      console.log(`🔍 Before filtering: ${allAssessments.length} assessments`);
+      console.log(`🔍 Assessment types before filtering:`, allAssessments.map(a => a.assessment_type));
+      
       allAssessments = allAssessments.filter(assessment => {
         if (assessmentType === '42-item') {
-          return assessment.assessment_type === '42-item' || assessment.assessment_type === 'historical';
+          return assessment.assessment_type === '42-item' || assessment.assessment_type === 'historical' || assessment.assessment_type === 'ryff_42';
         } else if (assessmentType === '84-item') {
-          return assessment.assessment_type === '84-item';
+          return assessment.assessment_type === '84-item' || assessment.assessment_type === 'ryff_84';
         }
         return true;
       });
       console.log(`📊 Filtered assessments by type ${assessmentType}: ${allAssessments.length} assessments`);
+      console.log(`🔍 Assessment types after filtering:`, allAssessments.map(a => a.assessment_type));
     }
 
     // College name normalization mapping
@@ -284,7 +295,7 @@ router.get('/at-risk', async (req, res) => {
         const dimensionScore = scores[dimension];
         if (dimensionScore !== null && dimensionScore !== undefined) {
           // Get the appropriate risk threshold based on assessment type
-          const assessmentTypeKey = assessment.assessment_type === '84-item' ? 'ryff_84' : 'ryff_42';
+          const assessmentTypeKey = (assessment.assessment_type === '84-item' || assessment.assessment_type === 'ryff_84') ? 'ryff_84' : 'ryff_42';
           const riskThreshold = RISK_THRESHOLDS[assessmentTypeKey][dimension];
           isAtRisk = dimensionScore <= riskThreshold;
         }
@@ -766,9 +777,9 @@ router.get('/overall-risk', async (req, res) => {
     if (assessmentType && assessmentType !== 'all') {
       allData = allData.filter(item => {
         if (assessmentType === '42-item') {
-          return item.assessment_type === '42-item' || item.assessment_type === 'historical';
+          return item.assessment_type === '42-item' || item.assessment_type === 'historical' || item.assessment_type === 'ryff_42';
         } else if (assessmentType === '84-item') {
-          return item.assessment_type === '84-item';
+          return item.assessment_type === '84-item' || item.assessment_type === 'ryff_84';
         }
         return true;
       });

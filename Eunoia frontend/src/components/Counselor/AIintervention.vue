@@ -733,7 +733,13 @@ export default {
             
             result.data.forEach(intervention => {
               if (intervention.status === 'sent') {
-                this.sentInterventions.add(intervention.student_id);
+                // Use assessment-type-specific key for tracking sent interventions
+                // Updated to use direct assessment_type field instead of nested JOIN data
+                const assessmentType = intervention.assessment_type;
+                if (assessmentType) {
+                  const sentKey = `${intervention.student_id}_${assessmentType}`;
+                  this.sentInterventions.add(sentKey);
+                }
               }
               
               // Store review status for each intervention
@@ -934,8 +940,32 @@ export default {
       return student.assessmentType === 'ryff_84' ? 84 : 42;
     },
     formatSubscaleName(subscale) {
+      // First try to find by exact key match (camelCase)
       const dimension = this.ryffDimensionsList.find(d => d.key === subscale);
-      return dimension ? dimension.name : subscale;
+      if (dimension) {
+        return dimension.name;
+      }
+      
+      // If not found, handle underscore format from backend
+      const underscoreToProperName = {
+        'autonomy': 'Autonomy',
+        'environmental_mastery': 'Environmental Mastery',
+        'personal_growth': 'Personal Growth',
+        'positive_relations': 'Positive Relations with Others',
+        'purpose_in_life': 'Purpose in Life',
+        'self_acceptance': 'Self-Acceptance'
+      };
+      
+      // Return proper name if found in underscore mapping
+      if (underscoreToProperName[subscale]) {
+        return underscoreToProperName[subscale];
+      }
+      
+      // Fallback: convert any underscore format to title case
+      return subscale
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     },
     getDimensionColumnTitle() {
       switch(this.currentView) {
@@ -1080,15 +1110,17 @@ export default {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            studentId: this.selectedStudent.id
+            studentId: this.selectedStudent.id,
+            assessmentType: this.assessmentTypeFilter
           })
         });
         
         const result = await response.json();
         
         if (result.success) {
-          // Mark intervention as sent
-          this.sentInterventions.add(this.selectedStudent.id);
+          // Mark intervention as sent with assessment type specificity
+          const sentKey = `${this.selectedStudent.id}_${this.assessmentTypeFilter}`;
+          this.sentInterventions.add(sentKey);
           
           // Refresh intervention data to update button states
           await this.fetchSentInterventions();
@@ -1128,7 +1160,9 @@ export default {
     },
     
     hasInterventionSent(student) {
-      return this.sentInterventions.has(student?.id);
+      // Check for assessment-type-specific sent status
+      const sentKey = `${student?.id}_${this.assessmentTypeFilter}`;
+      return this.sentInterventions.has(sentKey);
     },
     
     hasInterventionAvailable(student) {
@@ -1506,7 +1540,10 @@ export default {
     // Fetch AI-generated intervention for a specific student
     async fetchAIInterventionForStudent(studentId) {
       try {
-        const response = await fetch(apiUrl(`counselor-interventions/student/${studentId}/latest`), {
+        // Get the assessment type from the current filter to ensure we fetch the correct intervention
+        const assessmentTypeParam = this.assessmentTypeFilter ? `?assessmentType=${this.assessmentTypeFilter}` : '';
+        
+        const response = await fetch(apiUrl(`counselor-interventions/student/${studentId}/latest${assessmentTypeParam}`), {
           method: 'GET',
           credentials: 'include',
           headers: {

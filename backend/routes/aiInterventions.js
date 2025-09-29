@@ -121,6 +121,7 @@ router.post('/generate', verifyCounselorSession, async (req, res) => {
       .insert({
         student_id: studentId,
         assessment_id: assessmentId || studentAssessment.id,
+        assessment_type: assessmentType, // Add assessment type to track which assessment this intervention belongs to
         risk_level: studentAssessment.risk_level,
         intervention_title: structuredIntervention.title,
         intervention_text: structuredIntervention.interventionText,

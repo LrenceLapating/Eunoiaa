@@ -1540,6 +1540,7 @@ export default {
       return 'low-risk';
     },
     formatSubscaleName(subscale) {
+      // Handle camelCase format (current frontend format)
       if (subscale === 'autonomy') return 'Autonomy';
       if (subscale === 'environmentalMastery') return 'Environmental Mastery';
       if (subscale === 'personalGrowth') return 'Personal Growth';
@@ -1547,7 +1548,22 @@ export default {
       if (subscale === 'purposeInLife') return 'Purpose in Life';
       if (subscale === 'selfAcceptance') return 'Self-Acceptance';
       
-      // Fallback to the original formatting logic
+      // Handle underscore format from backend
+      const underscoreToProperName = {
+        'autonomy': 'Autonomy',
+        'environmental_mastery': 'Environmental Mastery',
+        'personal_growth': 'Personal Growth',
+        'positive_relations': 'Positive Relations with Others',
+        'purpose_in_life': 'Purpose in Life',
+        'self_acceptance': 'Self-Acceptance'
+      };
+      
+      // Return proper name if found in underscore mapping
+      if (underscoreToProperName[subscale]) {
+        return underscoreToProperName[subscale];
+      }
+      
+      // Fallback to the original formatting logic for camelCase
       const formatted = subscale.replace(/([A-Z])/g, ' $1').trim();
       return formatted.charAt(0).toUpperCase() + formatted.slice(1);
     },

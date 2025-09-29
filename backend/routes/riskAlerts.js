@@ -41,12 +41,21 @@ router.get('/', async (req, res) => {
       .order('completed_at', { ascending: false });
 
     // Fetch historical 84-item assessments from ryff_history table
-    const { data: historyAssessments84, error: errorHistory } = await supabaseAdmin
-      .from('ryff_history')
-      .select('id, student_id, scores, completed_at, assessment_type')
-      .eq('assessment_type', 'ryff_84')
-      .not('scores', 'is', null)
-      .order('completed_at', { ascending: false });
+    // Only fetch historical data if not specifically filtering for 84-item assessments
+    let historyAssessments84 = null;
+    let errorHistory = null;
+    
+    if (assessmentType !== '84-item') {
+      const result = await supabaseAdmin
+        .from('ryff_history')
+        .select('id, student_id, scores, completed_at, assessment_type')
+        .eq('assessment_type', 'ryff_84')
+        .not('scores', 'is', null)
+        .order('completed_at', { ascending: false });
+      
+      historyAssessments84 = result.data;
+      errorHistory = result.error;
+    }
       
     // Fetch all active students
     const { data: students, error: studentsError } = await supabaseAdmin

@@ -12,6 +12,7 @@ router.get('/', verifyStudentSession, async (req, res) => {
     
     // Get AI interventions sent to this student from counselor_interventions table
     // Only show interventions that have been manually sent by counselors (status = 'sent')
+    // Use the direct assessment_type column for accurate assessment type classification
     const { data: interventions, error } = await supabase
       .from('counselor_interventions')
       .select(`
@@ -26,7 +27,8 @@ router.get('/', verifyStudentSession, async (req, res) => {
         counselor_message,
         overall_strategy,
         dimension_interventions,
-        action_plan
+        action_plan,
+        assessment_type
       `)
       .eq('student_id', studentId)
       .eq('status', 'sent')
@@ -40,8 +42,11 @@ router.get('/', verifyStudentSession, async (req, res) => {
       });
     }
 
-    // Transform interventions to ensure proper structure
+    // Transform interventions to ensure proper structure and include assessment type
     const transformedInterventions = interventions.map(intervention => {
+      // Use the direct assessment_type column from the database
+      const assessmentType = intervention.assessment_type || 'unknown';
+      
       // Check if we have meaningful structured data in separate columns (new format)
       const hasOverallStrategy = intervention.overall_strategy && intervention.overall_strategy.trim().length > 0;
       const hasDimensionInterventions = intervention.dimension_interventions && 
@@ -55,6 +60,7 @@ router.get('/', verifyStudentSession, async (req, res) => {
         // Use structured data from database columns
         return {
           ...intervention,
+          assessment_type: assessmentType,
           overall_strategy: intervention.overall_strategy || 'No intervention strategy available.',
           dimension_interventions: intervention.dimension_interventions || {},
           action_plan: intervention.action_plan || []
@@ -65,6 +71,7 @@ router.get('/', verifyStudentSession, async (req, res) => {
           const parsedIntervention = JSON.parse(intervention.intervention_text);
           return {
             ...intervention,
+            assessment_type: assessmentType,
             overall_strategy: parsedIntervention.overallStrategy || 'No intervention strategy available.',
             dimension_interventions: parsedIntervention.dimensionInterventions || {},
             action_plan: parsedIntervention.actionPlan || []
@@ -100,6 +107,7 @@ router.get('/', verifyStudentSession, async (req, res) => {
           
           return {
             ...intervention,
+            assessment_type: assessmentType,
             overall_strategy: overallStrategy,
             dimension_interventions: dimensionInterventions,
             action_plan: actionPlan
@@ -108,56 +116,79 @@ router.get('/', verifyStudentSession, async (req, res) => {
       }
     });
 
-    // Try to get assessment scores for this student from both assessment tables
-    let assessmentData = null;
-    let assessmentType = 'ryff_42'; // default
+    // Group interventions by assessment type
+    const interventionsByType = {
+      ryff_42: [],
+      ryff_84: []
+    };
     
-    // First try 84-item assessments
-    const { data: assessment84Data } = await supabase
-      .from('assessments_84items')
-      .select('scores, overall_score, risk_level')
+    transformedInterventions.forEach(intervention => {
+      const type = intervention.assessment_type;
+      if (type === 'ryff_42') {
+        interventionsByType.ryff_42.push(intervention);
+      } else if (type === 'ryff_84') {
+        interventionsByType.ryff_84.push(intervention);
+      }
+    });
+
+    // Get all assessment data for this student from both tables
+    const { data: allAssessments42 } = await supabase
+      .from('assessments_42items')
+      .select('id, scores, overall_score, risk_level, completed_at')
       .eq('student_id', studentId)
       .not('completed_at', 'is', null)
-      .order('completed_at', { ascending: false })
-      .limit(1);
+      .order('completed_at', { ascending: false });
     
-    if (assessment84Data && assessment84Data.length > 0) {
-      assessmentData = assessment84Data;
-      assessmentType = 'ryff_84';
-    } else {
-      // Fallback to 42-item assessments
-      const { data: assessment42Data } = await supabase
-        .from('assessments_42items')
-        .select('scores, overall_score, risk_level')
-        .eq('student_id', studentId)
-        .not('completed_at', 'is', null)
-        .order('completed_at', { ascending: false })
-        .limit(1);
+    const { data: allAssessments84 } = await supabase
+      .from('assessments_84items')
+      .select('id, scores, overall_score, risk_level, completed_at')
+      .eq('student_id', studentId)
+      .not('completed_at', 'is', null)
+      .order('completed_at', { ascending: false });
+
+    // Function to find the correct assessment for an intervention
+    const findAssessmentForIntervention = (intervention, assessmentsList) => {
+      if (!assessmentsList || assessmentsList.length === 0) return null;
       
-      if (assessment42Data && assessment42Data.length > 0) {
-        assessmentData = assessment42Data;
-        assessmentType = 'ryff_42';
+      // If intervention has a specific assessment_id, try to find that assessment
+      if (intervention.assessment_id) {
+        const specificAssessment = assessmentsList.find(a => a.id === intervention.assessment_id);
+        if (specificAssessment) return specificAssessment;
       }
-    }
+      
+      // Fallback to the latest assessment of the correct type
+      return assessmentsList[0] || null;
+    };
 
-    const dimensionScores = assessmentData && assessmentData[0] ? assessmentData[0].scores : null;
-    const overallScore = assessmentData && assessmentData[0] ? assessmentData[0].overall_score : null;
-    const riskLevel = assessmentData && assessmentData[0] ? assessmentData[0].risk_level : null;
-
-    // Add dimension scores to each transformed intervention
-    const interventionsWithScores = transformedInterventions.map(intervention => ({
-      ...intervention,
-      dimension_scores: dimensionScores,
-      overall_score: overallScore,
-      risk_level: riskLevel,
-      assessment_type: assessmentType
-    }));
+    // Add dimension scores to interventions based on their specific assessment
+    const interventions42WithScores = interventionsByType.ryff_42.map(intervention => {
+      const assessmentData = findAssessmentForIntervention(intervention, allAssessments42);
+      return {
+        ...intervention,
+        dimension_scores: assessmentData?.scores || null,
+        overall_score: assessmentData?.overall_score || null,
+        risk_level: assessmentData?.risk_level || null
+      };
+    });
     
-    console.log(`Found ${interventionsWithScores.length} interventions for student ${studentId} (${assessmentType})`);
+    const interventions84WithScores = interventionsByType.ryff_84.map(intervention => {
+      const assessmentData = findAssessmentForIntervention(intervention, allAssessments84);
+      return {
+        ...intervention,
+        dimension_scores: assessmentData?.scores || null,
+        overall_score: assessmentData?.overall_score || null,
+        risk_level: assessmentData?.risk_level || null
+      };
+    });
+    
+    console.log(`Found ${interventions42WithScores.length} 42-item interventions and ${interventions84WithScores.length} 84-item interventions for student ${studentId}`);
     
     res.json({
       success: true,
-      data: interventionsWithScores
+      data: {
+        ryff_42: interventions42WithScores,
+        ryff_84: interventions84WithScores
+      }
     });
     
   } catch (error) {

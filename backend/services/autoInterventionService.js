@@ -221,11 +221,12 @@ class AutoInterventionService {
       
       console.log(`🤖 Generating AI intervention for ${student.name} (Risk: ${riskLevel})`);
 
-      // Check if intervention already exists (double-check to prevent race conditions)
+      // Check if intervention already exists for this assessment type (double-check to prevent race conditions)
       const { data: existingIntervention, error: checkError } = await supabaseAdmin
         .from('counselor_interventions')
-        .select('id, created_at')
+        .select('id, created_at, assessment_type')
         .eq('student_id', student.id)
+        .eq('assessment_type', assignment.assessment_type)
         .maybeSingle();
 
       if (checkError) {
@@ -234,17 +235,18 @@ class AutoInterventionService {
       }
 
       if (existingIntervention) {
-        console.log(`⚠️ Intervention already exists for student ${student.id} (created: ${existingIntervention.created_at}), skipping`);
+        console.log(`⚠️ Intervention already exists for student ${student.id} (${assignment.assessment_type}, created: ${existingIntervention.created_at}), skipping`);
         return;
       }
       
       // Add to processed set to prevent duplicate processing in same session
-      if (this.processedStudents.has(student.id)) {
-        console.log(`⚠️ Student ${student.id} already processed in this session, skipping`);
+      const sessionKey = `${student.id}_${assignment.assessment_type}`;
+      if (this.processedStudents.has(sessionKey)) {
+        console.log(`⚠️ Student ${student.id} already processed for ${assignment.assessment_type} in this session, skipping`);
         return;
       }
       
-      this.processedStudents.add(student.id);
+      this.processedStudents.add(sessionKey);
 
       // Test AI service connection before generating
       const connectionTest = await aiService.testConnection();
@@ -292,17 +294,18 @@ class AutoInterventionService {
         throw new Error('No counselor found in database for AI intervention assignment');
       }
 
-      // Check if intervention already exists for this student and assessment
+      // Check if intervention already exists for this student and assessment type
+      // This allows students to have interventions for both 42-item and 84-item assessments
       const { data: duplicateIntervention } = await supabaseAdmin
         .from('counselor_interventions')
         .select('id')
         .eq('student_id', student.id)
-        .eq('assessment_id', assignment.assignment_id)
+        .eq('assessment_type', assignment.assessment_type)
         .limit(1)
         .single();
 
       if (duplicateIntervention) {
-        console.log(`⚠️ Intervention already exists for student ${student.first_name} ${student.last_name}, skipping`);
+        console.log(`⚠️ Intervention already exists for student ${student.first_name} ${student.last_name} (${assignment.assessment_type}), skipping`);
         return;
       }
 
@@ -312,6 +315,7 @@ class AutoInterventionService {
         .insert({
           student_id: student.id,
           assessment_id: assignment.assignment_id, // Use assignment ID from assessment_assignments table
+          assessment_type: assignment.assessment_type, // Add assessment type for proper filtering
           risk_level: assignment.risk_level,
           intervention_title: aiResponse.title,
           intervention_text: aiResponse.interventionText,
