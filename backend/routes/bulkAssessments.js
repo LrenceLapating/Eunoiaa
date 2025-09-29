@@ -655,12 +655,11 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
       const totalCompleted = group.assessments.reduce((sum, assessment) => sum + (assessment.total_completed || 0), 0);
       const aggregatedCompletionPercentage = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
       
-      // Create assessment name that reflects the grouping
-      const assessmentName = `${mostRecentAssessment.assessment_type === 'ryff_42' ? '42' : '84'} Items, ${mostRecentAssessment.school_year} ${mostRecentAssessment.semester} - ${group.college}`;
-      
       return {
         ...mostRecentAssessment,
-        assessment_name: assessmentName,
+        // Use the original stored assessment_name instead of constructing a new one
+        // This preserves the correct name format from the database (e.g., "42 Items, 2025-2026 Summer - CN")
+        assessment_name: mostRecentAssessment.assessment_name,
         target_colleges: [group.college], // Single college for grouped display
         total_assigned: totalAssigned,
         total_completed: totalCompleted,

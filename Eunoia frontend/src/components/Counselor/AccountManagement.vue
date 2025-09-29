@@ -858,7 +858,7 @@ export default {
           }
           
           newUsers++;
-        };
+        }
       }
       
       // Emit updated student data to parent

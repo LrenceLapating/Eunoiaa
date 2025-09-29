@@ -890,7 +890,7 @@ export default {
     }
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     // Clean up resources to prevent memory leaks
     this.cancelOngoingRequests();
     

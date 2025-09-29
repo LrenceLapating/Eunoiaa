@@ -804,7 +804,7 @@ export default {
         }
       }
     },
-    beforeDestroy() {
+    beforeUnmount() {
       // Cleanup timeouts and abort ongoing requests
       if (this.searchTimeout) {
         clearTimeout(this.searchTimeout);

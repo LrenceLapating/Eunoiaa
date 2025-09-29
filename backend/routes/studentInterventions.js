@@ -258,4 +258,114 @@ router.put('/:id/read', verifyStudentSession, async (req, res) => {
   }
 });
 
+// GET /api/student-interventions/history - Get counselor intervention history for the current student
+router.get('/history', verifyStudentSession, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    const { assessmentType } = req.query;
+    
+    console.log('Fetching counselor intervention history for student:', studentId, 'assessmentType:', assessmentType);
+    
+    // Build query for counselor intervention history with assessment names
+    let query = supabase
+      .from('counselor_intervention_history')
+      .select(`
+        id,
+        original_intervention_id,
+        intervention_title,
+        intervention_text,
+        counselor_message,
+        risk_level,
+        status,
+        original_created_at,
+        original_updated_at,
+        deactivated_at,
+        deactivated_by,
+        is_read,
+        read_at,
+        assessment_type,
+        overall_strategy,
+        dimension_interventions,
+        action_plan,
+        overall_score,
+        dimension_scores,
+        student_id,
+        counselor_id,
+        assessment_id,
+        assessment_assignments:assessment_id (
+          id,
+          bulk_assessments:bulk_assessment_id (
+            assessment_name
+          )
+        )
+      `)
+      .eq('student_id', studentId);
+    
+    // Apply assessment type filter if provided
+    if (assessmentType) {
+      query = query.eq('assessment_type', assessmentType);
+    }
+    
+    // Order by deactivation date (most recent first)
+    const { data: historyRecords, error } = await query
+      .order('deactivated_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching counselor intervention history:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch counselor intervention history'
+      });
+    }
+    
+    console.log(`Found ${historyRecords.length} counselor intervention history records`);
+    
+    // Transform the data to match the expected format
+    const transformedHistory = historyRecords.map(record => {
+      // Use the direct assessment_type column from the database
+      const assessmentType = record.assessment_type || 'unknown';
+      
+      // Extract assessment name from the joined data
+      const assessmentName = record.assessment_assignments?.bulk_assessments?.assessment_name || null;
+      
+      // Transform the record to match the expected intervention format
+      return {
+        id: record.id,
+        intervention_title: record.intervention_title,
+        intervention_text: record.intervention_text,
+        risk_level: record.risk_level,
+        created_at: record.original_created_at,
+        updated_at: record.original_updated_at,
+        deactivated_at: record.deactivated_at,
+        is_read: record.is_read,
+        read_at: record.read_at,
+        counselor_id: record.counselor_id,
+        counselor_message: record.counselor_message,
+        overall_strategy: record.overall_strategy,
+        dimension_interventions: record.dimension_interventions,
+        action_plan: record.action_plan,
+        overall_score: record.overall_score,
+        dimension_scores: record.dimension_scores,
+        assessment_type: assessmentType,
+        status: record.status,
+        student_id: record.student_id,
+        assessment_id: record.assessment_id,
+        assessment_name: assessmentName
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: transformedHistory
+    });
+    
+  } catch (error) {
+    console.error('Error in counselor intervention history route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 module.exports = router;

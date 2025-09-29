@@ -764,35 +764,39 @@ router.post('/deactivate/:interventionId', verifyCounselorSession, async (req, r
     }
     
     // Start a transaction-like operation
-    // First, insert into intervention_history
+    // First, insert into counselor_intervention_history
     const { data: historyRecord, error: historyError } = await supabase
-      .from('intervention_history')
+      .from('counselor_intervention_history')
       .insert({
         original_intervention_id: intervention.id,
         student_id: intervention.student_id,
         counselor_id: intervention.counselor_id,
         assessment_id: intervention.assessment_id,
-        risk_level: intervention.risk_level, // Missing required field
-        intervention_title: intervention.intervention_title, // Missing required field
+        risk_level: intervention.risk_level,
+        intervention_title: intervention.intervention_title,
         intervention_text: intervention.intervention_text,
         counselor_message: intervention.counselor_message,
         is_read: intervention.is_read,
         read_at: intervention.read_at,
-        assessment_type: intervention.assessment_type, // Missing field
+        assessment_type: intervention.assessment_type,
         overall_strategy: intervention.overall_strategy,
         dimension_interventions: intervention.dimension_interventions,
         action_plan: intervention.action_plan,
         status: 'deactivated',
-        created_at: intervention.created_at,
-        updated_at: intervention.updated_at,
+        // Include new score fields (will be null if not set, which is fine)
+        overall_score: intervention.overall_score,
+        dimension_scores: intervention.dimension_scores,
+        // Timestamp fields
+        original_created_at: intervention.created_at,
+        original_updated_at: intervention.updated_at,
         deactivated_at: new Date().toISOString(),
         deactivated_by: counselorId
       })
       .select()
       .single();
-    
+
     if (historyError) {
-      console.error('Error inserting into intervention_history:', historyError);
+      console.error('Error inserting into counselor_intervention_history:', historyError);
       return res.status(500).json({
         success: false,
         error: 'Failed to create history record'
@@ -810,7 +814,7 @@ router.post('/deactivate/:interventionId', verifyCounselorSession, async (req, r
       
       // If deletion fails, try to rollback by deleting the history record
       await supabase
-        .from('intervention_history')
+        .from('counselor_intervention_history')
         .delete()
         .eq('id', historyRecord.id);
       
@@ -848,7 +852,7 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
     
     // Build query with optional filters
     let query = supabase
-      .from('intervention_history')
+      .from('counselor_intervention_history')
       .select(`
         id,
         original_intervention_id,
@@ -857,8 +861,8 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
         counselor_message,
         risk_level,
         status,
-        created_at,
-        updated_at,
+        original_created_at,
+        original_updated_at,
         deactivated_at,
         deactivated_by,
         is_read,
@@ -867,12 +871,14 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
         overall_strategy,
         dimension_interventions,
         action_plan,
+        overall_score,
+        dimension_scores,
         student_id,
         counselor_id,
         assessment_id,
         students!inner(name, id_number, college),
-        counselors!counselor_interventions_history_counselor_id_fkey(name),
-        deactivated_counselor:counselors!counselor_interventions_history_deactivated_by_fkey(name)
+        counselors!fk_counselor_intervention_history_counselor(name),
+        deactivated_counselor:counselors!fk_counselor_intervention_history_deactivated_by(name)
       `);
     
     // Apply filters if provided
@@ -899,7 +905,7 @@ router.get('/history', verifyCounselorSession, async (req, res) => {
     
     // Get total count for pagination (without filters for now - can be optimized later)
     const { count, error: countError } = await supabase
-      .from('intervention_history')
+      .from('counselor_intervention_history')
       .select('*', { count: 'exact', head: true });
     
     if (countError) {

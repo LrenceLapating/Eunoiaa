@@ -321,7 +321,7 @@
           </div>
 
           <!-- No Interventions State -->
-          <div v-else-if="aiInterventions42.length === 0 && aiInterventions84.length === 0" class="empty-state">
+          <div v-else-if="!hasCompletedAnyAssessment" class="empty-state">
             <div class="empty-card">
               <div class="empty-illustration">
                 <div class="empty-icon">
@@ -383,7 +383,7 @@
               >
                 <i class="fas fa-history"></i>
                 History
-                <span class="count-badge" v-if="historicalInterventions42.length + historicalInterventions84.length > 0">({{ historicalInterventions42.length + historicalInterventions84.length }})</span>
+                <span class="count-badge" v-if="historicalInterventions42.length + historicalInterventions84.length + counselorHistoricalInterventions42.length + counselorHistoricalInterventions84.length > 0">({{ historicalInterventions42.length + historicalInterventions84.length + counselorHistoricalInterventions42.length + counselorHistoricalInterventions84.length }})</span>
               </button>
             </div>
 
@@ -630,231 +630,161 @@
                 <p>Loading historical interventions...</p>
               </div>
 
-              <!-- History Content -->
-              <div v-else class="history-content">
-                <!-- Historical 84-Item Assessments -->
-                <div v-if="historicalInterventions84.length > 0" class="history-group">
-                  <div class="history-group-header">
-                    <h4><i class="fas fa-chart-line"></i> 84-Item Assessment History</h4>
-                    <span class="count-badge">{{ historicalInterventions84.length }} assessment(s)</span>
+              <!-- History Table -->
+              <div v-else class="history-table-container">
+                <table class="history-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Assessment Name</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Counselor 84-Item Interventions -->
+                    <tr v-for="intervention in counselorHistoricalInterventions84" :key="'counselor-84-' + intervention.id">
+                      <td>{{ formatDate(intervention.original_created_at || intervention.created_at) }}</td>
+                      <td>{{ intervention.assessment_name || intervention.intervention_title || '84 Items, 2025-2026 2nd Semester - CN' }}</td>
+                      <td>
+                        <button 
+                          @click="openInterventionModal(intervention, '84-item')" 
+                          class="view-details-btn"
+                        >
+                          <i class="fas fa-eye"></i> View Details
+                        </button>
+                      </td>
+                    </tr>
+                    
+                    <!-- Counselor 42-Item Interventions -->
+                    <tr v-for="intervention in counselorHistoricalInterventions42" :key="'counselor-42-' + intervention.id">
+                      <td>{{ formatDate(intervention.original_created_at || intervention.created_at) }}</td>
+                      <td>{{ intervention.assessment_name || intervention.intervention_title || '42 Items, 2025-2026 2nd Semester - CN' }}</td>
+                      <td>
+                        <button 
+                          @click="openInterventionModal(intervention, '42-item')" 
+                          class="view-details-btn"
+                        >
+                          <i class="fas fa-eye"></i> View Details
+                        </button>
+                      </td>
+                    </tr>
+
+                    <!-- AI 84-Item Interventions -->
+                    <tr v-for="intervention in historicalInterventions84" :key="'ai-84-' + intervention.id">
+                      <td>{{ formatDate(intervention.created_at) }}</td>
+                      <td>{{ '84 Items, 2025-2026 2nd Semester - AI' }}</td>
+                      <td>
+                        <button 
+                          @click="openInterventionModal(intervention, '84-item')" 
+                          class="view-details-btn"
+                        >
+                          <i class="fas fa-eye"></i> View Details
+                        </button>
+                      </td>
+                    </tr>
+
+                    <!-- AI 42-Item Interventions -->
+                    <tr v-for="intervention in historicalInterventions42" :key="'ai-42-' + intervention.id">
+                      <td>{{ formatDate(intervention.created_at) }}</td>
+                      <td>{{ '42 Items, 2025-2026 2nd Semester - AI' }}</td>
+                      <td>
+                        <button 
+                          @click="openInterventionModal(intervention, '42-item')" 
+                          class="view-details-btn"
+                        >
+                          <i class="fas fa-eye"></i> View Details
+                        </button>
+                      </td>
+                    </tr>
+
+                    <!-- Empty State -->
+                    <tr v-if="!counselorHistoricalInterventions84.length && !counselorHistoricalInterventions42.length && !historicalInterventions84.length && !historicalInterventions42.length">
+                      <td colspan="3" class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No assessment history found</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Intervention Details Modal -->
+              <div v-if="showInterventionModal" class="modal-overlay" @click="closeInterventionModal">
+                <div class="intervention-modal" @click.stop>
+                  <div class="modal-header">
+                    <h3>
+                      <i class="fas fa-clipboard-list"></i>
+                      {{ selectedIntervention.intervention_title || 'Intervention Details' }}
+                    </h3>
+                    <button @click="closeInterventionModal" class="close-btn">
+                      <i class="fas fa-times"></i>
+                    </button>
                   </div>
                   
-                  <div class="professional-interventions">
-                    <div 
-                      v-for="intervention in historicalInterventions84" 
-                      :key="intervention.id"
-                      class="professional-intervention-card historical"
-                    >
-                      <!-- Student Header -->
-                      <div class="intervention-header">
-                        <div class="student-info">
-                          <div class="student-avatar">
-                            <i class="fas fa-user-graduate"></i>
-                          </div>
-                          <div class="student-details">
-                            <h3>{{ studentProfile.name || 'Student' }}</h3>
-                            <p>{{ studentProfile.id_number || 'ID: N/A' }} • {{ studentProfile.college || 'College' }} • {{ formatDate(intervention.created_at) }}</p>
-                          </div>
-                        </div>
-                        <div class="intervention-meta">
-                          <div class="overall-score">
-                            <span class="score-label">Overall Score</span>
-                            <span class="score-value" :class="getRiskLevelClass(intervention.risk_level)">{{ getRiskLevelScore(intervention.risk_level, intervention) }}</span>
-                          </div>
-                          <div class="status-badge historical">
-                            <i class="fas fa-archive"></i>
-                            Archived
-                          </div>
-                        </div>
+                  <div class="modal-content">
+                    <!-- Intervention Header Info -->
+                    <div class="intervention-info">
+                      <div class="info-row">
+                        <span class="label">Assessment Type:</span>
+                        <span class="value">{{ selectedInterventionType }}</span>
                       </div>
-
-                      <!-- Overall Strategy Section -->
-                      <div class="strategy-section">
-                        <div class="section-header">
-                          <i class="fas fa-lightbulb"></i>
-                          <h4>Overall Mental Health Strategy</h4>
-                        </div>
-                        <div class="strategy-content">
-                          <p>{{ intervention.overall_strategy || 'No overall strategy available.' }}</p>
-                        </div>
+                      <div class="info-row">
+                        <span class="label">Date:</span>
+                        <span class="value">{{ formatDate(selectedIntervention.original_created_at || selectedIntervention.created_at) }}</span>
                       </div>
-
-                      <!-- Dimension Interventions Section -->
-                      <div class="dimensions-section" v-if="intervention.dimension_interventions && Object.keys(parseDimensionInterventions(intervention.dimension_interventions)).length > 0">
-                        <div class="section-header">
-                          <i class="fas fa-chart-bar"></i>
-                          <h4>Dimension Scores & Targeted Interventions</h4>
-                        </div>
-                        <div class="dimensions-grid">
-                          <div 
-                            v-for="(interventionText, dimension) in parseDimensionInterventions(intervention.dimension_interventions)" 
-                            :key="dimension"
-                            class="dimension-card"
-                          >
-                            <div class="dimension-header">
-                              <h5>{{ formatDimensionName(dimension) }}</h5>
-                              <div class="dimension-score" :class="getDimensionScoreClass(intervention.dimension_scores, dimension, intervention)">
-                                {{ getDimensionScore(intervention.dimension_scores, dimension) }}
-                              </div>
-                            </div>
-                            <div class="dimension-content">
-                              <p>{{ interventionText || 'No specific intervention provided.' }}</p>
-                            </div>
-                          </div>
-                        </div>
+                      <div class="info-row" v-if="selectedIntervention.risk_level">
+                        <span class="label">Risk Level:</span>
+                        <span class="value risk-level" :class="selectedIntervention.risk_level">
+                          {{ selectedIntervention.risk_level.toUpperCase() }} RISK
+                        </span>
                       </div>
+                    </div>
 
-                      <!-- Action Plan Section -->
-                      <div class="action-plan-section" v-if="intervention.action_plan && parseActionPlan(intervention.action_plan).length > 0">
-                        <div class="section-header">
-                          <i class="fas fa-tasks"></i>
-                          <h4>Recommended Action Plan</h4>
-                        </div>
-                        <div class="action-plan-content">
-                          <ul class="action-list">
-                            <li v-for="(action, index) in parseActionPlan(intervention.action_plan)" :key="index" class="action-item">
-                              <div class="action-checkbox">
-                                <i class="fas fa-circle"></i>
-                              </div>
-                              <span>{{ action }}</span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
+                    <!-- Overall Strategy -->
+                    <div v-if="selectedIntervention.overall_strategy" class="modal-section">
+                      <h4><i class="fas fa-lightbulb"></i> Overall Mental Health Strategy</h4>
+                      <div class="strategy-content" v-html="formatInterventionText(selectedIntervention.overall_strategy)"></div>
+                    </div>
 
-                      <!-- Card Footer -->
-                      <div class="intervention-footer">
-                        <div class="counselor-info">
-                          <div class="counselor-avatar">
-                            <i class="fas fa-user-md"></i>
+                    <!-- Dimension Interventions -->
+                    <div v-if="selectedIntervention.dimension_interventions && Object.keys(selectedIntervention.dimension_interventions).length > 0" class="modal-section">
+                      <h4><i class="fas fa-chart-bar"></i> Dimension & Targeted Interventions</h4>
+                      <div class="dimensions-grid">
+                        <div 
+                          v-for="(dimensionData, dimensionName) in selectedIntervention.dimension_interventions" 
+                          :key="dimensionName"
+                          class="dimension-card"
+                        >
+                          <div class="dimension-header">
+                            <h5>{{ formatDimensionName(dimensionName) }}</h5>
+                            <span class="dimension-score" v-if="dimensionData.score !== undefined">
+                              Score: {{ dimensionData.score }}
+                            </span>
                           </div>
-                          <div class="counselor-details">
-                          </div>
-                        </div>
-                        <div class="historical-badge">
-                          <i class="fas fa-calendar-alt"></i>
-                          Completed {{ formatDate(intervention.deactivated_at || intervention.created_at) }}
+                          <div class="dimension-content" v-html="formatInterventionText(dimensionData.intervention || dimensionData)"></div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                <!-- Historical 42-Item Assessments -->
-                <div v-if="historicalInterventions42.length > 0" class="history-group">
-                  <div class="history-group-header">
-                    <h4><i class="fas fa-chart-pie"></i> 42-Item Assessment History</h4>
-                    <span class="count-badge">{{ historicalInterventions42.length }} assessment(s)</span>
-                  </div>
-                  
-                  <div class="professional-interventions">
-                    <div 
-                      v-for="intervention in historicalInterventions42" 
-                      :key="intervention.id"
-                      class="professional-intervention-card historical"
-                    >
-                      <!-- Student Header -->
-                      <div class="intervention-header">
-                        <div class="student-info">
-                          <div class="student-avatar">
-                            <i class="fas fa-user-graduate"></i>
+                    <!-- Action Plan -->
+                    <div v-if="selectedIntervention.action_plan && selectedIntervention.action_plan.length > 0" class="modal-section">
+                      <h4><i class="fas fa-tasks"></i> Self Assessment & Action Plan</h4>
+                      <ul class="action-plan-list">
+                        <li v-for="(action, index) in parseActionPlan(selectedIntervention.action_plan)" :key="index" class="action-item">
+                          <div class="action-checkbox">
+                            <i class="fas fa-circle"></i>
                           </div>
-                          <div class="student-details">
-                            <h3>{{ studentProfile.name || 'Student' }}</h3>
-                            <p>{{ studentProfile.id_number || 'ID: N/A' }} • {{ studentProfile.college || 'College' }} • {{ formatDate(intervention.created_at) }}</p>
-                          </div>
-                        </div>
-                        <div class="intervention-meta">
-                          <div class="overall-score">
-                            <span class="score-label">Overall Score</span>
-                            <span class="score-value" :class="getRiskLevelClass(intervention.risk_level)">{{ getRiskLevelScore(intervention.risk_level, intervention) }}</span>
-                          </div>
-                          <div class="status-badge historical">
-                            <i class="fas fa-archive"></i>
-                            Archived
-                          </div>
-                        </div>
-                      </div>
+                          <span>{{ action }}</span>
+                        </li>
+                      </ul>
+                    </div>
 
-                      <!-- Overall Strategy Section -->
-                      <div class="strategy-section">
-                        <div class="section-header">
-                          <i class="fas fa-lightbulb"></i>
-                          <h4>Overall Mental Health Strategy</h4>
-                        </div>
-                        <div class="strategy-content">
-                          <p>{{ intervention.overall_strategy || 'No overall strategy available.' }}</p>
-                        </div>
-                      </div>
-
-                      <!-- Dimension Interventions Section -->
-                      <div class="dimensions-section" v-if="intervention.dimension_interventions && Object.keys(parseDimensionInterventions(intervention.dimension_interventions)).length > 0">
-                        <div class="section-header">
-                          <i class="fas fa-chart-bar"></i>
-                          <h4>Dimension Scores & Targeted Interventions</h4>
-                        </div>
-                        <div class="dimensions-grid">
-                          <div 
-                            v-for="(interventionText, dimension) in parseDimensionInterventions(intervention.dimension_interventions)" 
-                            :key="dimension"
-                            class="dimension-card"
-                          >
-                            <div class="dimension-header">
-                              <h5>{{ formatDimensionName(dimension) }}</h5>
-                              <div class="dimension-score" :class="getDimensionScoreClass(intervention.dimension_scores, dimension, intervention)">
-                                {{ getDimensionScore(intervention.dimension_scores, dimension) }}
-                              </div>
-                            </div>
-                            <div class="dimension-content">
-                              <p>{{ interventionText || 'No specific intervention provided.' }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Action Plan Section -->
-                      <div class="action-plan-section" v-if="intervention.action_plan && parseActionPlan(intervention.action_plan).length > 0">
-                        <div class="section-header">
-                          <i class="fas fa-tasks"></i>
-                          <h4>Recommended Action Plan</h4>
-                        </div>
-                        <div class="action-plan-content">
-                          <ul class="action-list">
-                            <li v-for="(action, index) in parseActionPlan(intervention.action_plan)" :key="index" class="action-item">
-                              <div class="action-checkbox">
-                                <i class="fas fa-circle"></i>
-                              </div>
-                              <span>{{ action }}</span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-
-                      <!-- Card Footer -->
-                      <div class="intervention-footer">
-                        <div class="counselor-info">
-                          <div class="counselor-avatar">
-                            <i class="fas fa-user-md"></i>
-                          </div>
-                          <div class="counselor-details">
-                          </div>
-                        </div>
-                        <div class="historical-badge">
-                          <i class="fas fa-calendar-alt"></i>
-                          Completed {{ formatDate(intervention.deactivated_at || intervention.created_at) }}
-                        </div>
-                      </div>
+                    <!-- Counselor Info -->
+                    <div v-if="selectedIntervention.counselors" class="modal-section">
+                      <h4><i class="fas fa-user-md"></i> Counselor Information</h4>
+                      <p>Created by: {{ selectedIntervention.counselors.name }}</p>
                     </div>
                   </div>
-                </div>
-
-                <!-- No History Message -->
-                <div v-if="historicalInterventions42.length === 0 && historicalInterventions84.length === 0 && !loadingHistory" class="no-interventions">
-                  <div class="no-interventions-icon">
-                    <i class="fas fa-history"></i>
-                  </div>
-                  <h3>No Assessment History</h3>
-                  <p>You don't have any completed assessments yet. Complete an assessment to see your history here.</p>
                 </div>
               </div>
             </div>
@@ -1066,7 +996,14 @@ export default {
       // Historical interventions data
       historicalInterventions42: [],
       historicalInterventions84: [],
+      // Counselor intervention history data
+      counselorHistoricalInterventions42: [],
+      counselorHistoricalInterventions84: [],
       loadingHistory: false,
+      // Modal for intervention details
+      showInterventionModal: false,
+      selectedIntervention: null,
+      modalInterventionType: '',
       // Mobile navigation
       mobileNavOpen: false,
       isMobile: false,
@@ -1148,6 +1085,12 @@ export default {
         default:
           return '';
       }
+    },
+    hasCompletedAnyAssessment() {
+      // If there are no assigned assessments, it means the student has completed them
+      // OR if there are interventions available, it means assessments were completed
+      return !this.hasAssignedAssessments || 
+             (this.aiInterventions42.length > 0 || this.aiInterventions84.length > 0);
     }
   },
   async mounted() {
@@ -1542,7 +1485,8 @@ export default {
         this.loadingHistory = true;
         console.log('Fetching historical interventions...');
         
-        const response = await fetch(apiUrl('counselor-interventions/history'), {
+        // Fetch counselor intervention history using student-accessible endpoint
+        const response = await fetch(apiUrl('student-interventions/history'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -1556,24 +1500,35 @@ export default {
           // Filter and group historical interventions by assessment type
           const historicalData = result.data || [];
           
-          this.historicalInterventions42 = historicalData.filter(intervention => 
+          // Separate AI and counselor interventions based on some criteria
+          // For now, we'll treat all historical interventions as counselor interventions
+          this.counselorHistoricalInterventions42 = historicalData.filter(intervention => 
             intervention.assessment_type === 'ryff_42'
           ).sort((a, b) => new Date(b.deactivated_at || b.created_at) - new Date(a.deactivated_at || a.created_at));
           
-          this.historicalInterventions84 = historicalData.filter(intervention => 
+          this.counselorHistoricalInterventions84 = historicalData.filter(intervention => 
             intervention.assessment_type === 'ryff_84'
           ).sort((a, b) => new Date(b.deactivated_at || b.created_at) - new Date(a.deactivated_at || a.created_at));
           
-          console.log('Historical interventions loaded:', this.historicalInterventions42.length, '42-item and', this.historicalInterventions84.length, '84-item historical interventions found');
+          // For now, set AI historical interventions to empty arrays
+          // since AI interventions don't have a separate history mechanism yet
+          this.historicalInterventions42 = [];
+          this.historicalInterventions84 = [];
+          
+          console.log('Counselor historical interventions loaded:', this.counselorHistoricalInterventions42.length, '42-item and', this.counselorHistoricalInterventions84.length, '84-item counselor historical interventions found');
         } else {
           console.error('Failed to fetch historical interventions:', result.message);
           this.historicalInterventions42 = [];
           this.historicalInterventions84 = [];
+          this.counselorHistoricalInterventions42 = [];
+          this.counselorHistoricalInterventions84 = [];
         }
       } catch (error) {
         console.error('Error fetching historical interventions:', error);
         this.historicalInterventions42 = [];
         this.historicalInterventions84 = [];
+        this.counselorHistoricalInterventions42 = [];
+        this.counselorHistoricalInterventions84 = [];
       } finally {
         this.loadingHistory = false;
       }
@@ -1766,6 +1721,56 @@ export default {
         if (numScore >= 19) return 'score-moderate'; // Moderate (yellow)
         return 'score-low';  // At Risk (red)
       }
+    },
+
+    // Modal Methods
+    openInterventionModal(intervention, type) {
+      // Ensure we have valid intervention data
+      if (!intervention) {
+        console.error('No intervention data provided');
+        return;
+      }
+      
+      // Close any existing modal first
+      this.showInterventionModal = false;
+      
+      // Use nextTick to ensure DOM updates properly
+      this.$nextTick(() => {
+        this.selectedIntervention = intervention;
+        // Store the type only for the modal display; avoid changing nav state
+        this.modalInterventionType = type;
+        this.showInterventionModal = true;
+        
+        // Force reactivity update
+        this.$forceUpdate();
+      });
+    },
+
+    closeInterventionModal() {
+      this.showInterventionModal = false;
+      
+      // Use nextTick to ensure proper cleanup
+      this.$nextTick(() => {
+        this.selectedIntervention = null;
+        this.modalInterventionType = '';
+      });
+    },
+
+    getAssessmentName(intervention) {
+      if (intervention.intervention_title) {
+        return intervention.intervention_title;
+      }
+      
+      // Determine assessment type based on intervention data
+      const isAI = !intervention.counselors;
+      const is84Item = intervention.assessment_type === 'ryff_84' || 
+                      (intervention.dimension_interventions && 
+                       Object.keys(intervention.dimension_interventions).length > 6);
+      
+      const itemCount = is84Item ? '84' : '42';
+      const source = isAI ? 'AI' : 'CN';
+      
+      return `${itemCount} Items, 2025-2026 2nd Semester - ${source}`;
     }
   }
 }
@@ -4857,6 +4862,318 @@ export default {
   .assessment-info h3 {
     font-size: 16px;
   }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.intervention-modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #00b3b0 0%, #00a8a5 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.modal-content {
+  padding: 24px;
+}
+
+.intervention-info {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-row .label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.info-row .value {
+  color: #6b7280;
+}
+
+.risk-level {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.risk-level.low {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.risk-level.moderate {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.risk-level.high {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.modal-section {
+  margin-bottom: 24px;
+}
+
+.modal-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.strategy-content {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 16px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.dimensions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.dimension-card {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 16px;
+  border-left: 4px solid #00b3b0;
+}
+
+.dimension-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dimension-header h5 {
+  margin: 0;
+  color: #374151;
+  font-weight: 600;
+}
+
+.dimension-score {
+  background: #00b3b0;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dimension-content {
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.action-plan-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.action-checkbox {
+  color: #00b3b0;
+  margin-top: 2px;
+}
+
+.action-item span {
+  color: #374151;
+  line-height: 1.5;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* History Table Styles */
+.history-table-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.history-table th {
+  background: linear-gradient(135deg, #00b3b0 0%, #00a8a5 100%);
+  color: white;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.history-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.history-table tr:hover {
+  background-color: #f8fafc;
+}
+
+.view-details-btn {
+  background: linear-gradient(135deg, #00b3b0 0%, #00a8a5 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.view-details-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 179, 176, 0.3);
+}
+
+.empty-state, .no-history-message, .loading-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-state i, .no-history-message i, .loading-message i {
+  font-size: 48px;
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.loading-spinner i {
+  color: #00b3b0;
+}
+
+@media (max-width: 768px) {
+  .intervention-modal {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .modal-content {
+    padding: 16px;
+  }
+  
+  .dimensions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .history-table {
+    font-size: 14px;
+  }
+  
+  .history-table th,
+  .history-table td {
+    padding: 12px 8px;
+  }
+}
   
   .assessment-type {
     font-size: 12px;
@@ -4999,7 +5316,6 @@ export default {
     padding: 10px 16px;
     font-size: 13px;
   }
-}
 
 @media (max-width: 480px) {
   .sidebar {

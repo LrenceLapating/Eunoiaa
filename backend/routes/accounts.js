@@ -8,6 +8,7 @@ const { supabase, supabaseAdmin } = require('../config/database');
 const { validateStudentData, sanitizeStudentData } = require('../utils/validation');
 const { computeAndStoreCollegeScores, getCollegeScores } = require('../utils/collegeScoring');
 const { archiveCollegeScores } = require('../utils/archiveCollegeScores');
+const { archiveCounselorInterventions } = require('../utils/archiveCounselorInterventions');
 const { verifyStudentSession } = require('../middleware/sessionManager');
 
 const router = express.Router();
@@ -555,14 +556,36 @@ router.post('/deactivate-students', async (req, res) => {
       console.error('Stack trace:', archiveError.stack);
     }
 
+    // Archive counselor interventions after deactivating students
+    console.log('🗂️ Starting counselor interventions archiving...');
+    let interventionArchiveResult = { success: false, archivedCount: 0 };
+    
+    try {
+      interventionArchiveResult = await archiveCounselorInterventions();
+      console.log('📋 Intervention archive function returned:', JSON.stringify(interventionArchiveResult, null, 2));
+
+      if (!interventionArchiveResult.success) {
+        console.error('❌ Error archiving counselor interventions:', interventionArchiveResult.error);
+        console.warn('⚠️ Student deactivation succeeded but counselor intervention archiving failed');
+      } else {
+        console.log('✅ Counselor interventions archived successfully:', interventionArchiveResult);
+        console.log(`📋 Archived ${interventionArchiveResult.archivedCount || 0} counselor intervention records`);
+      }
+    } catch (interventionArchiveError) {
+      console.error('💥 Exception during counselor intervention archiving:', interventionArchiveError);
+      console.error('Stack trace:', interventionArchiveError.stack);
+    }
+
     res.json({
       message: 'All active students have been deactivated successfully',
       deactivatedCount: data?.deactivated_students || 0,
       totalMovedAssessments: data?.total_moved_assessments || 0,
       archivedCollegeScores: archiveResult.archived_count || 0,
+      archivedCounselorInterventions: interventionArchiveResult.archivedCount || 0,
       details: {
         studentDeactivation: data,
-        collegeScoreArchiving: archiveResult
+        collegeScoreArchiving: archiveResult,
+        counselorInterventionArchiving: interventionArchiveResult
       }
     });
   } catch (error) {
@@ -635,6 +658,18 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
           console.error('❌ College score archiving failed:', archiveError);
           console.error('Stack trace:', archiveError.stack);
           console.warn('⚠️ Student deactivation succeeded but college score archiving failed');
+        }
+        
+        // Archive counselor interventions after deactivating students
+        console.log('🗂️ Starting counselor interventions archiving after student deactivation...');
+        try {
+          const interventionArchiveResult = await archiveCounselorInterventions();
+          console.log('✅ Counselor intervention archiving completed:', JSON.stringify(interventionArchiveResult, null, 2));
+          console.log(`📋 Archived ${interventionArchiveResult.archivedCount || 0} counselor intervention records`);
+        } catch (interventionArchiveError) {
+          console.error('❌ Counselor intervention archiving failed:', interventionArchiveError);
+          console.error('Stack trace:', interventionArchiveError.stack);
+          console.warn('⚠️ Student deactivation succeeded but counselor intervention archiving failed');
         }
         
         // Archive orphaned bulk assessments after deactivating students
