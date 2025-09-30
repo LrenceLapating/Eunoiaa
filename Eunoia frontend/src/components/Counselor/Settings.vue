@@ -247,6 +247,46 @@
         </div>
       </div>
     </div>
+
+    <!-- Semester Date Conflict Error Modal -->
+    <div v-if="showConflictModal" class="modal-overlay" @click="closeConflictModal">
+      <div class="modal-content error-modal" @click.stop>
+        <div class="modal-header error-header">
+          <h3>
+            <i class="fas fa-exclamation-triangle"></i>
+            Semester Date Conflict
+          </h3>
+          <button class="modal-close" @click="closeConflictModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="conflict-message">
+            <p><strong>The following semester date conflicts were detected:</strong></p>
+            <ul class="conflict-list">
+              <li v-for="conflict in dateConflicts" :key="conflict.id" class="conflict-item">
+                <i class="fas fa-calendar-times"></i>
+                {{ conflict.message }}
+              </li>
+            </ul>
+            <div class="conflict-help">
+              <p><strong>To resolve these conflicts:</strong></p>
+              <ul>
+                <li>Ensure each semester's end date is before the next semester's start date</li>
+                <li>Check that start dates are before end dates for each semester</li>
+                <li>Verify there are no overlapping date ranges between semesters</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary" @click="closeConflictModal">
+            <i class="fas fa-check"></i>
+            I'll Fix These Issues
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -264,6 +304,10 @@ export default {
       errorMessage: '',
       isLoading: false,
       isChangingPassword: false,
+      
+      // Modal states
+      showConflictModal: false,
+      dateConflicts: [],
       
       accountSettings: {
         fullName: '',
@@ -602,29 +646,12 @@ export default {
         return;
       }
       
-      // Validate semester dates
-      for (let i = 0; i < this.academicSettings.semesters.length; i++) {
-        const semester = this.academicSettings.semesters[i];
-        if (!semester.startDate || !semester.endDate) {
-          this.showError(`Please set both start and end dates for ${semester.name}`);
-          return;
-        }
-        
-        if (new Date(semester.startDate) >= new Date(semester.endDate)) {
-          this.showError(`End date must be after start date for ${semester.name}`);
-          return;
-        }
-      }
-      
-      // Check for overlapping semesters
-      for (let i = 0; i < this.academicSettings.semesters.length - 1; i++) {
-        const current = this.academicSettings.semesters[i];
-        const next = this.academicSettings.semesters[i + 1];
-        
-        if (new Date(current.endDate) >= new Date(next.startDate)) {
-          this.showError(`${current.name} and ${next.name} have overlapping dates`);
-          return;
-        }
+      // Check for date conflicts using the enhanced detection
+      const conflicts = this.detectDateConflicts();
+      if (conflicts.length > 0) {
+        this.dateConflicts = conflicts;
+        this.showConflictModal = true;
+        return;
       }
       
       this.isLoading = true;
@@ -660,6 +687,72 @@ export default {
       } finally {
         this.isLoading = false;
       }
+    },
+
+    detectDateConflicts() {
+      const conflicts = [];
+      
+      // Check each semester for basic date validation
+      for (let i = 0; i < this.academicSettings.semesters.length; i++) {
+        const semester = this.academicSettings.semesters[i];
+        
+        // Check if dates are missing
+        if (!semester.startDate || !semester.endDate) {
+          conflicts.push({
+            id: `missing-${i}`,
+            message: `${semester.name}: Missing start or end date`
+          });
+          continue;
+        }
+        
+        // Check if start date is after end date
+        const startDate = new Date(semester.startDate);
+        const endDate = new Date(semester.endDate);
+        
+        if (startDate >= endDate) {
+          conflicts.push({
+            id: `invalid-range-${i}`,
+            message: `${semester.name}: Start date (${this.formatDate(semester.startDate)}) must be before end date (${this.formatDate(semester.endDate)})`
+          });
+        }
+      }
+      
+      // Check for overlapping semesters (only if no basic validation errors)
+      if (conflicts.length === 0) {
+        for (let i = 0; i < this.academicSettings.semesters.length - 1; i++) {
+          const current = this.academicSettings.semesters[i];
+          const next = this.academicSettings.semesters[i + 1];
+          
+          if (current.startDate && current.endDate && next.startDate && next.endDate) {
+            const currentEnd = new Date(current.endDate);
+            const nextStart = new Date(next.startDate);
+            
+            if (currentEnd >= nextStart) {
+              conflicts.push({
+                id: `overlap-${i}`,
+                message: `${current.name} and ${next.name}: Overlapping dates (${current.name} ends ${this.formatDate(current.endDate)}, ${next.name} starts ${this.formatDate(next.startDate)})`
+              });
+            }
+          }
+        }
+      }
+      
+      return conflicts;
+    },
+
+    formatDate(dateString) {
+      if (!dateString) return 'N/A';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    },
+
+    closeConflictModal() {
+      this.showConflictModal = false;
+      this.dateConflicts = [];
     }
 
   }
@@ -1665,6 +1758,86 @@ export default {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Error Modal Styles */
+.error-modal {
+  max-width: 600px;
+}
+
+.error-header {
+  background: linear-gradient(135deg, var(--danger) 0%, #d32f2f 100%);
+  color: white;
+}
+
+.error-header h3 {
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-header .fas {
+  color: #ffeb3b;
+}
+
+.conflict-message {
+  color: var(--text);
+}
+
+.conflict-message p {
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.conflict-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 25px 0;
+}
+
+.conflict-item {
+  background: #ffebee;
+  border-left: 4px solid var(--danger);
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.conflict-item .fas {
+  color: var(--danger);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.conflict-help {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: var(--border-radius);
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.conflict-help p {
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.conflict-help ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.conflict-help li {
+  margin-bottom: 8px;
+  color: var(--text);
+  line-height: 1.4;
 }
 
 @media (max-width: 768px) {

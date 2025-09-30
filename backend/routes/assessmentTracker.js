@@ -11,13 +11,17 @@ const router = express.Router();
  */
 router.get('/incomplete', verifyCounselorSession, async (req, res) => {
   try {
-    const { college_id, counselor_id, assessment_type, page, limit } = req.query;
+    const { college_id, college, course, section, counselor_id, assessment_type, search, page, limit } = req.query;
     
     // Build filters object
     const filters = {};
     if (college_id) filters.college_id = college_id;
+    if (college) filters.college = college;
+    if (course) filters.course = course;
+    if (section) filters.section = section;
     if (counselor_id) filters.counselor_id = counselor_id;
     if (assessment_type) filters.assessment_type = assessment_type;
+    if (search) filters.search = search;
     
     // Build pagination object
     const pagination = {};

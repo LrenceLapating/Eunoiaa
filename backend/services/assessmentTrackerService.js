@@ -57,12 +57,29 @@ class AssessmentTrackerService {
         query = query.eq('students.college', filters.college_id);
       }
       
+      if (filters.college) {
+        query = query.eq('students.college', filters.college);
+      }
+      
+      if (filters.course) {
+        query = query.eq('students.course', filters.course);
+      }
+      
+      if (filters.section) {
+        query = query.eq('students.section', filters.section);
+      }
+      
       if (filters.counselor_id) {
         query = query.eq('bulk_assessments.counselor_id', filters.counselor_id);
       }
 
       if (filters.assessment_type) {
         query = query.eq('bulk_assessments.assessment_type', filters.assessment_type);
+      }
+      
+      if (filters.search) {
+        // Apply search filter to student name, email, or id_number
+        query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,id_number.ilike.%${filters.search}%`);
       }
 
       // Performance safeguard: Add timeout for long-running queries

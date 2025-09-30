@@ -124,7 +124,7 @@ export const ryff84ItemQuestionnaire = {
       id: 18,
       text: "I am quite good at managing the many responsibilities of my daily life.",
       dimension: "environmentalMastery",
-      reverse: true
+      reverse: false
     },
     {
       id: 19,
@@ -160,7 +160,7 @@ export const ryff84ItemQuestionnaire = {
       id: 24,
       text: "My daily life is busy, but I derive a sense of satisfaction from keeping up with everything.",
       dimension: "environmentalMastery",
-      reverse: true
+      reverse: false
     },
     {
       id: 25,
@@ -204,7 +204,7 @@ export const ryff84ItemQuestionnaire = {
       id: 31,
       text: "I am the kind of person who likes to give new things a try.",
       dimension: "personalGrowth",
-      reverse: true
+      reverse: false
     },
     {
       id: 32,
