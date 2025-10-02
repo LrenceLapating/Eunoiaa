@@ -924,12 +924,11 @@ router.post('/students', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: name, email, id_number, college, year_level, gender' });
     }
 
-    // Check if student with same ID number already exists
+    // Check if student with same ID number already exists (regardless of status)
     const { data: existingStudent, error: checkError } = await supabase
       .from('students')
-      .select('id')
+      .select('id, status, name, email')
       .eq('id_number', id_number)
-      .eq('status', 'active')
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -937,7 +936,39 @@ router.post('/students', async (req, res) => {
     }
 
     if (existingStudent) {
-      return res.status(409).json({ error: 'Student with this ID number already exists' });
+      if (existingStudent.status === 'active') {
+        // Student already exists and is active
+        return res.status(409).json({ error: 'Student with this ID number already exists' });
+      } else if (existingStudent.status === 'inactive') {
+        // Student exists but is inactive - reactivate and update information
+        const updatedStudentData = {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          section: section ? section.trim() : null,
+          college: college.trim(),
+          course: course ? course.trim() : null,
+          year_level: year_level,
+          semester: semester || '1st',
+          gender: gender,
+          status: 'active',
+          updated_at: new Date().toISOString()
+        };
+
+        const { data: updatedStudent, error: updateError } = await supabase
+          .from('students')
+          .update(updatedStudentData)
+          .eq('id', existingStudent.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+
+        return res.status(200).json({ 
+          message: 'Successfully updated', 
+          student: updatedStudent,
+          action: 'updated'
+        });
+      }
     }
 
     // Create new student
@@ -965,8 +996,9 @@ router.post('/students', async (req, res) => {
     if (error) throw error;
 
     res.status(201).json({ 
-      message: 'Student created successfully', 
-      student: data 
+      message: 'Successfully added', 
+      student: data,
+      action: 'added'
     });
   } catch (error) {
     console.error('Error creating student:', error);

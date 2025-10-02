@@ -1314,8 +1314,18 @@ export default {
         if (response.ok) {
           // Show success state
           this.addStudentLoadingState = 'success';
-          const action = this.editingStudentId ? 'updated' : 'added';
-          this.addStudentResultMessage = `Student ${action} successfully!`;
+          
+          // Use the action from backend response or fallback to edit check
+          const action = result.action || (this.editingStudentId ? 'updated' : 'added');
+          
+          // Set appropriate message based on action
+          if (action === 'updated') {
+            this.addStudentResultMessage = 'Successfully updated';
+          } else if (action === 'added') {
+            this.addStudentResultMessage = 'Successfully added';
+          } else {
+            this.addStudentResultMessage = `Student ${action} successfully!`;
+          }
           
           // Wait 2 seconds then close loading modal and refresh data
            setTimeout(async () => {
@@ -1327,7 +1337,11 @@ export default {
                await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
              }
 
-             this.showNotification(`Student ${action} successfully!`, 'success', 'fas fa-check-circle');
+             // Show notification with appropriate message
+             const notificationMessage = result.action === 'updated' ? 'Successfully updated' : 
+                                       result.action === 'added' ? 'Successfully added' : 
+                                       `Student ${action} successfully!`;
+             this.showNotification(notificationMessage, 'success', 'fas fa-check-circle');
              
              // Reset form
              this.resetStudentForm();

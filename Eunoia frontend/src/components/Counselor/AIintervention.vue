@@ -465,16 +465,18 @@ export default {
       ],
       riskThresholds: {
         'ryff_42': {
-          atRisk: 18,     // 7-18: At-Risk
-          moderate: 30,   // 19-30: Moderate, 31-42: Healthy
-          // Dimension-level thresholds
+          // Overall score thresholds (sum of all 6 dimensions: 42-252 range)
+          atRisk: 111,    // ≤111: At-Risk (42-111)
+          moderate: 181,  // 112-181: Moderate, ≥182: Healthy (182-252)
+          // Dimension-level thresholds (for individual dimensions: 7-42 range)
           q1: 18, // Below or equal to this is "At Risk" (7-18)
           q4: 30  // Above this is "Healthy" (31-42), moderate is 19-30
         },
         'ryff_84': {
-          atRisk: 36,     // 14-36: At-Risk
-          moderate: 59,   // 37-59: Moderate, 60-84: Healthy
-          // Dimension-level thresholds
+          // Overall score thresholds (sum of all 6 dimensions: 84-504 range)
+          atRisk: 223,    // ≤223: At-Risk (84-223)
+          moderate: 363,  // 224-363: Moderate, ≥364: Healthy (364-504)
+          // Dimension-level thresholds (for individual dimensions: 14-84 range)
           q1: 36, // Below or equal to this is "At Risk" (14-36)
           q4: 59  // Above or equal to this is "Healthy" (60-84)
         }
@@ -922,6 +924,15 @@ export default {
     // Utility methods
     calculateOverallScore(student) {
       if (!student) return 0;
+      // Debug logging to see what's in the student object
+      console.log('🔍 Student object:', {
+        id: student.id,
+        name: student.name,
+        overallScore: student.overallScore,
+        subscales: student.subscales,
+        assessmentType: student.assessmentType
+      });
+      
       // Return the overall_score directly from the database
       return student.overallScore || 0;
     },
@@ -978,19 +989,19 @@ export default {
     getDimensionScoreColor(score, student = null) {
       const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       if (score <= thresholds.q1) return '#f44336';  // Red for at risk
-      if (score < thresholds.q4) return '#ff9800';  // Orange for moderate
+      if (score <= thresholds.q4) return '#ff9800';  // Orange for moderate
       return '#4caf50';  // Green for healthy
     },
     getDimensionRiskClass(score, student = null) {
       const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       if (score <= thresholds.q1) return 'high-risk';
-      if (score < thresholds.q4) return 'medium-risk';
+      if (score <= thresholds.q4) return 'medium-risk';
       return 'low-risk';
     },
     getDimensionRiskLabel(score, student = null) {
       const thresholds = student ? this.getThresholdsForStudent(student) : this.riskThresholds['ryff_42'];
       if (score <= thresholds.q1) return 'At Risk';
-      if (score < thresholds.q4) return 'Moderate';
+      if (score <= thresholds.q4) return 'Moderate';
       return 'Healthy';
     },
     async viewStudentDetails(student) {
@@ -1377,21 +1388,41 @@ export default {
       const assessmentType = student?.assessmentType || 'ryff_42';
       const thresholds = this.riskThresholds[assessmentType];
       
-      if (overallScore <= thresholds.atRisk) return 'high-risk';
-      if (overallScore <= thresholds.moderate) return 'medium-risk';
+      // Debug logging to identify the issue
+      console.log('🔍 Overall Score Debug:', {
+        studentId: student?.id,
+        overallScore,
+        assessmentType,
+        thresholds,
+        atRiskThreshold: thresholds.atRisk,
+        moderateThreshold: thresholds.moderate
+      });
+      
+      if (overallScore <= thresholds.atRisk) {
+        console.log('🔴 Classified as high-risk');
+        return 'high-risk';
+      }
+      if (overallScore <= thresholds.moderate) {
+        console.log('🟠 Classified as medium-risk');
+        return 'medium-risk';
+      }
+      console.log('🟢 Classified as low-risk');
       return 'low-risk';
     },
     
     getRiskLevelForAPI(student) {
       const overallScore = this.calculateOverallScore(student);
       const atRiskCount = this.getAtRiskDimensionsCount(student);
+      const assessmentType = student?.assessmentType || 'ryff_42';
+      const thresholds = this.riskThresholds[assessmentType];
       
       // Determine risk level based on overall score and at-risk dimensions
-      if (atRiskCount >= 4 || overallScore <= this.riskThresholds.q1) {
+      // Use correct overall score thresholds, not dimension-level thresholds
+      if (atRiskCount >= 4 || overallScore <= thresholds.atRisk) {
         return 'high';
-      } else if (atRiskCount >= 2 || overallScore <= this.riskThresholds.q2) {
+      } else if (atRiskCount >= 2 || overallScore <= thresholds.moderate) {
         return 'moderate';
-      } else if (atRiskCount >= 1 || overallScore < this.riskThresholds.q4) {
+      } else if (atRiskCount >= 1) {
         return 'moderate';
       } else {
         return 'low';
@@ -1690,13 +1721,11 @@ export default {
         const score = student.subscales[dimension.key];
         if (score === undefined || score === null) return;
 
-        // Skip healthy dimensions (only show moderate and at-risk)
-        if (score > thresholds.q4) return; // Skip healthy dimensions
-
         // Determine risk level and number of strategies needed
         const isAtRisk = score <= thresholds.q1;
         const isModerate = score > thresholds.q1 && score <= thresholds.q4;
-        const strategiesNeeded = isAtRisk ? 2 : 1;
+        const isHealthy = score > thresholds.q4;
+        const strategiesNeeded = isAtRisk ? 2 : (isModerate ? 1 : 1); // Include healthy dimensions with 1 strategy
 
         let strategies = [];
 
