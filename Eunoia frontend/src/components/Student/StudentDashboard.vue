@@ -37,6 +37,14 @@
               <span>Guidance Feedback</span>
             </a>
           </li>
+          <li :class="{ active: currentView === 'contact-guidance' }">
+            <a @click="currentView = 'contact-guidance'; closeMobileNav()" class="menu-item">
+              <div class="menu-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <span>Contact Guidance</span>
+            </a>
+          </li>
           <li :class="{ active: currentView === 'settings' }">
             <a @click="currentView = 'settings'; closeMobileNav()" class="menu-item">
               <div class="menu-icon">
@@ -800,6 +808,12 @@
           </div>
         </div>
 
+        <!-- Contact Guidance View -->
+        <ContactGuidance 
+          v-if="currentView === 'contact-guidance'"
+          :student-profile="studentProfile"
+        />
+
         <!-- Settings View -->
         <div v-if="currentView === 'settings'" class="settings-view">
           <!-- Profile Information Section -->
@@ -971,13 +985,15 @@
 import authService from '@/services/authService'
 import AssessmentTaking from './AssessmentTaking.vue'
 import AssessmentComplete from './AssessmentComplete.vue'
+import ContactGuidance from './ContactGuidance.vue'
 import { apiUrl } from '../../utils/apiUtils.js'
 
 export default {
   name: 'StudentDashboard',
   components: {
     AssessmentTaking,
-    AssessmentComplete
+    AssessmentComplete,
+    ContactGuidance
   },
   data() {
     return {
@@ -1068,6 +1084,8 @@ export default {
           return 'Assessment Dashboard';
         case 'ai-interventions':
           return 'Guidance Feedback';
+        case 'contact-guidance':
+          return 'Contact Guidance';
         case 'settings':
           return 'Settings';
         default:
@@ -1080,6 +1098,8 @@ export default {
           return 'Complete your psychological well-being assessment';
         case 'ai-interventions':
           return 'View personalized guidance and recommendations from your counselor';
+        case 'contact-guidance':
+          return 'Send your concerns directly to your counselor';
         case 'settings':
           return 'Manage your account settings';
         default:
@@ -4259,6 +4279,28 @@ export default {
 }
 
 /* Responsive Design for AI Interventions */
+@media (max-width: 1200px) {
+  .guidance-feedback-view {
+    padding: 20px;
+  }
+  
+  .guidance-content {
+    max-width: 95%;
+  }
+  
+  .guidance-header {
+    padding: 20px;
+  }
+  
+  .summary-stats {
+    gap: 20px;
+  }
+  
+  .stat-item {
+    min-width: 90px;
+  }
+}
+
 @media (max-width: 768px) {
   /* Guidance Feedback View Mobile Styles */
   .guidance-feedback-view {
@@ -4310,6 +4352,24 @@ export default {
     font-size: 12px;
   }
   
+  /* Assessment Type Navigation Mobile */
+  .assessment-type-nav {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .nav-button {
+    width: 100%;
+    justify-content: center;
+    padding: 15px 20px;
+    font-size: 14px;
+  }
+  
+  .count-badge {
+    margin-left: auto;
+  }
+  
   /* Professional Intervention Cards Mobile */
   .professional-intervention-card {
     margin-bottom: 20px;
@@ -4348,6 +4408,12 @@ export default {
   .intervention-meta {
     gap: 15px;
     justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .overall-score, .dimension-scores {
+    flex: 1;
+    min-width: 120px;
   }
   
   .score-value {
@@ -4361,6 +4427,12 @@ export default {
   
   .dimension-section {
     margin-bottom: 20px;
+  }
+  
+  .dimension-header {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
   }
   
   .dimension-header h4 {
@@ -4429,45 +4501,202 @@ export default {
     text-align: center;
   }
   
-  .counselor-label {
-    font-size: 12px;
-  }
-  
-  .counselor-name {
-    font-size: 14px;
-  }
-  
-  .action-buttons {
+  .mark-read-btn {
     width: 100%;
     justify-content: center;
-  }
-  
-  .mark-reviewed-btn {
     padding: 12px 20px;
-    font-size: 14px;
-    width: 100%;
-    max-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .guidance-feedback-view {
+    padding: 10px;
   }
   
-  .reviewed-indicator {
-    justify-content: center;
-    font-size: 14px;
+  .guidance-header {
+    padding: 15px 10px;
+    margin-bottom: 15px;
   }
   
-  /* Loading and Empty States Mobile */
-  .loading-card, .empty-card {
-    padding: 30px 20px;
-    margin: 20px 0;
-  }
-  
-  .loading-card h3, .empty-card h3 {
+  .header-info h2 {
     font-size: 20px;
   }
   
-  .loading-card p, .empty-card p {
-    font-size: 14px;
-    line-height: 1.5;
+  .header-info p {
+    font-size: 13px;
   }
+  
+  .summary-stats {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .stat-item {
+    padding: 12px 8px;
+    min-width: auto;
+  }
+  
+  .stat-number {
+    font-size: 20px;
+  }
+  
+  .stat-label {
+    font-size: 11px;
+  }
+  
+  .nav-button {
+    padding: 12px 15px;
+    font-size: 13px;
+  }
+  
+  .professional-intervention-card {
+    margin-bottom: 15px;
+  }
+  
+  .intervention-header {
+    padding: 15px 10px;
+  }
+  
+  .student-details h3 {
+    font-size: 16px;
+  }
+  
+  .student-details p {
+    font-size: 12px;
+  }
+  
+  .intervention-content {
+    padding: 15px 10px;
+  }
+  
+  .dimension-header h4 {
+    font-size: 15px;
+  }
+  
+  .dimension-score {
+    font-size: 16px;
+  }
+  
+  .recommendation-item {
+    padding: 12px;
+  }
+  
+  .recommendation-title {
+    font-size: 14px;
+  }
+  
+  .recommendation-description {
+    font-size: 13px;
+  }
+  
+  .action-steps li {
+    font-size: 12px;
+  }
+  
+  .intervention-footer {
+    padding: 12px 10px;
+  }
+  
+  .mark-read-btn {
+    padding: 10px 15px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 320px) {
+  .guidance-feedback-view {
+    padding: 8px;
+  }
+  
+  .guidance-header {
+    padding: 12px 8px;
+  }
+  
+  .header-info h2 {
+    font-size: 18px;
+  }
+  
+  .header-info p {
+    font-size: 12px;
+  }
+  
+  .nav-button {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .intervention-header {
+    padding: 12px 8px;
+  }
+  
+  .student-details h3 {
+    font-size: 15px;
+  }
+  
+  .intervention-content {
+    padding: 12px 8px;
+  }
+  
+  .dimension-header h4 {
+    font-size: 14px;
+  }
+  
+  .recommendation-item {
+    padding: 10px;
+  }
+  
+  .recommendation-title {
+    font-size: 13px;
+  }
+  
+  .recommendation-description {
+    font-size: 12px;
+  }
+  
+  .intervention-footer {
+    padding: 10px 8px;
+  }
+}
+
+.counselor-label {
+  font-size: 12px;
+}
+
+.counselor-name {
+  font-size: 14px;
+}
+
+.action-buttons {
+  width: 100%;
+  justify-content: center;
+}
+
+.mark-reviewed-btn {
+  padding: 12px 20px;
+  font-size: 14px;
+  width: 100%;
+  max-width: 200px;
+}
+
+.reviewed-indicator {
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* Loading and Empty States Mobile */
+.loading-card, .empty-card {
+  padding: 30px 20px;
+  margin: 20px 0;
+}
+
+.loading-card h3, .empty-card h3 {
+  font-size: 20px;
+}
+
+.loading-card p, .empty-card p {
+  font-size: 14px;
+  line-height: 1.5;
+}
   
   .cta-button {
     padding: 12px 24px;
@@ -4523,7 +4752,7 @@ export default {
   .card-content {
     padding: 20px;
   }
-}
+
 
 /* Animations */
 @keyframes fadeIn {

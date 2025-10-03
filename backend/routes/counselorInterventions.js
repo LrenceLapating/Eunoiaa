@@ -733,6 +733,158 @@ router.put('/:id/action-plan', verifyCounselorSession, async (req, res) => {
   }
 });
 
+// PUT /api/counselor-interventions/:id/overall-strategy - Update overall strategy for an intervention
+router.put('/:id/overall-strategy', verifyCounselorSession, async (req, res) => {
+  try {
+    const counselorId = req.user.id;
+    const interventionId = req.params.id;
+    const { overallStrategy } = req.body;
+    
+    console.log('Updating overall strategy for intervention:', {
+      interventionId,
+      counselorId,
+      overallStrategyLength: overallStrategy?.length || 0
+    });
+    
+    // Validate input
+    if (!overallStrategy || typeof overallStrategy !== 'string' || overallStrategy.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Overall strategy must be a non-empty string'
+      });
+    }
+    
+    // Verify the intervention exists
+    const { data: intervention, error: fetchError } = await supabase
+      .from('counselor_interventions')
+      .select('id, counselor_id')
+      .eq('id', interventionId)
+      .single();
+    
+    if (fetchError || !intervention) {
+      console.error('Error fetching intervention:', fetchError);
+      return res.status(404).json({
+        success: false,
+        error: 'Intervention not found'
+      });
+    }
+    
+    console.log(`Allowing counselor ${counselorId} to update intervention originally created by ${intervention.counselor_id}`);
+    
+    // Update the overall strategy
+    const { data: updatedIntervention, error: updateError } = await supabase
+      .from('counselor_interventions')
+      .update({
+        overall_strategy: overallStrategy.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', interventionId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('Error updating overall strategy:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update overall strategy'
+      });
+    }
+    
+    console.log(`Overall strategy updated successfully for intervention ${interventionId}`);
+    
+    res.json({
+      success: true,
+      data: {
+        overall_strategy: updatedIntervention.overall_strategy
+      },
+      message: 'Overall strategy updated successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error updating overall strategy:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update overall strategy'
+    });
+  }
+});
+
+// PUT /api/counselor-interventions/:id/dimension-interventions - Update dimension interventions for an intervention
+router.put('/:id/dimension-interventions', verifyCounselorSession, async (req, res) => {
+  try {
+    const counselorId = req.user.id;
+    const interventionId = req.params.id;
+    const { dimensionInterventions } = req.body;
+    
+    console.log('Updating dimension interventions for intervention:', {
+      interventionId,
+      counselorId,
+      dimensionCount: dimensionInterventions ? Object.keys(dimensionInterventions).length : 0
+    });
+    
+    // Validate input
+    if (!dimensionInterventions || typeof dimensionInterventions !== 'object' || Array.isArray(dimensionInterventions)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Dimension interventions must be an object'
+      });
+    }
+    
+    // Verify the intervention exists
+    const { data: intervention, error: fetchError } = await supabase
+      .from('counselor_interventions')
+      .select('id, counselor_id')
+      .eq('id', interventionId)
+      .single();
+    
+    if (fetchError || !intervention) {
+      console.error('Error fetching intervention:', fetchError);
+      return res.status(404).json({
+        success: false,
+        error: 'Intervention not found'
+      });
+    }
+    
+    console.log(`Allowing counselor ${counselorId} to update intervention originally created by ${intervention.counselor_id}`);
+    
+    // Update the dimension interventions
+    const { data: updatedIntervention, error: updateError } = await supabase
+      .from('counselor_interventions')
+      .update({
+        dimension_interventions: dimensionInterventions,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', interventionId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('Error updating dimension interventions:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update dimension interventions'
+      });
+    }
+    
+    console.log(`Dimension interventions updated successfully for intervention ${interventionId}`);
+    
+    res.json({
+      success: true,
+      data: {
+        dimension_interventions: updatedIntervention.dimension_interventions
+      },
+      message: 'Dimension interventions updated successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error updating dimension interventions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update dimension interventions'
+    });
+  }
+});
+
 // Deactivate intervention and move to history
 router.post('/deactivate/:interventionId', verifyCounselorSession, async (req, res) => {
   try {

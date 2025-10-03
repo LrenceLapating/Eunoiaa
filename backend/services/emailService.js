@@ -135,6 +135,83 @@ class EmailService {
   isTemporaryPassword(password) {
     return password === this.temporaryPassword;
   }
+
+  /**
+   * Send contact guidance email from student to counselor
+   * @param {Object} emailData - Email information
+   * @param {string} emailData.to - Counselor email (gparas@uic.edu.ph)
+   * @param {string} emailData.from - Student email
+   * @param {string} emailData.fromName - Student name
+   * @param {string} emailData.subject - Email subject
+   * @param {string} emailData.message - Email message
+   * @returns {Promise<Object>} Result of email sending
+   */
+  async sendContactGuidanceEmail(emailData) {
+    try {
+      const { to, from, fromName, subject, message } = emailData;
+
+      if (!to || !from || !fromName || !subject || !message) {
+        throw new Error('Missing required email data');
+      }
+
+      // Validate recipient email (must be the counselor)
+      if (to !== 'gparas@uic.edu.ph') {
+        throw new Error('Invalid recipient email');
+      }
+
+      // Create formatted email content
+      const emailContent = `
+From: ${fromName} (${from})
+Subject: ${subject}
+
+Message:
+${message}
+
+---
+This message was sent through the EUNOIA Contact Guidance system.
+Student: ${fromName}
+Email: ${from}
+Sent at: ${new Date().toLocaleString()}
+      `.trim();
+
+      // Use Supabase Auth to send email (leveraging existing email configuration)
+      const { error: emailError } = await supabase.auth.signInWithOtp({
+        email: to,
+        options: {
+          data: {
+            type: 'contact_guidance',
+            from_student: from,
+            from_name: fromName,
+            subject: subject,
+            message: message,
+            email_content: emailContent
+          }
+        }
+      });
+
+      if (emailError) {
+        console.error('Contact guidance email error:', emailError);
+        return {
+          success: false,
+          error: `Failed to send contact guidance email: ${emailError.message}`
+        };
+      }
+
+      console.log(`✅ Contact guidance email sent successfully from ${from} (${fromName}) to ${to}`);
+      
+      return {
+        success: true,
+        message: `Contact guidance email sent successfully to ${to}`
+      };
+
+    } catch (error) {
+      console.error('Contact guidance email service error:', error);
+      return {
+        success: false,
+        error: `Contact guidance email service failed: ${error.message}`
+      };
+    }
+  }
 }
 
 module.exports = EmailService;

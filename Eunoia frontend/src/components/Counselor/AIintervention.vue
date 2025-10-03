@@ -310,15 +310,53 @@
           
           <!-- Overall Intervention -->
           <div class="intervention-section overall-intervention">
-            <h4><i class="fas fa-heart"></i> Overall Mental Health Strategy</h4>
+            <div class="section-header">
+              <h4><i class="fas fa-heart"></i> Overall Mental Health Strategy</h4>
+              <button 
+                class="edit-button" 
+                @click="isEditingOverallStrategy = !isEditingOverallStrategy"
+                :disabled="!getOverallIntervention(selectedStudent)"
+              >
+                <i :class="isEditingOverallStrategy ? 'fas fa-times' : 'fas fa-edit'"></i>
+                {{ isEditingOverallStrategy ? 'Cancel' : 'Edit' }}
+              </button>
+            </div>
             <div class="intervention-content">
-              <p>{{ getOverallIntervention(selectedStudent) }}</p>
+              <div v-if="!isEditingOverallStrategy">
+                <p>{{ getOverallIntervention(selectedStudent) }}</p>
+              </div>
+              <div v-else class="edit-mode">
+                <textarea 
+                  v-model="editableOverallStrategy"
+                  class="edit-textarea"
+                  rows="6"
+                  placeholder="Enter overall mental health strategy..."
+                ></textarea>
+                <div class="edit-actions">
+                  <button class="save-button" @click="saveOverallStrategy">
+                    <i class="fas fa-save"></i> Save
+                  </button>
+                  <button class="cancel-button" @click="isEditingOverallStrategy = false">
+                    <i class="fas fa-times"></i> Cancel
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Dimension Scores and Interventions -->
           <div class="dimensions-intervention">
-            <h4><i class="fas fa-brain"></i> Dimension Scores & Targeted Interventions</h4>
+            <div class="section-header">
+              <h4><i class="fas fa-brain"></i> Dimension Scores & Targeted Interventions</h4>
+              <button 
+                class="edit-button" 
+                @click="isEditingDimensionInterventions = !isEditingDimensionInterventions"
+                :disabled="!selectedStudent?.subscales || Object.keys(selectedStudent?.subscales || {}).length === 0"
+              >
+                <i :class="isEditingDimensionInterventions ? 'fas fa-times' : 'fas fa-edit'"></i>
+                {{ isEditingDimensionInterventions ? 'Cancel' : 'Edit' }}
+              </button>
+            </div>
             <div class="dimensions-grid">
               <div 
                 class="dimension-card" 
@@ -333,18 +371,36 @@
                   </span>
                 </div>
                 <div class="intervention-text" v-if="score !== undefined && score !== null">
-                  <p>{{ getDimensionIntervention(subscale, score) }}</p>
+                  <div v-if="!isEditingDimensionInterventions">
+                    <p>{{ getDimensionIntervention(subscale, score) }}</p>
+                  </div>
+                  <div v-else class="edit-mode">
+                    <textarea 
+                      v-model="editableDimensionInterventions[subscale]"
+                      class="edit-textarea dimension-textarea"
+                      rows="3"
+                      :placeholder="`Enter intervention for ${formatSubscaleName(subscale)}...`"
+                    ></textarea>
+                  </div>
                 </div>
                 <div class="no-data-text" v-else>
                   <p>No assessment data available for this dimension.</p>
                 </div>
               </div>
             </div>
+            <div v-if="isEditingDimensionInterventions" class="edit-actions dimension-edit-actions">
+              <button class="save-button" @click="saveDimensionInterventions">
+                <i class="fas fa-save"></i> Save All
+              </button>
+              <button class="cancel-button" @click="isEditingDimensionInterventions = false">
+                <i class="fas fa-times"></i> Cancel
+              </button>
+            </div>
           </div>
 
           <!-- Action Plan -->
           <div class="intervention-section action-plan">
-            <div class="action-plan-header">
+            <div class="section-header">
               <h4><i class="fas fa-clipboard-list"></i> Recommended Action Plan</h4>
               <button 
                 class="edit-button" 
@@ -427,6 +483,11 @@ export default {
       filteredCurrentStudents: [],
       editableActionPlan: [],
       isEditingActionPlan: false,
+      // New editing states for overall strategy and dimension interventions
+      editableOverallStrategy: '',
+      isEditingOverallStrategy: false,
+      editableDimensionInterventions: {},
+      isEditingDimensionInterventions: false,
       sentInterventions: new Set(), // Track students who have received interventions
       interventionReviewStatus: [], // Store review status for each student's intervention
       isLoading: false,
@@ -1012,6 +1073,8 @@ export default {
       
       this.selectedStudent = student;
       this.isEditingActionPlan = false;
+      this.isEditingOverallStrategy = false;
+      this.isEditingDimensionInterventions = false;
       this.showDetailsModal = true;
       
       // Fetch AI intervention for this student if not already loaded
@@ -1024,9 +1087,11 @@ export default {
         await this.generateInterventionForStudent(student.id);
       }
       
-      // Set action plan after intervention is loaded/generated
+      // Set all editable content after intervention is loaded/generated
       setTimeout(() => {
         this.updateEditableActionPlan();
+        this.updateEditableOverallStrategy();
+        this.updateEditableDimensionInterventions();
       }, 100);
     },
     
@@ -1095,6 +1160,108 @@ export default {
       } catch (error) {
         console.error('Error saving action plan:', error);
         this.showNotification('error', 'Error', 'Failed to save action plan. Please try again.');
+      }
+    },
+    
+    async saveOverallStrategy() {
+      if (!this.selectedStudent) return;
+      
+      try {
+        const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+        
+        if (!aiIntervention || !aiIntervention.id) {
+          // Try to fetch the intervention again if not found
+          await this.fetchAIInterventionForStudent(this.selectedStudent.id);
+          aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+          if (!aiIntervention || !aiIntervention.id) {
+            this.showNotification('error', 'Error', 'No intervention found to update. Please ensure an intervention has been generated for this student.');
+            return;
+          }
+        }
+        
+        const response = await fetch(apiUrl(`counselor-interventions/${aiIntervention.id}/overall-strategy`), {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            overallStrategy: this.editableOverallStrategy.trim()
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Update the stored intervention data
+          const updatedIntervention = {
+            ...aiIntervention,
+            overall_strategy: result.data.overall_strategy || this.editableOverallStrategy.trim()
+          };
+          this.aiGeneratedInterventions.set(this.selectedStudent.id, updatedIntervention);
+          
+          // Exit edit mode
+          this.isEditingOverallStrategy = false;
+          
+          // Show success notification
+          this.showNotification('success', 'Success', 'Overall strategy updated successfully!');
+        } else {
+          this.showNotification('error', 'Error', result.error || 'Failed to update overall strategy');
+        }
+      } catch (error) {
+        console.error('Error saving overall strategy:', error);
+        this.showNotification('error', 'Error', 'Failed to save overall strategy. Please try again.');
+      }
+    },
+
+    async saveDimensionInterventions() {
+      if (!this.selectedStudent) return;
+      
+      try {
+        const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+        
+        if (!aiIntervention || !aiIntervention.id) {
+          // Try to fetch the intervention again if not found
+          await this.fetchAIInterventionForStudent(this.selectedStudent.id);
+          aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+          if (!aiIntervention || !aiIntervention.id) {
+            this.showNotification('error', 'Error', 'No intervention found to update. Please ensure an intervention has been generated for this student.');
+            return;
+          }
+        }
+        
+        const response = await fetch(apiUrl(`counselor-interventions/${aiIntervention.id}/dimension-interventions`), {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            dimensionInterventions: this.editableDimensionInterventions
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Update the stored intervention data
+          const updatedIntervention = {
+            ...aiIntervention,
+            dimension_interventions: result.data.dimension_interventions || this.editableDimensionInterventions
+          };
+          this.aiGeneratedInterventions.set(this.selectedStudent.id, updatedIntervention);
+          
+          // Exit edit mode
+          this.isEditingDimensionInterventions = false;
+          
+          // Show success notification
+          this.showNotification('success', 'Success', 'Dimension interventions updated successfully!');
+        } else {
+          this.showNotification('error', 'Error', result.error || 'Failed to update dimension interventions');
+        }
+      } catch (error) {
+        console.error('Error saving dimension interventions:', error);
+        this.showNotification('error', 'Error', 'Failed to save dimension interventions. Please try again.');
       }
     },
     
@@ -1703,6 +1870,31 @@ export default {
         // No fallback - only show AI-generated content
         this.editableActionPlan = [];
         console.log('- Set editableActionPlan to empty array');
+      }
+    },
+
+    updateEditableOverallStrategy() {
+      if (!this.selectedStudent) return;
+      
+      const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+      
+      if (aiIntervention && aiIntervention.overall_strategy) {
+        this.editableOverallStrategy = aiIntervention.overall_strategy;
+      } else {
+        this.editableOverallStrategy = '';
+      }
+    },
+
+    updateEditableDimensionInterventions() {
+      if (!this.selectedStudent) return;
+      
+      const aiIntervention = this.aiGeneratedInterventions.get(this.selectedStudent.id);
+      
+      if (aiIntervention && aiIntervention.dimension_interventions) {
+        // Create a deep copy of dimension interventions
+        this.editableDimensionInterventions = JSON.parse(JSON.stringify(aiIntervention.dimension_interventions));
+      } else {
+        this.editableDimensionInterventions = {};
       }
     },
 
@@ -2738,14 +2930,14 @@ export default {
   border: 1px solid #c8e6c9;
 }
 
-.action-plan-header {
+.section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 20px 20px 0 20px;
 }
 
-.action-plan-header h4 {
+.section-header h4 {
   margin: 0;
   color: #2e7d32;
   font-size: 1.1rem;
@@ -3300,5 +3492,84 @@ export default {
   .notification-text p {
     font-size: 13px;
   }
+}
+
+/* Additional styles for new editing functionality */
+.edit-textarea {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
+}
+
+.edit-textarea:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.dimension-textarea {
+  min-height: 80px;
+  font-size: 0.85rem;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  justify-content: flex-end;
+}
+
+.dimension-edit-actions {
+  padding: 15px 20px;
+  border-top: 1px solid #e0e0e0;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.save-button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.save-button:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+}
+
+.cancel-button {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.cancel-button:hover {
+  background: #d32f2f;
+  transform: translateY(-1px);
+}
+
+.edit-mode {
+  margin-top: 10px;
 }
 </style>

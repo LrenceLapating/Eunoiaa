@@ -26,6 +26,7 @@ const yearlyTrendsRoutes = require('./routes/yearlyTrends');
 const demographicTrendsRoutes = require('./routes/demographicTrends');
 const academicSettingsRoutes = require('./routes/academicSettings');
 const assessmentTrackerRoutes = require('./routes/assessmentTracker');
+const contactGuidanceRoutes = require('./routes/contactGuidance');
 const { supabase } = require('./config/database');
 const { SessionManager } = require('./middleware/sessionManager');
 const autoInterventionService = require('./services/autoInterventionService');
@@ -204,6 +205,7 @@ app.use('/api/yearly-trends', yearlyTrendsRoutes);
 app.use('/api/demographic-trends', demographicTrendsRoutes);
 app.use('/api/academic-settings', academicSettingsRoutes);
 app.use('/api/assessment-tracker', assessmentTrackerRoutes);
+app.use('/api/student', contactGuidanceRoutes);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
