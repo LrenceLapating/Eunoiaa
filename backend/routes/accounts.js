@@ -10,6 +10,7 @@ const { computeAndStoreCollegeScores, getCollegeScores } = require('../utils/col
 const { archiveCollegeScores } = require('../utils/archiveCollegeScores');
 const { archiveCounselorInterventions } = require('../utils/archiveCounselorInterventions');
 const { verifyStudentSession } = require('../middleware/sessionManager');
+const EmailService = require('../services/emailService');
 
 const router = express.Router();
 
@@ -825,9 +826,23 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
     let processedCount = 0;
     let updatedCount = 0;
     let insertedCount = 0;
+    let emailsSent = 0;
+    let emailErrors = [];
+    
+    // Initialize email service
+    const emailService = new EmailService();
     
     for (const student of students) {
       try {
+        // Check if student already exists
+        const { data: existingStudent } = await supabase
+          .from('students')
+          .select('id, email')
+          .eq('id_number', student.id_number)
+          .single();
+
+        const isNewStudent = !existingStudent;
+
         // Use direct database upsert to include course field (same approach as Add New Student)
         const { data, error } = await supabase
           .from('students')
@@ -858,6 +873,28 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
             updatedCount++;
           } else {
             insertedCount++;
+            
+            // Send email only for new students
+            if (isNewStudent) {
+              try {
+                const emailResult = await emailService.sendTemporaryPasswordEmail({
+                  email: student.email,
+                  name: student.name,
+                  id_number: student.id_number
+                });
+                
+                if (emailResult.success) {
+                  emailsSent++;
+                  console.log(`✅ Email sent to ${student.email} for ${student.name}`);
+                } else {
+                  emailErrors.push(`Failed to send email to ${student.email}: ${emailResult.error}`);
+                  console.error(`❌ Email failed for ${student.email}:`, emailResult.error);
+                }
+              } catch (emailError) {
+                emailErrors.push(`Email error for ${student.email}: ${emailError.message}`);
+                console.error(`❌ Email service error for ${student.email}:`, emailError);
+              }
+            }
           }
         }
       } catch (error) {
@@ -875,13 +912,17 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
         studentsProcessed: processedCount,
         studentsInserted: insertedCount,
         studentsUpdated: updatedCount,
+        emailsSent: emailsSent,
+        emailErrors: emailErrors,
         errors: errors
       };
       
       // Include deactivation info if applicable
       if (deactivatePrevious) {
         partialResponse.studentsDeactivated = deactivatedCount;
-        partialResponse.message = `File processed with some errors. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
+        partialResponse.message = `File processed with some errors. ${deactivatedCount} previous students deactivated, ${processedCount} students processed, ${emailsSent} emails sent.`;
+      } else {
+        partialResponse.message = `File processed with some errors. ${processedCount} students processed, ${emailsSent} emails sent.`;
       }
       
       return res.status(207).json(partialResponse);
@@ -891,13 +932,17 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
       message: 'File uploaded and processed successfully',
       studentsProcessed: processedCount,
       studentsInserted: insertedCount,
-      studentsUpdated: updatedCount
+      studentsUpdated: updatedCount,
+      emailsSent: emailsSent,
+      emailErrors: emailErrors
     };
     
     // Include deactivation info if applicable
     if (deactivatePrevious) {
       response.studentsDeactivated = deactivatedCount;
-      response.message = `File uploaded successfully. ${deactivatedCount} previous students deactivated, ${processedCount} students processed.`;
+      response.message = `File uploaded successfully. ${deactivatedCount} previous students deactivated, ${processedCount} students processed, ${emailsSent} emails sent.`;
+    } else {
+      response.message = `File uploaded successfully. ${processedCount} students processed, ${emailsSent} emails sent.`;
     }
     
     res.json(response);
@@ -995,10 +1040,28 @@ router.post('/students', async (req, res) => {
 
     if (error) throw error;
 
+    // Send email to new student (same as CSV upload functionality)
+    const emailService = new EmailService();
+    const emailResult = await emailService.sendTemporaryPasswordEmail({
+      name: data.name,
+      email: data.email,
+      id_number: data.id_number
+    });
+
+    let emailStatus = '';
+    if (emailResult.success) {
+      console.log(`✅ Email sent successfully to ${data.email} for student ${data.name} (${data.id_number})`);
+      emailStatus = 'Email sent successfully';
+    } else {
+      console.error(`❌ Failed to send email to ${data.email}:`, emailResult.error);
+      emailStatus = `Email failed: ${emailResult.error}`;
+    }
+
     res.status(201).json({ 
       message: 'Successfully added', 
       student: data,
-      action: 'added'
+      action: 'added',
+      emailStatus: emailStatus
     });
   } catch (error) {
     console.error('Error creating student:', error);

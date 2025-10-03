@@ -33,16 +33,17 @@ router.post('/student/login', async (req, res) => {
 
     const student = students[0];
 
-    // Check password (for now, default password is 'student123')
+    // Check password (supports default, temporary, and custom passwords)
     const defaultPassword = 'student123';
+    const temporaryPassword = 'L3mb4y';
     let passwordValid = false;
 
     if (student.password_hash) {
       // If student has a custom password, check it
       passwordValid = await bcrypt.compare(password, student.password_hash);
     } else {
-      // Use default password
-      passwordValid = password === defaultPassword;
+      // Use default password or temporary password
+      passwordValid = password === defaultPassword || password === temporaryPassword;
     }
 
     if (!passwordValid) {
@@ -119,14 +120,15 @@ router.post('/student/change-password', async (req, res) => {
 
     const student = students[0];
 
-    // Verify current password
+    // Verify current password (supports default, temporary, and custom passwords)
     const defaultPassword = 'student123';
+    const temporaryPassword = 'L3mb4y';
     let currentPasswordValid = false;
 
     if (student.password_hash) {
       currentPasswordValid = await bcrypt.compare(currentPassword, student.password_hash);
     } else {
-      currentPasswordValid = currentPassword === defaultPassword;
+      currentPasswordValid = currentPassword === defaultPassword || currentPassword === temporaryPassword;
     }
 
     if (!currentPasswordValid) {
