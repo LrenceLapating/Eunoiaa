@@ -610,8 +610,7 @@
                   <span class="value">{{ dimensionData.totalScore }}/{{ dimensionData.maxPossibleScore }}</span>
                 </div>
                 <div class="score-item">
-                  <span class="label">Average Score:</span>
-                  <span class="value">{{ dimensionData.averageScore }}/6.0</span>
+                
                 </div>
                 <div class="score-item">
                   <span class="label">Questions:</span>

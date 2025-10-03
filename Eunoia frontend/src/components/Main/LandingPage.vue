@@ -63,11 +63,7 @@
                     <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                     <a href="#features" class="cta-button-outline">Explore Features</a>
                 </div>
-                <div class="hero-stats">
-                    <div class="stat-item wide-stat">
-                        <p class="stat-highlight">Out of <span class="counter" data-target="5000">0</span> institutions across the Philippines, <span class="counter" data-target="4000">0</span> have used the Ryff Scale as a tool to assess the well-being of both learners and staff.</p>
-                    </div>
-                </div>
+               
             </div>
             <div class="hero-graphic fade-in">
                 <div class="dimensions-container">
@@ -173,7 +169,7 @@
                         <i class="fas fa-clipboard-check"></i>
                     </div>
                     <h4>Ryff Scale Assessment</h4>
-                    <p>Validated psychological well-being evaluation using the Ryff Scale with multiple versions (42, 54, or 84 items) to suit different needs.</p>
+                    <p>Validated psychological well-being evaluation using the Ryff Scale with multiple versions (42 and 84 items) to suit different needs.</p>
                     <p class="feature-detail">Measures six dimensions of psychological well-being with scientific validity</p>
                 </div>
                 <div class="feature-card tilt-card fade-in">
@@ -317,10 +313,8 @@
                     <div class="step-number">1</div>
                     <div class="step-content">
                         <h4>Assessment Initiation</h4>
-                        <p>Counselors or HR personnel initiate assessments for individuals or groups, selecting the appropriate Ryff Scale version (42, 54, or 84 items).</p>
-                        <div class="step-icon">
-                            <i class="fas fa-clipboard-list"></i>
-                        </div>
+                        <p>Counselors or HR personnel initiate assessments for individuals or groups, selecting the appropriate Ryff Scale version (42 and 84 items).</p>
+                       
                     </div>
                 </div>
                 <div class="step fade-in">
@@ -328,9 +322,7 @@
                     <div class="step-content">
                         <h4>Adaptive Questionnaire</h4>
                         <p>Participants complete the digital assessment with progress tracking and adaptive features that minimize survey fatigue while maintaining validity.</p>
-                        <div class="step-icon">
-                            <i class="fas fa-tasks"></i>
-                        </div>
+                  
                     </div>
                 </div>
                 <div class="step fade-in">
@@ -338,9 +330,7 @@
                     <div class="step-content">
                         <h4>Automated Analysis</h4>
                         <p>EUNOIA processes responses using advanced algorithms and Compositional Data Analysis (CoDA) to generate nuanced well-being profiles.</p>
-                        <div class="step-icon">
-                            <i class="fas fa-cogs"></i>
-                        </div>
+                      
                     </div>
                 </div>
                 <div class="step fade-in">
@@ -348,9 +338,7 @@
                     <div class="step-content">
                         <h4>Professional Review</h4>
                         <p>Counselors review AI-generated insights and recommendations before they're shared with participants, ensuring professional oversight.</p>
-                        <div class="step-icon">
-                            <i class="fas fa-user-md"></i>
-                        </div>
+                       
                     </div>
                 </div>
                 <div class="step fade-in">
@@ -358,9 +346,7 @@
                     <div class="step-content">
                         <h4>Personalized Feedback</h4>
                         <p>Participants receive tailored feedback on their psychological well-being across all six Ryff dimensions with actionable recommendations.</p>
-                        <div class="step-icon">
-                            <i class="fas fa-comment-dots"></i>
-                        </div>
+                       
                     </div>
                 </div>
             </div>
@@ -641,21 +627,21 @@
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                         <h4>Our Location</h4>
-                        <p>Father Selga St, Davao City<br>Philippines 8000</p>
+                        <p>Bangkerohan Father Selga St, Davao City<br>Philippines 8000</p>
                     </div>
                     <div class="contact-card">
                         <div class="contact-icon">
                             <i class="fas fa-envelope"></i>
                         </div>
                         <h4>Email Us</h4>
-                        <p>info@eunoia-wellbeing.com<br>support@eunoia-wellbeing.com</p>
+                        <p>eunoia.uic2025@gmail.com</p>
                     </div>
                     <div class="contact-card">
                         <div class="contact-icon">
                             <i class="fas fa-phone-alt"></i>
                         </div>
                         <h4>Call Us</h4>
-                        <p>+63 (82) 123 4567<br>+63 (82) 987 6543</p>
+                        <p>09913046352</p>
                     </div>
                 </div>
                 <div class="contact-form fade-in">
@@ -708,21 +694,14 @@
                         <li><a href="#about">About</a></li>
                     </ul>
                 </div>
-                <div class="footer-column">
-                    <h4>Resources</h4>
-                    <ul>
-                        <li><a href="#">Blog</a></li>
-                        <li><a href="#">Research</a></li>
-                        <li><a href="#">Support</a></li>
-                        <li><a href="#">FAQ</a></li>
-                    </ul>
-                </div>
+               
                 <div class="footer-column">
                     <h4>Contact</h4>
                     <ul>
-                        <li><a href="mailto:info@eunoia-wellbeing.com">info@eunoia-wellbeing.com</a></li>
-                        <li><a href="tel:+6382123456">+63 (82) 123 4567</a></li>
-                        <li><a href="https://maps.google.com/?q=Father+Selga+St,+Davao+City">Father Selga St, Davao City</a></li>
+                        <li><a href="mailto:info@eunoia-wellbeing.com">eunoia.uic2025@gmail.com</a></li>
+                        <li><a href="tel:+6382123456">09913046352</a></li>
+                        <li><a href="https://maps.google.com/?q=Father+Selga+St,+Davao+City">Bangkerohan Father Selga St, Davao City
+Philippines 8000</a></li>
                     </ul>
                 </div>
             </div>
@@ -1809,7 +1788,7 @@ export default {
 .step {
     position: relative;
 }
-
+/*
 .step-icon {
     position: absolute;
     right: 0;
@@ -1826,7 +1805,7 @@ export default {
     font-size: 24px;
     opacity: 0.8;
 }
-
+*/
 /* Research Section */
 .research-section {
     padding: 100px 0;
@@ -3176,6 +3155,13 @@ export default {
   display: inline-block;
 }
 
+/* Desktop Logo Styles */
+.logo-svg {
+  height: 100px;
+  width: 60px;
+  margin-right: 10px;
+}
+
 /* Comprehensive Mobile Responsive Styles */
 @media (max-width: 768px) {
   /* Header Mobile Styles */
@@ -3220,8 +3206,8 @@ export default {
   }
 
   .logo-svg {
-    height: 36px;
-    width: 36px;
+    height: 48px;
+    width: 48px;
     margin-right: 8px;
   }
 

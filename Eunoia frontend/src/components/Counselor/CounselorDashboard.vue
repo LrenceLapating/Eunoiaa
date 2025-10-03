@@ -393,7 +393,7 @@ export default {
         case 'settings':
           return 'Settings';
         default:
-          return 'Dashboard Overview';
+          return 'Reports';
       }
     },
     pageSubtitle() {
@@ -418,7 +418,7 @@ export default {
         case 'settings':
           return 'Configure system preferences and account settings';
         default:
-          return 'Monitor well-being metrics across colleges';
+          return 'Generate and export individual or college well-being reports';
       }
     }
   },

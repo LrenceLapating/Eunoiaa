@@ -69,17 +69,15 @@
           <div class="form-actions">
             <button 
               class="send-btn" 
-              @click="sendEmail"
-              :disabled="!canSend || isSending"
+              @click="redirectToGmail"
+              :disabled="!canSend"
             >
-              <i v-if="!isSending" class="fas fa-paper-plane"></i>
-              <i v-else class="fas fa-spinner fa-spin"></i>
-              {{ isSending ? 'Sending...' : 'Send' }}
+              <i class="fas fa-external-link-alt"></i>
+              Redirect to Gmail
             </button>
             <button 
               class="clear-btn" 
               @click="clearForm"
-              :disabled="isSending"
             >
               <i class="fas fa-trash"></i>
               Clear
@@ -94,7 +92,6 @@
             <button 
               class="template-btn" 
               @click="useTemplate('appointment')"
-              :disabled="isSending"
             >
               <i class="fas fa-calendar"></i>
               Request Appointment
@@ -102,7 +99,6 @@
             <button 
               class="template-btn" 
               @click="useTemplate('concern')"
-              :disabled="isSending"
             >
               <i class="fas fa-exclamation-circle"></i>
               Share Concern
@@ -110,7 +106,6 @@
             <button 
               class="template-btn" 
               @click="useTemplate('question')"
-              :disabled="isSending"
             >
               <i class="fas fa-question-circle"></i>
               Ask Question
@@ -153,7 +148,6 @@ export default {
         subject: '',
         message: ''
       },
-      isSending: false,
       notification: {
         show: false,
         message: '',
@@ -201,40 +195,37 @@ export default {
       this.emailData.message = '';
     },
     
-    async sendEmail() {
+    redirectToGmail() {
       if (!this.canSend) return;
       
-      this.isSending = true;
+      // Prepare email data for Gmail
+      const recipientEmail = 'gparas@uic.edu.ph';
+      const subject = encodeURIComponent(this.emailData.subject);
+      const body = encodeURIComponent(
+        `From: ${this.studentName} (${this.studentEmail})\n\n` +
+        this.emailData.message
+      );
+      
+      // Create Gmail compose URL
+      const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${subject}&body=${body}`;
       
       try {
-        const response = await fetch(apiUrl('student/contact-guidance'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            to: 'gparas@uic.edu.ph',
-            from: this.studentEmail,
-            fromName: this.studentName,
-            subject: this.emailData.subject,
-            message: this.emailData.message
-          })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          this.showNotification('Message sent successfully!', 'success', 'fas fa-check-circle');
-          this.clearForm();
-        } else {
-          this.showNotification(result.error || 'Failed to send message', 'error', 'fas fa-exclamation-circle');
-        }
+        // Open Gmail compose in a new tab
+        window.open(gmailComposeUrl, '_blank');
+        this.showNotification('Redirected to Gmail! Please send your message from there.', 'success', 'fas fa-external-link-alt');
+        this.clearForm();
       } catch (error) {
-        console.error('Error sending email:', error);
-        this.showNotification('Network error. Please try again.', 'error', 'fas fa-exclamation-circle');
-      } finally {
-        this.isSending = false;
+        console.error('Error opening Gmail:', error);
+        // Fallback to mailto if Gmail URL fails
+        const mailtoLink = `mailto:${recipientEmail}?subject=${subject}&body=${body}`;
+        const link = document.createElement('a');
+        link.href = mailtoLink;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        this.showNotification('Opened default email client. Please send your message from there.', 'success', 'fas fa-envelope');
+        this.clearForm();
       }
     },
     

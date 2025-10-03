@@ -17,8 +17,8 @@
 
     <!-- Main Dashboard View -->
     <div class="dashboard-view" v-if="currentView === 'dashboard'">
-      <!-- Dashboard Header -->
-      <div class="dashboard-header">
+      <!-- Dashboard Header - Hidden but kept in DOM -->
+      <div class="dashboard-header" style="display: none;">
         <div class="header-content">
           <h2>AI Intervention Dashboard</h2>
           <p>Generate personalized interventions using AI for student mental wellness</p>
@@ -34,6 +34,14 @@
             <i class="fas fa-chevron-down"></i>
           </div>
         </div>
+      </div>
+
+      <!-- Back Button - Show when assessment type is selected -->
+      <div v-if="assessmentTypeFilter" class="dashboard-back-button">
+        <button class="back-button" @click="resetAssessmentType">
+          <i class="fas fa-arrow-left"></i>
+          Back
+        </button>
       </div>
 
       <!-- Loading State -->
@@ -306,39 +314,42 @@
                 <span class="score-value" :class="getOverallRiskClass(selectedStudent)">{{ calculateOverallScore(selectedStudent) }}/{{ getMaxPossibleScore(selectedStudent) }}</span>
               </div>
             </div>
+            <!-- Unified Edit Button -->
+            <div class="unified-edit-controls">
+              <button 
+                class="unified-edit-button" 
+                @click="toggleUnifiedEdit"
+                :class="{ 'editing': isEditingAll }"
+              >
+                <i :class="isEditingAll ? 'fas fa-save' : 'fas fa-edit'"></i>
+                {{ isEditingAll ? 'Save All' : 'Edit' }}
+              </button>
+              <button 
+                v-if="isEditingAll"
+                class="cancel-all-button" 
+                @click="cancelAllEdits"
+              >
+                <i class="fas fa-times"></i>
+                Cancel
+              </button>
+            </div>
           </div>
           
           <!-- Overall Intervention -->
-          <div class="intervention-section overall-intervention">
-            <div class="section-header">
-              <h4><i class="fas fa-heart"></i> Overall Mental Health Strategy</h4>
-              <button 
-                class="edit-button" 
-                @click="isEditingOverallStrategy = !isEditingOverallStrategy"
-                :disabled="!getOverallIntervention(selectedStudent)"
-              >
-                <i :class="isEditingOverallStrategy ? 'fas fa-times' : 'fas fa-edit'"></i>
-                {{ isEditingOverallStrategy ? 'Cancel' : 'Edit' }}
-              </button>
-            </div>
-            <div class="intervention-content">
-              <div v-if="!isEditingOverallStrategy">
-                <p>{{ getOverallIntervention(selectedStudent) }}</p>
-              </div>
-              <div v-else class="edit-mode">
-                <textarea 
-                  v-model="editableOverallStrategy"
-                  class="edit-textarea"
-                  rows="6"
-                  placeholder="Enter overall mental health strategy..."
-                ></textarea>
-                <div class="edit-actions">
-                  <button class="save-button" @click="saveOverallStrategy">
-                    <i class="fas fa-save"></i> Save
-                  </button>
-                  <button class="cancel-button" @click="isEditingOverallStrategy = false">
-                    <i class="fas fa-times"></i> Cancel
-                  </button>
+          <div class="overall-intervention-wrapper">
+            <h4 class="section-title-outside"><i class="fas fa-heart"></i> Overall Mental Health Strategy</h4>
+            <div class="intervention-section overall-intervention">
+              <div class="intervention-content">
+                <div v-if="!isEditingAll">
+                  <p>{{ getOverallIntervention(selectedStudent) }}</p>
+                </div>
+                <div v-else class="edit-mode">
+                  <textarea 
+                    v-model="editableOverallStrategy"
+                    class="edit-textarea"
+                    rows="6"
+                    placeholder="Enter overall mental health strategy..."
+                  ></textarea>
                 </div>
               </div>
             </div>
@@ -348,14 +359,6 @@
           <div class="dimensions-intervention">
             <div class="section-header">
               <h4><i class="fas fa-brain"></i> Dimension Scores & Targeted Interventions</h4>
-              <button 
-                class="edit-button" 
-                @click="isEditingDimensionInterventions = !isEditingDimensionInterventions"
-                :disabled="!selectedStudent?.subscales || Object.keys(selectedStudent?.subscales || {}).length === 0"
-              >
-                <i :class="isEditingDimensionInterventions ? 'fas fa-times' : 'fas fa-edit'"></i>
-                {{ isEditingDimensionInterventions ? 'Cancel' : 'Edit' }}
-              </button>
             </div>
             <div class="dimensions-grid">
               <div 
@@ -371,7 +374,7 @@
                   </span>
                 </div>
                 <div class="intervention-text" v-if="score !== undefined && score !== null">
-                  <div v-if="!isEditingDimensionInterventions">
+                  <div v-if="!isEditingAll">
                     <p>{{ getDimensionIntervention(subscale, score) }}</p>
                   </div>
                   <div v-else class="edit-mode">
@@ -388,32 +391,16 @@
                 </div>
               </div>
             </div>
-            <div v-if="isEditingDimensionInterventions" class="edit-actions dimension-edit-actions">
-              <button class="save-button" @click="saveDimensionInterventions">
-                <i class="fas fa-save"></i> Save All
-              </button>
-              <button class="cancel-button" @click="isEditingDimensionInterventions = false">
-                <i class="fas fa-times"></i> Cancel
-              </button>
-            </div>
           </div>
 
           <!-- Action Plan -->
           <div class="intervention-section action-plan">
             <div class="section-header">
               <h4><i class="fas fa-clipboard-list"></i> Recommended Action Plan</h4>
-              <button 
-                class="edit-button" 
-                @click="toggleEditActionPlan"
-                :class="{ 'editing': isEditingActionPlan }"
-              >
-                <i :class="isEditingActionPlan ? 'fas fa-save' : 'fas fa-edit'"></i>
-                {{ isEditingActionPlan ? 'Save' : 'Edit' }}
-              </button>
             </div>
             
             <!-- Read-only view -->
-            <div class="action-items" v-if="!isEditingActionPlan">
+            <div class="action-items" v-if="!isEditingAll">
               <!-- Show message if no action plan items -->
               <div v-if="editableActionPlan.length === 0" class="no-action-items">
                 <p>Good Job! You're doing great!</p>
@@ -449,7 +436,7 @@
               <button 
                 class="send-to-student-btn" 
                 @click="sendToStudent" 
-                :disabled="isEditingActionPlan || isSendingIntervention || hasInterventionSent(selectedStudent)"
+                :disabled="isEditingAll || isSendingIntervention || hasInterventionSent(selectedStudent)"
               >
                 <i class="fas" :class="isSendingIntervention ? 'fa-spinner fa-spin' : hasInterventionSent(selectedStudent) ? 'fa-check' : 'fa-paper-plane'"></i>
                 {{ 
@@ -488,6 +475,8 @@ export default {
       isEditingOverallStrategy: false,
       editableDimensionInterventions: {},
       isEditingDimensionInterventions: false,
+      // Unified editing state
+      isEditingAll: false,
       sentInterventions: new Set(), // Track students who have received interventions
       interventionReviewStatus: [], // Store review status for each student's intervention
       isLoading: false,
@@ -602,6 +591,13 @@ export default {
   },
   methods: {
 
+    // Reset assessment type to show selection prompt
+    resetAssessmentType() {
+      this.assessmentTypeFilter = '';
+      this.atRiskStudents = [];
+      this.moderateStudents = [];
+      this.healthyStudents = [];
+    },
 
     // Handle assessment type filter change
     async onAssessmentTypeChange() {
@@ -1082,7 +1078,7 @@ export default {
       
       // Check if intervention exists, if not, generate one automatically
       const aiIntervention = this.aiGeneratedInterventions.get(student.id);
-      if (!aiIntervention || (!aiIntervention.overallStrategy && Object.keys(aiIntervention.dimensionInterventions || {}).length === 0)) {
+      if (!aiIntervention || (!aiIntervention.overall_strategy && Object.keys(aiIntervention.dimension_interventions || {}).length === 0)) {
         console.log('No AI intervention found for student, generating automatically...');
         await this.generateInterventionForStudent(student.id);
       }
@@ -1199,6 +1195,9 @@ export default {
             overall_strategy: result.data.overall_strategy || this.editableOverallStrategy.trim()
           };
           this.aiGeneratedInterventions.set(this.selectedStudent.id, updatedIntervention);
+          
+          // Force Vue reactivity update
+          this.$forceUpdate();
           
           // Exit edit mode
           this.isEditingOverallStrategy = false;
@@ -1346,7 +1345,7 @@ export default {
     hasInterventionAvailable(student) {
       // Check if there's an AI-generated intervention available for this student (in memory)
       const aiIntervention = this.aiGeneratedInterventions.get(student?.id);
-      const hasInMemoryIntervention = aiIntervention && (aiIntervention.overallStrategy || Object.keys(aiIntervention.dimensionInterventions || {}).length > 0);
+      const hasInMemoryIntervention = aiIntervention && (aiIntervention.overall_strategy || Object.keys(aiIntervention.dimension_interventions || {}).length > 0);
       
       // Check if intervention exists in database
       const hasExistingIntervention = this.existingInterventions.has(student?.id);
@@ -1599,8 +1598,8 @@ export default {
     getOverallIntervention(student) {
       // Check if we have AI-generated intervention for this student
       const aiIntervention = this.aiGeneratedInterventions.get(student?.id);
-      if (aiIntervention && aiIntervention.overallStrategy) {
-        return aiIntervention.overallStrategy;
+      if (aiIntervention && aiIntervention.overall_strategy) {
+        return aiIntervention.overall_strategy;
       }
       
       // No fallback - only show AI-generated content
@@ -1660,9 +1659,9 @@ export default {
         return "Loading AI-generated intervention for this dimension...";
       }
       
-      if (aiIntervention.dimensionInterventions && aiIntervention.dimensionInterventions[subscale]) {
+      if (aiIntervention.dimension_interventions && aiIntervention.dimension_interventions[subscale]) {
         // AI intervention exists for this dimension
-        return aiIntervention.dimensionInterventions[subscale];
+        return aiIntervention.dimension_interventions[subscale];
       }
       
       // AI intervention was fetched but no intervention exists for this dimension
@@ -1756,8 +1755,8 @@ export default {
           const intervention = result.data;
           this.aiGeneratedInterventions.set(studentId, {
             id: intervention.id, // Include intervention ID for saving
-            overallStrategy: intervention.overall_strategy,
-            dimensionInterventions: intervention.dimension_interventions,
+            overall_strategy: intervention.overall_strategy, // Use snake_case consistently
+            dimension_interventions: intervention.dimension_interventions, // Use snake_case consistently
             action_plan: intervention.action_plan // Keep snake_case to match backend
           });
           
@@ -1769,16 +1768,16 @@ export default {
           // No intervention found for this student - set empty data to stop loading
           console.log('No AI intervention found for student:', studentId);
           this.aiGeneratedInterventions.set(studentId, {
-            overallStrategy: null,
-            dimensionInterventions: {},
+            overall_strategy: null, // Use snake_case consistently
+            dimension_interventions: {}, // Use snake_case consistently
             action_plan: [] // Keep snake_case to match backend
           });
         } else {
           console.error('Failed to fetch AI intervention:', result.error || 'Unknown error');
           // Set empty data to stop loading even on error
           this.aiGeneratedInterventions.set(studentId, {
-            overallStrategy: null,
-            dimensionInterventions: {},
+            overall_strategy: null, // Use snake_case consistently
+            dimension_interventions: {}, // Use snake_case consistently
             action_plan: [] // Keep snake_case to match backend
           });
         }
@@ -1786,9 +1785,9 @@ export default {
         console.error('Error fetching AI intervention for student:', error);
         // Set empty data to stop loading on network error
         this.aiGeneratedInterventions.set(studentId, {
-          overallStrategy: null,
-          dimensionInterventions: {},
-          actionPlan: []
+          overall_strategy: null, // Use snake_case consistently
+          dimension_interventions: {}, // Use snake_case consistently
+          action_plan: []
         });
       }
     },
@@ -1922,7 +1921,7 @@ export default {
         let strategies = [];
 
         // Try to get AI intervention for this dimension
-        const dimensionIntervention = aiIntervention?.dimensionInterventions?.[dimension.key];
+        const dimensionIntervention = aiIntervention?.dimension_interventions?.[dimension.key];
         
         if (dimensionIntervention && typeof dimensionIntervention === 'string') {
           // Extract strategies from AI intervention text
@@ -2008,6 +2007,56 @@ export default {
     setCachedData(cacheKey, data) {
       this.requestCache.set(cacheKey, data);
       this.lastRequestTime.set(cacheKey, Date.now());
+    },
+
+    // Unified edit methods
+    async toggleUnifiedEdit() {
+      if (this.isEditingAll) {
+        // Save all sections
+        await this.saveAllSections();
+      } else {
+        // Enter edit mode
+        this.isEditingAll = true;
+        // Set individual edit states for compatibility
+        this.isEditingOverallStrategy = true;
+        this.isEditingDimensionInterventions = true;
+        this.isEditingActionPlan = true;
+      }
+    },
+
+    cancelAllEdits() {
+      // Reset all edit states
+      this.isEditingAll = false;
+      this.isEditingOverallStrategy = false;
+      this.isEditingDimensionInterventions = false;
+      this.isEditingActionPlan = false;
+      
+      // Reset editable content to original values
+      this.updateEditableOverallStrategy();
+      this.updateEditableDimensionInterventions();
+      this.updateEditableActionPlan();
+    },
+
+    async saveAllSections() {
+      try {
+        // Save all three sections
+        await Promise.all([
+          this.saveOverallStrategy(),
+          this.saveDimensionInterventions(),
+          this.saveActionPlan()
+        ]);
+        
+        // Exit edit mode
+        this.isEditingAll = false;
+        this.isEditingOverallStrategy = false;
+        this.isEditingDimensionInterventions = false;
+        this.isEditingActionPlan = false;
+        
+        this.showNotification('success', 'Success', 'All sections updated successfully!');
+      } catch (error) {
+        console.error('Error saving all sections:', error);
+        this.showNotification('error', 'Error', 'Failed to save some sections. Please try again.');
+      }
     }
 
   },
@@ -2027,6 +2076,10 @@ export default {
   padding: 20px;
   background-color: #f8f9fa;
   min-height: 100vh;
+}
+
+.dashboard-back-button {
+  margin-bottom: 20px;
 }
 
 /* Header Styles */
@@ -2796,8 +2849,22 @@ export default {
 }
 
 /* Intervention Sections */
-.intervention-section {
+/* Section Title Outside Box */
+.section-title-outside {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.overall-intervention-wrapper {
   margin-bottom: 30px;
+}
+
+.intervention-section {
   background: white;
   border-radius: 10px;
   border: 1px solid #e0e0e0;
@@ -2819,7 +2886,7 @@ export default {
 }
 
 .intervention-content {
-  padding: 0 20px 20px 20px;
+  padding: 20px;
 }
 
 .intervention-content p {
@@ -3571,5 +3638,84 @@ export default {
 
 .edit-mode {
   margin-top: 10px;
+}
+
+/* Unified edit button styles */
+.unified-edit-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.unified-edit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.unified-edit-button.save-mode {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.unified-edit-button.save-mode:hover {
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.unified-cancel-button {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+}
+
+.unified-cancel-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+}
+
+.unified-edit-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cancel-all-button {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+}
+
+.cancel-all-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
 }
 </style>

@@ -367,13 +367,11 @@
                 >
               </div>
               <div class="form-group">
-                <label for="student-gender">Gender *</label>
+                <label for="student-gender">Sex *</label>
                 <select id="student-gender" v-model="studentForm.gender" required>
-                  <option value="">Select Gender</option>
+                  <option value="">Select Sex</option>
                   <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
+                  <option value="Female">Female</option>               
                 </select>
               </div>
             </div>

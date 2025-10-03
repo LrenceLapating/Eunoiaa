@@ -1,7 +1,7 @@
 <template>
   <div class="settings-container">
     <!-- Settings Header -->
-    <div class="settings-header">
+    <div class="settings-header" style="display: none;">
       <div class="header-content">
         <div class="header-icon">
           <i class="fas fa-cog"></i>

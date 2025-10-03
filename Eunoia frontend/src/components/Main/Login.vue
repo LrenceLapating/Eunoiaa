@@ -13,7 +13,7 @@
     <div class="login-left fade-in">
       <div class="login-form">
         <div class="logo" style="margin-bottom: 30px;">
-          <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="logo-svg">
+          <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="logo-svg" style="height: 100px; width: 60px;">
           <h1>EUNOIA</h1>
         </div>
         

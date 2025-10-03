@@ -2,7 +2,7 @@
   <div class="assessment-tracker">
     <!-- Header -->
     <div class="tracker-header">
-      <h2>Assessment Tracker</h2>
+     
     </div>
 
     <!-- Filters and Controls -->

@@ -7,7 +7,7 @@
       </div>
       <div class="header-content">
         <h1>Generate Reports</h1>
-        <p>Generate and export individual or college well-being reports</p>
+      
       </div>
     </div>
 
@@ -140,8 +140,7 @@
               />
               <span class="checkmark"></span>
               <span class="college-label">
-                <strong>{{ college.code }}</strong> - {{ college.name }}
-                <small>({{ college.studentCount }} students)</small>
+                <strong>{{ college.name }}</strong>
               </span>
             </label>
           </div>
@@ -835,14 +834,17 @@ export default {
               
               if (score !== 'N/A') {
                 const numericScore = parseFloat(score);
-                const percentageValue = (numericScore / dimensionMaxScore) * 100;
                 
-                if (percentageValue >= 70) {
+                // New logic: 7-18 = "at risk", 19-30 = "moderate", 31-42 = "healthy"
+                if (numericScore >= 31) {
                   healthStatus = 'Healthy';
                   statusColor = [39, 174, 96]; // Green
-                } else if (percentageValue >= 50) {
+                } else if (numericScore >= 19) {
                   healthStatus = 'Moderate';
                   statusColor = [243, 156, 18]; // Orange
+                } else if (numericScore >= 7) {
+                  healthStatus = 'At Risk';
+                  statusColor = [231, 76, 60]; // Red
                 } else {
                   healthStatus = 'At Risk';
                   statusColor = [231, 76, 60]; // Red
@@ -1358,9 +1360,9 @@ export default {
     },
     
     getDimensionHealthStatus(score, maxScore) {
-      const percentage = (score / maxScore) * 100;
-      if (percentage >= 70) return 'healthy';
-      if (percentage >= 50) return 'moderate';
+      // New logic: 7-18 = "at risk", 19-30 = "moderate", 31-42 = "healthy"
+      if (score >= 31) return 'healthy';
+      if (score >= 19) return 'moderate';
       return 'at risk';
     },
     
@@ -1382,8 +1384,8 @@ export default {
       const dimensions = ['autonomy', 'environmental_mastery', 'personal_growth', 'positive_relations', 'purpose_in_life', 'self_acceptance'];
       return dimensions.filter(dim => {
         const score = scores[dim] || 0;
-        const percentage = (score / maxScore) * 100;
-        return percentage < 70; // Consider moderate and at-risk as "at-risk"
+        // New logic: scores below 31 are considered at-risk or moderate (not healthy)
+        return score < 31;
       });
     },
     
