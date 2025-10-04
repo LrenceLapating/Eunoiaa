@@ -44,7 +44,7 @@
                 <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
               </button>
             </div>
-            <p class="password-hint">Default password for students: student123</p>
+          
           </div>
           
           <div class="remember-forgot">
