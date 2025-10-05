@@ -480,6 +480,16 @@
                   class="custom-section-input"
                 >
               </div>
+              <div class="form-group">
+                <label for="edit-student-gender">Gender *</label>
+                <select id="edit-student-gender" v-model="studentForm.gender" required>
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
             </div>
           </form>
         </div>
@@ -1084,7 +1094,9 @@ export default {
             course: student.course,
             section: student.section,
             email: student.email,
-            yearLevel: student.year_level
+            yearLevel: student.year_level,
+            gender: student.gender || '',
+            semester: student.semester || '1st Semester'
           }));
           this.emitStudentData();
         } else {
@@ -1156,10 +1168,24 @@ export default {
       };
       this.editingStudentId = user.id;
       
-      // Update available courses and sections for editing
-      this.onCollegeChange();
+      // Store the original values before updating dropdowns
+      const originalCourse = this.studentForm.course;
+      const originalSection = this.studentForm.section;
+      
+      // Update available courses based on existing student data
+      this.availableCourses = [];
+      this.availableSections = [];
+      this.updateAvailableCourses();
+      
+      // Restore the original values after updating dropdowns
+      this.studentForm.course = originalCourse;
+      this.studentForm.section = originalSection;
+      
+      // Update available sections for the current course
       if (this.studentForm.course) {
         this.updateAvailableSections();
+        // Restore section again after updating available sections
+        this.studentForm.section = originalSection;
       }
       
       this.showEditStudentModal = true;
@@ -1172,10 +1198,8 @@ export default {
       this.availableCourses = [];
       this.availableSections = [];
       
-      // Update available courses based on selected college
-      if (this.studentForm.college && this.courseMapping[this.studentForm.college]) {
-        this.availableCourses = this.courseMapping[this.studentForm.college];
-      }
+      // Update available courses based on existing student data
+      this.updateAvailableCourses();
     },
 
     onCourseChange() {
@@ -1191,13 +1215,52 @@ export default {
       this.updateAvailableSections();
     },
 
+    updateAvailableCourses() {
+      if (this.studentForm.college) {
+        // Get existing courses from student data that match the selected college
+        const existingCourses = this.users
+          .filter(student => student.college === this.studentForm.college)
+          .map(student => student.course)
+          .filter(course => course && course.trim() !== '');
+        
+        // Remove duplicates and sort
+        const uniqueCourses = [...new Set(existingCourses)].sort();
+        
+        // Map to course objects with code and name (assuming course is stored as full name)
+        this.availableCourses = uniqueCourses.map(course => ({
+          code: course,
+          name: course
+        }));
+        
+        // If no existing courses found, fallback to courseMapping
+        if (this.availableCourses.length === 0 && this.courseMapping[this.studentForm.college]) {
+          this.availableCourses = this.courseMapping[this.studentForm.college];
+        }
+      }
+    },
+
     updateAvailableSections() {
       if (this.studentForm.course && this.studentForm.year_level) {
-        // Generate sections based on course and year level
-        const sections = ['A', 'B', 'C'];
-        this.availableSections = sections.map(section => 
-          `${this.studentForm.course}-${this.studentForm.year_level}${section}`
-        );
+        // Get existing sections from student data that match the selected course and year level
+        const existingSections = this.users
+          .filter(student => 
+            student.college === this.studentForm.college && 
+            student.course === this.studentForm.course &&
+            student.yearLevel === this.studentForm.year_level
+          )
+          .map(student => student.section)
+          .filter(section => section && section !== 'N/A' && section.trim() !== '');
+        
+        // Remove duplicates and sort
+        this.availableSections = [...new Set(existingSections)].sort();
+        
+        // If no existing sections found, provide default sections as fallback
+        if (this.availableSections.length === 0) {
+          const sections = ['A', 'B', 'C'];
+          this.availableSections = sections.map(section => 
+            `${this.studentForm.course}-${this.studentForm.year_level}${section}`
+          );
+        }
       }
     },
 

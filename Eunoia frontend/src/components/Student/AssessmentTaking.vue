@@ -1,9 +1,9 @@
 <template>
   <div class="assessment-container fullscreen-assessment">
-    <!-- Exit Button -->
-    <button class="exit-btn" @click="exitAssessment" title="Return to Dashboard">
+    <!-- Exit Button - Hidden as requested -->
+    <!-- <button class="exit-btn" @click="exitAssessment" title="Return to Dashboard">
       <i class="fas fa-times"></i>
-    </button>
+    </button> -->
     
     <!-- Header Section -->
     <div class="assessment-header">
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Scale Reference -->
-    <div class="scale-reference">
+    <!-- <div class="scale-reference">
       <h3>Rating Scale:</h3>
       <div class="scale-items">
         <div v-for="(label, value) in questionnaire.instructions.scale" :key="value" class="scale-item">
@@ -33,17 +33,18 @@
           <span class="scale-label">{{ label }}</span>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- Question Section -->
     <div class="question-section">
       <div class="question-card">
         <div class="question-header">
           <span class="question-number">Q{{ currentQuestionIndex + 1 }}</span>
-          <div class="dimension-info">
+          <!-- Dimension info hidden as requested -->
+          <!-- <div class="dimension-info">
             <span class="dimension-name">{{ currentQuestionDimension.toUpperCase() }}</span>
             <span class="dimension-question-number">{{ currentQuestion.id }}</span>
-          </div>
+          </div> -->
         </div>
         
         <div class="question-text">
@@ -55,9 +56,10 @@
             <div 
               v-for="option in 6" 
               :key="option"
+              :data-value="option"
               class="rating-option"
               :class="{ 'selected': responses[currentQuestion.id] === option }"
-              @click="selectResponse(option)"
+              @click="selectResponse(option, $event)"
             >
               <div class="rating-circle">
                 <span class="rating-number">{{ option }}</span>
@@ -100,7 +102,6 @@
         <button 
           v-if="currentQuestionIndex < totalQuestions - 1"
           class="nav-btn next-btn"
-          :disabled="!responses[currentQuestion.id]"
           @click="nextQuestion"
         >
           Next
@@ -111,7 +112,7 @@
           v-else
           class="nav-btn submit-btn"
           :disabled="!isAssessmentComplete"
-          @click="submitAssessment"
+          @click="submitAssessment()"
         >
           <i class="fas fa-check"></i>
           Submit Assessment
@@ -147,6 +148,64 @@
         <p>Submitting your assessment...</p>
       </div>
     </div>
+
+    <!-- Animated Emoji Component -->
+    <AnimatedEmoji ref="animatedEmoji" />
+
+    <!-- Custom Submission Confirmation Modal -->
+    <div v-if="showSubmissionModal" class="modal-overlay" @click="closeSubmissionModal">
+      <div class="modal-container" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">
+            <i class="fas fa-check-circle"></i>
+            Submit Assessment
+          </h3>
+        </div>
+        
+        <div class="modal-body">
+          <div v-if="unansweredQuestions > 0" class="warning-section">
+            <div class="warning-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="warning-content">
+              <p class="warning-title">Incomplete Assessment</p>
+              <p class="warning-message">
+                You have <strong>{{ unansweredQuestions }}</strong> unanswered question{{ unansweredQuestions > 1 ? 's' : '' }}.
+              </p>
+              <p class="warning-note">
+                Are you sure you want to submit your assessment with incomplete answers?
+              </p>
+            </div>
+          </div>
+          
+          <div v-else class="success-section">
+            <div class="success-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="success-content">
+              <p class="success-title">Assessment Complete</p>
+              <p class="success-message">
+                All {{ totalQuestions }} questions have been answered.
+              </p>
+              <p class="success-note">
+                Are you ready to submit your assessment? This action cannot be undone.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="modal-btn cancel-btn" @click="closeSubmissionModal">
+            <i class="fas fa-times"></i>
+            Cancel
+          </button>
+          <button class="modal-btn confirm-btn" @click="confirmSubmission" :class="{ 'warning': unansweredQuestions > 0 }">
+            <i class="fas fa-paper-plane"></i>
+            {{ unansweredQuestions > 0 ? 'Submit Anyway' : 'Submit Assessment' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -155,9 +214,13 @@ import { ryff42ItemQuestionnaire } from '@/assets/ryff42ItemQuestionnaire'
 import { ryff84ItemQuestionnaire } from '@/assets/ryff84ItemQuestionnaire'
 import authService from '@/services/authService'
 import { apiUrl } from '@/utils/apiUtils.js'
+import AnimatedEmoji from './AnimatedEmoji.vue'
 
 export default {
   name: 'AssessmentTaking',
+  components: {
+    AnimatedEmoji
+  },
   props: {
     assessmentType: {
       type: String,
@@ -173,11 +236,14 @@ export default {
     return {
       currentQuestionIndex: 0,
       responses: {},
-      isSubmitting: false,
-      showCompletionSummary: false,
       startTime: null,
       questionStartTimes: {},
-
+      isSubmitting: false,
+      showCompletionSummary: false,
+      showSubmissionModal: false, // For custom submission confirmation modal
+      autoSaveInterval: null,
+      saveProgressTimeout: null, // For debounced saving
+      emojiId: 1
     }
   },
   computed: {
@@ -260,12 +326,24 @@ export default {
     
     // Load any existing progress
     await this.loadProgress()
+    
+    // Add keyboard event listener for number keys 1-6
+    document.addEventListener('keydown', this.handleKeyboardInput)
   },
   beforeUnmount() {
     if (this.autoSaveInterval) {
       clearInterval(this.autoSaveInterval)
     }
+    
+    // Clear debounced save timeout
+    if (this.saveProgressTimeout) {
+      clearTimeout(this.saveProgressTimeout)
+    }
+    
     this.saveProgress()
+    
+    // Remove keyboard event listener
+    document.removeEventListener('keydown', this.handleKeyboardInput)
   },
   methods: {
     // Fisher-Yates shuffle algorithm to randomize question order
@@ -278,8 +356,19 @@ export default {
       return shuffled
     },
     
-    selectResponse(value) {
+    selectResponse(value, event) {
       this.responses[this.currentQuestion.id] = value
+      
+      // Debounced auto-save to prevent excessive API calls
+      this.debouncedSaveProgress()
+      
+      // Trigger emoji animation at click position
+      if (this.$refs.animatedEmoji && event) {
+        const rect = event.currentTarget.getBoundingClientRect()
+        const clickX = rect.left + rect.width / 2
+        const clickY = rect.top + rect.height / 2
+        this.$refs.animatedEmoji.triggerEmoji(value, clickX, clickY)
+      }
       
       // Auto-advance to next question immediately
       if (this.currentQuestionIndex < this.totalQuestions - 1) {
@@ -289,31 +378,64 @@ export default {
       }
     },
     
+    // Debounced save function to prevent excessive API calls
+    debouncedSaveProgress() {
+      if (this.saveProgressTimeout) {
+        clearTimeout(this.saveProgressTimeout)
+      }
+      
+      this.saveProgressTimeout = setTimeout(() => {
+        this.saveProgress()
+      }, 1000) // Save after 1 second of inactivity
+    },
+    
+    handleKeyboardInput(event) {
+      // Only handle keyboard input if not in an input field or textarea
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return
+      }
+      
+      // Handle number keys 1-6 for answer selection
+      const keyPressed = event.key
+      if (keyPressed >= '1' && keyPressed <= '6') {
+        event.preventDefault()
+        const answerValue = parseInt(keyPressed)
+        
+        // Optimized DOM query - cache the selector
+        const optionButton = document.querySelector(`[data-value="${answerValue}"]`)
+        if (optionButton && this.$refs.animatedEmoji) {
+          const rect = optionButton.getBoundingClientRect()
+          const clickX = rect.left + rect.width / 2
+          const clickY = rect.top + rect.height / 2
+          this.$refs.animatedEmoji.triggerEmoji(answerValue, clickX, clickY)
+        }
+        
+        this.selectResponse(answerValue)
+      }
+    },
     nextQuestion() {
       if (this.currentQuestionIndex < this.totalQuestions - 1) {
         this.currentQuestionIndex++
         this.questionStartTimes[this.currentQuestion.id] = new Date()
       }
     },
-    
     previousQuestion() {
       if (this.currentQuestionIndex > 0) {
         this.currentQuestionIndex--
         this.questionStartTimes[this.currentQuestion.id] = new Date()
       }
     },
-    
-    goToQuestion(index) {
-      this.currentQuestionIndex = index
-      this.questionStartTimes[this.currentQuestion.id] = new Date()
+    async submitAssessment() {
+      // Show custom modal instead of browser confirm
+      this.showSubmissionModal = true
     },
     
-    async submitAssessment() {
-      if (!this.isAssessmentComplete) {
-        alert('Please answer all questions before submitting.')
-        return
-      }
-      
+    closeSubmissionModal() {
+      this.showSubmissionModal = false
+    },
+    
+    async confirmSubmission() {
+      this.showSubmissionModal = false
       this.isSubmitting = true
       
       try {
@@ -341,7 +463,8 @@ export default {
         
         console.log('Submitting assessment with timing data:', {
           timeTakenMinutes,
-          totalQuestions: Object.keys(this.responses).length
+          totalQuestions: Object.keys(this.responses).length,
+          unansweredQuestions: this.unansweredQuestions
         })
         
         const response = await fetch(apiUrl(`student-assessments/submit/${this.assignedAssessmentId}`), {
@@ -375,11 +498,23 @@ export default {
             endTime: endTime.toISOString()
           })
         } else {
-          throw new Error('Failed to submit assessment')
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Failed to submit assessment')
         }
       } catch (error) {
         console.error('Error submitting assessment:', error)
-        alert('There was an error submitting your assessment. Please try again.')
+        
+        // More detailed error handling
+        let errorMessage = 'There was an error submitting your assessment. '
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage += 'Please check your internet connection and try again.'
+        } else if (error.message.includes('timeout')) {
+          errorMessage += 'The request timed out. Please try again.'
+        } else {
+          errorMessage += 'Please try again or contact support if the problem persists.'
+        }
+        
+        alert(errorMessage)
       } finally {
         this.isSubmitting = false
       }
@@ -398,10 +533,16 @@ export default {
         return
       }
       
+      // Safety check: validate responses data
+      if (typeof this.responses !== 'object' || this.responses === null) {
+        console.error('Invalid responses data structure')
+        return
+      }
+      
       try {
         const progressData = {
-          currentQuestionIndex: this.currentQuestionIndex,
-          responses: this.responses,
+          currentQuestionIndex: Math.max(0, Math.min(this.currentQuestionIndex, this.totalQuestions - 1)),
+          responses: this.sanitizeResponses(this.responses),
           startTime: this.startTime,
           assessmentType: `ryff_${this.assessmentType}`
         }
@@ -427,9 +568,38 @@ export default {
         }
       } catch (error) {
         console.error('Error saving progress:', error)
+        // Don't show alert for save errors to avoid disrupting user experience
       }
     },
     
+    // Sanitize responses to ensure data integrity
+    sanitizeResponses(responses) {
+      const sanitized = {}
+      
+      Object.keys(responses).forEach(questionId => {
+        const response = responses[questionId]
+        
+        // Validate response is a number between 1-6
+        if (typeof response === 'number' && response >= 1 && response <= 6 && Number.isInteger(response)) {
+          sanitized[questionId] = response
+        } else {
+          console.warn(`Invalid response for question ${questionId}:`, response)
+        }
+      })
+      
+      return sanitized
+    },
+    
+    // Safe question navigation with bounds checking
+    goToQuestion(index) {
+      if (typeof index !== 'number' || index < 0 || index >= this.totalQuestions) {
+        console.warn('Invalid question index:', index)
+        return
+      }
+      
+      this.currentQuestionIndex = index
+      this.questionStartTimes[this.currentQuestion.id] = new Date()
+    },
     async loadProgress() {
       if (!this.assignedAssessmentId) {
         console.warn('Cannot load progress: no assignedAssessmentId')
@@ -528,64 +698,66 @@ export default {
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 20px;
+  align-items: flex-start; /* Align items to the top */
+  max-width: 1200px; /* Limit content width */
+  margin: 0 auto; /* Center the content */
+  gap: 20px; /* Add gap between assessment info and progress */
 }
 
 .assessment-info {
-  flex: 1;
+  flex-grow: 1;
+  /* margin-right: 20px; Removed as gap handles spacing */
 }
 
 .assessment-title {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 2.2rem; /* Slightly larger font size */
+  font-weight: 700;
   color: #212529;
-  margin: 0 0 4px 0;
-  line-height: 1.3;
+  margin: 0 0 10px 0; /* Adjusted margin */
+  line-height: 1.2;
 }
 
 .assessment-description {
-  font-size: 0.9rem;
+  font-size: 1.05rem; /* Slightly larger font size */
   color: #6c757d;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.6;
 }
 
 .progress-section {
-  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* Align progress text and bar to the right */
+  min-width: 180px; /* Ensure progress section has enough space */
+  text-align: right; /* Align text within progress section to the right */
 }
 
 .progress-info {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem; /* Slightly larger font size */
+  color: #495057;
   margin-bottom: 8px;
 }
 
-.progress-text {
-  font-size: 0.875rem;
-  color: #495057;
-  font-weight: 500;
-}
-
 .progress-percentage {
-  font-size: 0.875rem;
   font-weight: 600;
   color: #0d6efd;
 }
 
 .progress-bar {
-  height: 4px;
+  width: 150px;
+  height: 8px;
   background: #e9ecef;
-  border-radius: 2px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: #0d6efd;
-  border-radius: 2px;
-  transition: width 0.3s ease;
+  background: linear-gradient(to right, #0d6efd, #00bfff);
+  border-radius: 4px;
+  transition: width 0.3s ease-in-out;
 }
 
 .scale-reference {
@@ -872,8 +1044,30 @@ export default {
 }
 
 .indicator-dot.unanswered {
-  background: #e9ecef;
-  border-color: #dee2e6;
+  background: #fff3cd;
+  border-color: #ffc107;
+  position: relative;
+  animation: pulse-warning 2s infinite;
+}
+
+.indicator-dot.unanswered::after {
+  content: '!';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 6px;
+  font-weight: bold;
+  color: #856404;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2);
+  }
 }
 
 .indicator-dot.current {
@@ -969,172 +1163,415 @@ export default {
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .assessment-container {
-    padding: 0;
+/* Custom Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+  
+  .modal-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    animation: slideUp 0.3s ease-out;
   }
-
-  .fullscreen-assessment {
-    padding: 0;
-  }
-
-  .assessment-header {
-    padding: 16px 20px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    gap: 16px;
+  
+  .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px;
     text-align: center;
   }
-
-  .progress-section {
-    min-width: auto;
-    width: 100%;
-  }
-
-  .assessment-title {
-    font-size: 1.25rem;
-  }
-
-  .question-card {
-    padding: 20px;
-  }
-
-  .question-text {
-    font-size: 1rem;
-  }
-
-  .rating-scale {
-    flex-direction: column;
-    gap: 8px;
-    max-width: 300px;
-  }
-
-  .rating-option {
-    flex-direction: row;
-    justify-content: flex-start;
-    padding: 10px 12px;
-  }
-
-  .rating-circle {
-    width: 28px;
-    height: 28px;
-    font-size: 0.875rem;
-  }
-
-  .rating-label {
-    font-size: 0.875rem;
-    text-align: left;
-  }
-
-  .navigation-section {
-    padding: 16px 20px;
-  }
-
-  .nav-buttons {
+  
+  .modal-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 12px;
   }
-
-  .nav-btn {
-    padding: 8px 16px;
-    font-size: 0.875rem;
-    min-width: 100px;
+  
+  .modal-title i {
+    font-size: 1.75rem;
   }
-
-  .question-indicator {
-    padding: 12px 20px;
+  
+  .modal-body {
+    padding: 32px 24px;
   }
-
-  .scale-items {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .scale-item {
-    padding: 6px 10px;
-  }
-
-  .summary-stats {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .stat-item {
-    padding: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .assessment-header {
-    padding: 12px 16px;
-  }
-
-  .assessment-title {
-    font-size: 1.125rem;
-  }
-
-  .assessment-description {
-    font-size: 0.875rem;
-  }
-
-  .question-card {
-    padding: 16px;
-  }
-
-  .question-text {
-    font-size: 0.9rem;
-  }
-
-  .rating-option {
-    padding: 8px 10px;
-  }
-
-  .rating-circle {
-    width: 24px;
-    height: 24px;
-    font-size: 0.75rem;
-  }
-
-  .rating-label {
-    font-size: 0.75rem;
-  }
-
-  .navigation-section {
-    padding: 12px 16px;
-  }
-
-  .nav-btn {
-    padding: 6px 12px;
-    font-size: 0.75rem;
-    min-width: 80px;
-  }
-
-  .scale-reference {
-    padding: 12px 16px;
-  }
-
-  .question-indicator {
-    padding: 10px 16px;
-  }
-
-  .stat-item {
-    padding: 10px;
-  }
-
-  .stat-number {
-    font-size: 1.25rem;
-  }
-
-  .stat-label {
-    font-size: 0.7rem;
-  }
-
-  .question-header {
-    flex-direction: column;
-    gap: 10px;
+  
+  .warning-section, .success-section {
+    display: flex;
+    gap: 16px;
     align-items: flex-start;
   }
-}
+  
+  .warning-icon, .success-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+  
+  .warning-icon {
+    background: #fef3cd;
+    color: #856404;
+  }
+  
+  .success-icon {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+  
+  .warning-content, .success-content {
+    flex: 1;
+  }
+  
+  .warning-title, .success-title {
+    margin: 0 0 8px 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .warning-message, .success-message {
+    margin: 0 0 12px 0;
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.5;
+  }
+  
+  .warning-note, .success-note {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.4;
+  }
+  
+  .modal-footer {
+    padding: 20px 24px;
+    background: #f8f9fa;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    border-top: 1px solid #e9ecef;
+  }
+  
+  .modal-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    min-width: 120px;
+    justify-content: center;
+  }
+  
+  .cancel-btn {
+    background: #6c757d;
+    color: white;
+  }
+  
+  .cancel-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+  }
+  
+  .confirm-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+  }
+  
+  .confirm-btn:hover {
+    background: linear-gradient(135deg, #218838 0%, #1ea080 100%);
+    transform: translateY(-1px);
+  }
+  
+  .confirm-btn.warning {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+  }
+  
+  .confirm-btn.warning:hover {
+    background: linear-gradient(135deg, #c82333 0%, #e8650e 100%);
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  /* Responsive Modal Styles */
+  @media (max-width: 768px) {
+    .assessment-header {
+      padding: 16px 20px;
+    }
+
+    .header-content {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 15px;
+    }
+
+    .assessment-title {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .assessment-description {
+      font-size: 0.95rem;
+    }
+
+    .progress-section {
+      width: 100%;
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .progress-info {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .progress-bar {
+      width: 100%;
+    }
+
+    .question-card {
+      padding: 20px;
+    }
+
+    .question-text {
+      font-size: 1.05rem;
+    }
+
+    .rating-scale {
+      max-width: 100%;
+    }
+
+    .rating-option {
+      padding: 10px 5px;
+    }
+
+    .nav-buttons {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .nav-btn {
+      flex: 1 1 auto;
+      min-width: 100px;
+    }
+
+    .question-indicator {
+      flex: none;
+      width: 100%;
+      margin-top: 15px;
+    }
+
+    .indicator-dots {
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .warning-section, .success-section {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .warning-icon, .success-icon {
+      align-self: center;
+    }
+
+    .rating-scale {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .rating-option {
+      flex: 0 0 45%; /* Allow two options per row with some spacing */
+      max-width: 45%;
+      padding: 10px 5px;
+    }
+
+    .rating-label {
+      font-size: 0.65rem;
+    }
+
+    .nav-buttons {
+      flex-direction: column;
+    }
+
+    .nav-btn {
+      width: 100%;
+      min-width: unset;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .modal-body {
+      padding: 24px 20px;
+    }
+    
+    .modal-footer {
+      padding: 16px 20px;
+      flex-direction: column;
+    }
+    
+    .modal-btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .modal-body {
+      padding: 24px 20px;
+    }
+    
+    .modal-footer {
+      padding: 16px 20px;
+      flex-direction: column;
+    }
+    
+    .modal-btn {
+      width: 100%;
+    }
+  }
+
+
+@media (max-width: 480px) {
+    .assessment-header {
+      padding: 12px 16px;
+    }
+
+    .header-content {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .assessment-title {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+
+    .assessment-description {
+      font-size: 0.875rem;
+    }
+
+    .progress-section {
+      width: 100%;
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .progress-info {
+      font-size: 0.8rem;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .progress-bar {
+      width: 100%;
+    }
+
+    .question-card {
+      padding: 16px;
+    }
+
+    .question-text {
+      font-size: 1rem;
+    }
+
+    .question-number {
+      width: 28px;
+      height: 28px;
+      font-size: 0.75rem;
+    }
+
+    .navigation-section {
+      padding: 16px;
+    }
+
+    .indicator-dots {
+      gap: 4px;
+    }
+
+    .indicator-dot {
+      width: 6px;
+      height: 6px;
+    }
+
+    .completion-summary {
+      padding: 24px 16px;
+    }
+
+    .summary-card h3 {
+      font-size: 1.1rem;
+    }
+
+    .summary-stats {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .stat-item {
+      min-width: unset;
+      width: 100%;
+      padding: 12px;
+    }
+
+    .stat-number {
+      font-size: 1.3rem;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+    }
+
+    .question-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+  }
 </style>

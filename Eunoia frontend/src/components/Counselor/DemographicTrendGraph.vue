@@ -11,7 +11,26 @@
         </div>
       </div>
       
-
+      <!-- Year Filter Dropdown and Refresh Button -->
+      <div class="filter-controls">
+        <select v-model="selectedYear" @change="fetchDemographicData" class="year-filter">
+          <option value="all">All Years</option>
+          <option v-for="year in availableYears" :key="year" :value="year">
+            {{ year }}{{ year === currentSchoolYear ? ' (Current Year)' : '' }}
+          </option>
+        </select>
+        
+        <!-- Refresh Button -->
+        <button 
+          @click="refreshDemographicData" 
+          :disabled="refreshing || loading"
+          class="refresh-btn"
+          title="Refresh demographic data"
+        >
+          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
+          {{ refreshing ? 'Refreshing...' : 'Refresh' }}
+        </button>
+      </div>
       
       <!-- Info Text -->
       <div class="info-text">
@@ -119,6 +138,7 @@ export default {
   data() {
     return {
       loading: true,
+      refreshing: false,
       error: null,
       chartData: [],
       summary: {
@@ -138,7 +158,11 @@ export default {
       },
       // Chart.js specific properties
       demographicChart: null,
-      isMounted: false
+      isMounted: false,
+      // Year filter properties
+      selectedYear: 'all',
+      availableYears: ['2025-2026', '2026-2027', '2027-2028', '2028-2029', '2029-2030'],
+      currentSchoolYear: '2025-2026'
     };
   },
   computed: {
@@ -243,11 +267,12 @@ export default {
       }
       
       try {
-        // Build API URL with assessment type filter
+        // Build API URL with assessment type and year filters
         const assessmentTypeParam = this.assessmentType !== 'all' ? `&assessmentType=${encodeURIComponent(this.assessmentType)}` : '';
-        const apiEndpoint = `demographic-trends/gender-trends?gender=all${assessmentTypeParam}`;
+        const yearParam = this.selectedYear !== 'all' ? `&year=${encodeURIComponent(this.selectedYear)}` : '';
+        const apiEndpoint = `demographic-trends/gender-trends?gender=all${assessmentTypeParam}${yearParam}`;
         
-        console.log('📊 Fetching demographic data with assessment type:', this.assessmentType);
+        console.log('📊 Fetching demographic data with assessment type:', this.assessmentType, 'and year:', this.selectedYear);
         
         const response = await fetch(apiUrl(apiEndpoint), {
           method: 'GET',
@@ -282,7 +307,7 @@ export default {
               femaleAtRiskDimensions: yearData.riskAnalysis?.atRiskDimensions?.byGender?.Female || {}
             });
           });
-
+  
           // Create Chart.js chart after data is loaded
           this.$nextTick(() => {
             setTimeout(() => {
@@ -298,6 +323,64 @@ export default {
         this.error = error.message || 'Failed to load demographic data';
       } finally {
         this.loading = false;
+      }
+    },
+
+    async refreshDemographicData() {
+      this.refreshing = true;
+      try {
+        // Force refresh by adding a cache-busting parameter
+        const assessmentTypeParam = this.assessmentType !== 'all' ? `&assessmentType=${encodeURIComponent(this.assessmentType)}` : '';
+        const yearParam = this.selectedYear !== 'all' ? `&year=${encodeURIComponent(this.selectedYear)}` : '';
+        const cacheBuster = `&_refresh=${Date.now()}`;
+        const apiEndpoint = `demographic-trends/gender-trends?gender=all${assessmentTypeParam}${yearParam}${cacheBuster}`;
+        
+        console.log('🔄 Force refreshing demographic data...');
+        
+        const response = await fetch(apiUrl(apiEndpoint), {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          this.chartData = result.data.trends;
+          this.summary = result.data.summary?.overallRiskAnalysis || this.summary;
+          this.error = null;
+          
+          // Log refresh status from backend
+          if (result.data.refreshed) {
+            console.log('✅ Fresh data retrieved from database (cache bypassed)');
+          } else {
+            console.log('📋 Data retrieved from cache');
+          }
+          
+          // Create Chart.js chart after data is refreshed
+          this.$nextTick(() => {
+            setTimeout(() => {
+              this.createDemographicChart();
+            }, 100);
+          });
+          
+          console.log('✅ Demographic data refreshed successfully');
+        } else {
+          throw new Error(result.message || 'Failed to refresh demographic data');
+        }
+        
+      } catch (error) {
+        console.error('Error refreshing demographic data:', error);
+        this.error = error.message || 'Failed to refresh demographic data';
+      } finally {
+        this.refreshing = false;
       }
     },
 
@@ -880,6 +963,25 @@ export default {
   gap: 12px;
 }
 
+.year-filter {
+  padding: 8px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a2e35;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 180px;
+}
+
+.year-filter:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .gender-filter {
   padding: 8px 16px;
   border: 2px solid #e0e0e0;
@@ -1118,6 +1220,40 @@ export default {
 .tooltip-content {
   font-size: 12px;
   opacity: 0.9;
+}
+
+/* Refresh Button Styles */
+.refresh-btn {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+}
+
+.refresh-btn:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.refresh-btn i {
+  font-size: 12px;
 }
 
 /* Responsive Design */

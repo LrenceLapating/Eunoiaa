@@ -1,21 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
+const { supabaseAdmin } = require('../config/database');
 const { verifyCounselorSession } = require('../middleware/sessionManager');
 const { getAtRiskDimensions } = require('../utils/ryffScoring');
 const { cacheManager } = require('../config/redis');
-
-// Initialize Supabase Admin Client
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
 
 /**
  * Retry utility for Supabase queries with exponential backoff
@@ -44,8 +32,8 @@ async function retrySupabaseQuery(queryFunction, description = 'query', maxRetri
 
 // Cache TTL constants (in seconds) - Reduced for faster refresh
 const CACHE_TTL = {
-  DEMOGRAPHIC_DATA: 300,       // 5 minutes (was 30 minutes)
-  COLLEGE_BREAKDOWN: 300       // 5 minutes (was 30 minutes)
+  DEMOGRAPHIC_DATA: 30,        // 30 seconds for real-time updates
+  COLLEGE_BREAKDOWN: 30        // 30 seconds for real-time updates
 };
 
 // Cache key generators
@@ -70,28 +58,53 @@ const RYFF_DIMENSIONS = [
  */
 router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
   try {
-    const { gender = 'all', assessmentType = 'all' } = req.query;
+    const { gender = 'all', assessmentType = 'all', year, _refresh } = req.query;
     
-    console.log(`🎯 Fetching demographic risk trends for gender: ${gender}, assessmentType: ${assessmentType}`);
+    console.log(`🎯 Fetching demographic risk trends for gender: ${gender}, assessmentType: ${assessmentType}, year: ${year}, refresh: ${_refresh ? 'true' : 'false'}`);
 
-    // Check cache first - include assessmentType in cache key
-    const cacheKey = getCacheKey.genderTrends(`${gender}_${assessmentType}`);
-    const cachedData = await cacheManager.get(cacheKey);
+    // Check if this is a refresh request
+    const isRefreshRequest = _refresh !== undefined;
     
-    if (cachedData) {
-      return res.json({
-        success: true,
-        data: cachedData,
-        cached: true
-      });
+    // Check cache first - include year in cache key, but skip cache if refresh is requested
+    const cacheKey = getCacheKey.genderTrends(`${gender}_${assessmentType}_${year || 'all'}`);
+    
+    if (!isRefreshRequest) {
+      const cachedData = await cacheManager.get(cacheKey);
+      
+      if (cachedData) {
+        console.log(`📦 Cache hit for demographic trends: ${cacheKey}`);
+        return res.json({
+          success: true,
+          data: cachedData,
+          cached: true
+        });
+      }
+    } else {
+      console.log(`🔄 Refresh requested - bypassing cache for: ${cacheKey}`);
+      // Clear the existing cache entry to ensure fresh data
+      await cacheManager.del(cacheKey);
     }
 
-    // Define school years to analyze (2 years for faster performance)
+    // Define school years to analyze based on year parameter
     const currentYear = new Date().getFullYear();
-    const schoolYears = [
-      { label: `${currentYear+1}-${currentYear+2}`, startDate: `${currentYear+1}-08-01`, endDate: `${currentYear+2}-07-31` },
-      { label: `${currentYear+2}-${currentYear+3}`, startDate: `${currentYear+2}-08-01`, endDate: `${currentYear+3}-07-31` }
-    ];
+    let schoolYears;
+    
+    if (year && year !== 'all') {
+      // Filter for specific year
+      const yearNum = parseInt(year);
+      schoolYears = [
+        { label: `${yearNum}-${yearNum+1}`, startDate: `${yearNum}-08-01`, endDate: `${yearNum+1}-07-31` }
+      ];
+    } else {
+      // For "All Years": include current year and several years around it to capture all data
+      schoolYears = [
+        { label: `${currentYear-2}-${currentYear-1}`, startDate: `${currentYear-2}-08-01`, endDate: `${currentYear-1}-07-31` },
+        { label: `${currentYear-1}-${currentYear}`, startDate: `${currentYear-1}-08-01`, endDate: `${currentYear}-07-31` },
+        { label: `${currentYear}-${currentYear+1}`, startDate: `${currentYear}-08-01`, endDate: `${currentYear+1}-07-31` }, // Current year 2025-2026
+        { label: `${currentYear+1}-${currentYear+2}`, startDate: `${currentYear+1}-08-01`, endDate: `${currentYear+2}-07-31` },
+        { label: `${currentYear+2}-${currentYear+3}`, startDate: `${currentYear+2}-08-01`, endDate: `${currentYear+3}-07-31` }
+      ];
+    }
 
     // First, check if we have any data at all in the database
     const { data: allStudents, error: allStudentsError } = await supabaseAdmin
@@ -106,6 +119,15 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
       .not('risk_level', 'is', null);
 
     console.log(`📊 Database check - Students: ${allStudents?.length || 0}, Ryff History: ${allRyffHistory?.length || 0}`);
+    
+    // Log sample dates to understand the data format
+    if (allRyffHistory && allRyffHistory.length > 0) {
+      console.log(`📊 Sample assessment dates:`, allRyffHistory.slice(0, 3).map(r => ({
+        id: r.id,
+        completed_at: r.completed_at,
+        student_id: r.student_id
+      })));
+    }
     
     // FIXED: Always use flexible data fetching to ensure we get existing data
     const hasDataButNoMatches = true; // Always use flexible fetching
@@ -151,32 +173,70 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
 
       const studentIds = students.map(s => s.id);
 
-      // Fetch assessments with risk data from current and historical tables
-      const [assessments42, assessments84, historicalAssessments] = await Promise.all([
-        // From assessments_42items (current data) - get all data for these students
-        supabaseAdmin
-          .from('assessments_42items')
-          .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score')
-          .in('student_id', studentIds)
-          .not('scores', 'is', null)
-          .not('risk_level', 'is', null),
-        
-        // From assessments_84items (current data) - get all data for these students
-        supabaseAdmin
-          .from('assessments_84items')
-          .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score')
-          .in('student_id', studentIds)
-          .not('scores', 'is', null)
-          .not('risk_level', 'is', null),
-        
-        // From ryff_history (historical data) - get all data for these students
-        supabaseAdmin
-          .from('ryff_history')
-          .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score, assessment_type')
-          .in('student_id', studentIds)
-          .not('scores', 'is', null)
-          .not('risk_level', 'is', null)
-      ]);
+      // Fetch assessments with risk data from current and historical tables - SAFE FLEXIBLE FILTERING
+      let assessments42, assessments84, historicalAssessments;
+      
+      if (year && year !== 'all') {
+        // For specific year: use strict date filtering
+        [assessments42, assessments84, historicalAssessments] = await Promise.all([
+          // From assessments_42items (current data) - filter by completion date within school year
+          supabaseAdmin
+            .from('assessments_42items')
+            .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score')
+            .in('student_id', studentIds)
+            .gte('completed_at', schoolYear.startDate)
+            .lte('completed_at', schoolYear.endDate)
+            .not('scores', 'is', null)
+            .not('risk_level', 'is', null),
+          
+          // From assessments_84items (current data) - filter by completion date within school year
+          supabaseAdmin
+            .from('assessments_84items')
+            .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score')
+            .in('student_id', studentIds)
+            .gte('completed_at', schoolYear.startDate)
+            .lte('completed_at', schoolYear.endDate)
+            .not('scores', 'is', null)
+            .not('risk_level', 'is', null),
+          
+          // From ryff_history (historical data) - filter by completion date within school year
+          supabaseAdmin
+            .from('ryff_history')
+            .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score, assessment_type')
+            .in('student_id', studentIds)
+            .gte('completed_at', schoolYear.startDate)
+            .lte('completed_at', schoolYear.endDate)
+            .not('scores', 'is', null)
+            .not('risk_level', 'is', null)
+        ]);
+      } else {
+        // For "All Years": get all available data without strict date filtering
+        [assessments42, assessments84, historicalAssessments] = await Promise.all([
+          // From assessments_42items (current data) - get all data
+          supabaseAdmin
+            .from('assessments_42items')
+            .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score')
+            .in('student_id', studentIds)
+            .not('scores', 'is', null)
+            .not('risk_level', 'is', null),
+          
+          // From assessments_84items (current data) - get all data
+          supabaseAdmin
+            .from('assessments_84items')
+            .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score')
+            .in('student_id', studentIds)
+            .not('scores', 'is', null)
+            .not('risk_level', 'is', null),
+          
+          // From ryff_history (historical data) - get all data
+          supabaseAdmin
+            .from('ryff_history')
+            .select('id, student_id, scores, risk_level, at_risk_dimensions, completed_at, overall_score, assessment_type')
+            .in('student_id', studentIds)
+            .not('scores', 'is', null)
+            .not('risk_level', 'is', null)
+        ]);
+      }
 
       // Combine all assessments (current and historical)
       let allAssessments = [
@@ -379,9 +439,9 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
     });
 
     demographicData.forEach(yearData => {
-      Object.values(yearData.riskAnalysis.atRiskDimensions.overall).forEach((count, index) => {
-        const dimension = RYFF_DIMENSIONS[index];
-        if (dimension) {
+      // Fix: atRiskDimensions.overall is an object with dimension names as keys, not an array
+      Object.entries(yearData.riskAnalysis.atRiskDimensions.overall).forEach(([dimension, count]) => {
+        if (dimensionTotals[dimension] !== undefined) {
           dimensionTotals[dimension] += count;
         }
       });
@@ -404,12 +464,15 @@ router.get('/gender-trends', verifyCounselorSession, async (req, res) => {
       }
     };
 
-    // Cache the result
+    // Cache the result (always cache fresh data, whether from refresh or normal request)
     await cacheManager.set(cacheKey, responseData, CACHE_TTL.DEMOGRAPHIC_DATA);
+    
+    console.log(`💾 Cached fresh demographic data: ${cacheKey} (refresh: ${isRefreshRequest})`);
 
     res.json({
       success: true,
-      data: responseData
+      data: responseData,
+      refreshed: isRefreshRequest
     });
 
   } catch (error) {
@@ -516,6 +579,40 @@ router.get('/gender-college-breakdown', verifyCounselorSession, async (req, res)
     res.status(500).json({
       success: false,
       message: 'Failed to fetch college breakdown data',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Clear demographic trends cache - useful for debugging and manual refresh
+ */
+router.delete('/cache/demographic-trends', verifyCounselorSession, async (req, res) => {
+  try {
+    console.log('🗑️ Clearing demographic trends cache...');
+    
+    // Clear all demographic trends cache entries
+    const cleared = await cacheManager.clearPattern('demographic_trends:*');
+    
+    if (cleared) {
+      console.log('✅ Demographic trends cache cleared successfully');
+      res.json({
+        success: true,
+        message: 'Demographic trends cache cleared successfully'
+      });
+    } else {
+      console.log('⚠️ Failed to clear demographic trends cache');
+      res.json({
+        success: false,
+        message: 'Failed to clear cache - Redis may be unavailable'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error clearing demographic trends cache:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear demographic trends cache',
       error: error.message
     });
   }

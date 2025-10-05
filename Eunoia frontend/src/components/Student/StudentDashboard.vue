@@ -233,35 +233,11 @@
                     <i class="fas fa-play"></i>
                     Begin Assessment
                   </button>
-                  <button class="secondary-action-btn">
-                    <i class="fas fa-info-circle"></i>
-                    Learn More
-                  </button>
                 </div>
               </div>
             </div>
             
-            <!-- Quick Stats Card -->
-            <div class="stats-card">
-              <div class="stats-header">
-                <h4>Your Progress</h4>
-                <i class="fas fa-chart-line"></i>
-              </div>
-              <div class="stats-content">
-                <div class="stat-item">
-                  <div class="stat-number">0</div>
-                  <div class="stat-label">Assessments Completed</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-number">1</div>
-                  <div class="stat-label">Pending Assessment</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-number">6</div>
-                  <div class="stat-label">Dimensions to Explore</div>
-                </div>
-              </div>
-            </div>
+
             
             <!-- Tips Card -->
             <div class="tips-card">
@@ -2309,38 +2285,58 @@ export default {
 .assessment-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 20px;
+  gap: 24px;
   align-items: start;
 }
 
 /* Main Assessment Card */
 .main-assessment-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid #e2e8f0;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.main-assessment-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .card-header {
-  padding: 20px;
-  background: #f8fffe;
+  padding: 28px 28px 24px 28px;
+  background: linear-gradient(135deg, #f8fffe 0%, #f0fffe 100%);
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 20px;
+  position: relative;
+}
+
+.card-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #00b3b0 0%, #00d4d1 100%);
 }
 
 .assessment-icon {
-  width: 48px;
-  height: 48px;
-  background: #00b3b0;
-  border-radius: 8px;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #00b3b0 0%, #00d4d1 100%);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 20px;
-  padding: 6px;
+  font-size: 24px;
+  padding: 8px;
+  box-shadow: 0 4px 16px rgba(0, 179, 176, 0.3);
+  flex-shrink: 0;
 }
 
 .assessment-logo {
@@ -2352,57 +2348,74 @@ export default {
 
 .assessment-info {
   flex: 1;
+  min-width: 0;
 }
 
 .assessment-info h3 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 6px 0;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
   color: #1a2e35;
+  line-height: 1.3;
 }
 
 .assessment-type {
-  font-size: 14px;
+  font-size: 15px;
   color: #64748b;
-  margin: 0 0 12px 0;
+  margin: 0 0 16px 0;
   font-weight: 500;
+  background: #f1f5f9;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
 }
 
 .assessment-meta {
   display: flex;
-  gap: 20px;
-  font-size: 13px;
+  gap: 24px;
+  font-size: 14px;
   color: #64748b;
+  flex-wrap: wrap;
 }
 
 .assessment-meta span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  background: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.assessment-meta i {
+  color: #00b3b0;
+  font-size: 16px;
 }
 
 
 
 .card-body {
-  padding: 20px;
+  padding: 28px;
 }
 
 .assessment-description {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .assessment-description p {
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.7;
   color: #475569;
   margin: 0;
+  font-weight: 400;
 }
 
 .progress-section {
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 8px;
+  margin-bottom: 28px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
 }
 
@@ -2410,82 +2423,139 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .progress-label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #334155;
 }
 
 .progress-value {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #00b3b0;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 6px;
 }
 
 .progress-track {
-  height: 8px;
+  height: 10px;
   background: #e2e8f0;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
   position: relative;
 }
 
 .progress-fill {
   height: 100%;
-  background: #00b3b0;
-  border-radius: 4px;
+  background: linear-gradient(90deg, #00b3b0 0%, #00d4d1 100%);
+  border-radius: 6px;
   transition: width 0.3s ease;
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .dimensions-preview {
-  margin-bottom: 20px;
+  margin-bottom: 28px;
 }
 
 .dimensions-preview h4 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #1e293b;
-  margin: 0 0 12px 0;
+  margin: 0 0 16px 0;
 }
 
 .dimensions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
 
 .dimension-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
+  gap: 12px;
+  padding: 14px 16px;
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 14px;
   color: #475569;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.dimension-item:hover {
+  border-color: #00b3b0;
+  background: #f8fffe;
+  transform: translateY(-1px);
 }
 
 .dimension-item i {
   color: #00b3b0;
-  font-size: 14px;
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .action-section {
   display: flex;
-  gap: 12px;
+  gap: 16px;
 }
 
 .primary-action-btn {
-  flex: 1;
-  background: #00b3b0;
+  flex: 2;
+  background: linear-gradient(135deg, #00b3b0 0%, #00d4d1 100%);
   color: white;
   border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 179, 176, 0.3);
+}
+
+.primary-action-btn:hover {
+  background: linear-gradient(135deg, #00a09d 0%, #00c4c1 100%);
+  box-shadow: 0 6px 24px rgba(0, 179, 176, 0.4);
+  transform: translateY(-2px);
+}
+
+.primary-action-btn i {
+  font-size: 18px;
+}
+
+.secondary-action-btn {
+  flex: 1;
+  padding: 16px 20px;
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -2493,67 +2563,81 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 8px;
-}
-
-.primary-action-btn:hover {
-  background: #00a09d;
-}
-
-.secondary-action-btn {
-  padding: 12px 20px;
-  background: white;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  transition: all 0.3s ease;
 }
 
 .secondary-action-btn:hover {
   border-color: #00b3b0;
   color: #00b3b0;
+  background: #f8fffe;
+  transform: translateY(-1px);
 }
 
 /* Stats Card */
 .stats-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid #e2e8f0;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .stats-header {
-  padding: 16px 20px;
-  background: #1e293b;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
+}
+
+.stats-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #64748b 0%, #94a3b8 100%);
 }
 
 .stats-header h4 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .stats-header i {
-  font-size: 18px;
-  opacity: 0.8;
+  font-size: 20px;
+  opacity: 0.9;
 }
 
 .stats-content {
-  padding: 16px;
+  padding: 24px 20px;
 }
 
 .stat-item {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.stat-item:hover {
+  background: linear-gradient(135deg, #f0fffe 0%, #e6fffd 100%);
+  border-color: #00b3b0;
+  transform: translateY(-1px);
 }
 
 .stat-item:last-child {
@@ -2561,59 +2645,91 @@ export default {
 }
 
 .stat-number {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 800;
   color: #00b3b0;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(0, 179, 176, 0.2);
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  line-height: 1.4;
 }
 
 /* Tips Card */
 .tips-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid #e2e8f0;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.tips-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .tips-header {
-  padding: 16px 20px;
-  background: #f59e0b;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
   color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
+}
+
+.tips-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
 }
 
 .tips-header h4 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .tips-header i {
-  font-size: 18px;
-  opacity: 0.8;
+  font-size: 20px;
+  opacity: 0.9;
 }
 
 .tips-content {
-  padding: 16px;
+  padding: 24px 20px;
 }
 
 .tip-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  font-size: 14px;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  font-size: 15px;
   color: #475569;
+  font-weight: 500;
+  line-height: 1.6;
+  padding: 16px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 12px;
+  border: 1px solid #f3e8ff;
+  transition: all 0.2s ease;
+}
+
+.tip-item:hover {
+  background: linear-gradient(135deg, #fef08a 0%, #fde047 100%);
+  transform: translateY(-1px);
 }
 
 .tip-item:last-child {
@@ -2622,8 +2738,9 @@ export default {
 
 .tip-item i {
   color: #10b981;
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 /* No Assessment State */
@@ -2696,7 +2813,7 @@ export default {
 @media (max-width: 1024px) {
   .assessment-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 20px;
   }
   
   .welcome-section {
@@ -2718,15 +2835,129 @@ export default {
     width: 48px;
     height: 48px;
   }
+  
+  .main-assessment-card {
+    margin-bottom: 20px;
+  }
+  
+  .card-header {
+    padding: 24px 20px 20px 20px;
+  }
+  
+  .card-body {
+    padding: 24px 20px;
+  }
+  
+  .assessment-icon {
+    width: 52px;
+    height: 52px;
+  }
+  
+  .assessment-info h3 {
+    font-size: 20px;
+  }
+  
+  .dimensions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
+  .assessment-grid {
+    gap: 16px;
+  }
+  
+  .main-assessment-card {
+    border-radius: 12px;
+  }
+  
+  .card-header {
+    padding: 20px 16px 16px 16px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+  
+  .card-body {
+    padding: 20px 16px;
+  }
+  
+  .assessment-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .assessment-info {
+    width: 100%;
+  }
+  
+  .assessment-info h3 {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+  
+  .assessment-type {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  
+  .assessment-meta {
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .assessment-meta span {
+    font-size: 13px;
+    padding: 4px 8px;
+  }
+  
+  .assessment-description {
+    margin-bottom: 24px;
+  }
+  
+  .assessment-description p {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  
+  .progress-section {
+    margin-bottom: 24px;
+    padding: 16px;
+  }
+  
+  .dimensions-preview {
+    margin-bottom: 24px;
+  }
+  
+  .dimensions-preview h4 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  
   .dimensions-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .dimension-item {
+    padding: 12px 14px;
+    font-size: 13px;
   }
   
   .action-section {
     flex-direction: column;
+    gap: 12px;
+  }
+  
+  .primary-action-btn {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+  
+  .secondary-action-btn {
+    padding: 14px 20px;
+    font-size: 15px;
   }
   
   .welcome-title {
@@ -2736,13 +2967,221 @@ export default {
   .welcome-subtitle {
     font-size: 14px;
   }
+}
+
+@media (max-width: 600px) {
+  .main-assessment-card {
+    border-radius: 10px;
+    margin: 0 -4px;
+  }
   
   .card-header {
-    padding: 16px;
+    padding: 18px 14px 14px 14px;
   }
   
   .card-body {
-    padding: 16px;
+    padding: 18px 14px;
+  }
+  
+  .assessment-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+  
+  .assessment-info h3 {
+    font-size: 17px;
+  }
+  
+  .assessment-type {
+    font-size: 13px;
+    padding: 3px 10px;
+  }
+  
+  .assessment-meta {
+    gap: 12px;
+  }
+  
+  .assessment-meta span {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+  
+  .assessment-description p {
+    font-size: 14px;
+  }
+  
+  .progress-section {
+    padding: 14px;
+  }
+  
+  .progress-label,
+  .progress-value {
+    font-size: 14px;
+  }
+  
+  .dimensions-preview h4 {
+    font-size: 15px;
+  }
+  
+  .dimension-item {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .dimension-item i {
+    font-size: 14px;
+  }
+  
+  .primary-action-btn,
+  .secondary-action-btn {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-assessment-card {
+    margin: 0 -8px;
+    border-radius: 8px;
+  }
+  
+  .card-header {
+    padding: 16px 12px 12px 12px;
+  }
+  
+  .card-body {
+    padding: 16px 12px;
+  }
+  
+  .assessment-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .assessment-info h3 {
+    font-size: 16px;
+  }
+  
+  .assessment-type {
+    font-size: 12px;
+    padding: 2px 8px;
+  }
+  
+  .assessment-meta {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .assessment-meta span {
+    font-size: 11px;
+    padding: 2px 4px;
+    justify-content: center;
+  }
+  
+  .assessment-description {
+    margin-bottom: 20px;
+  }
+  
+  .assessment-description p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  
+  .progress-section {
+    margin-bottom: 20px;
+    padding: 12px;
+  }
+  
+  .progress-label,
+  .progress-value {
+    font-size: 13px;
+  }
+  
+  .progress-track {
+    height: 8px;
+  }
+  
+  .dimensions-preview {
+    margin-bottom: 20px;
+  }
+  
+  .dimensions-preview h4 {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  
+  .dimension-item {
+    padding: 8px 10px;
+    font-size: 11px;
+    gap: 8px;
+  }
+  
+  .dimension-item i {
+    font-size: 12px;
+  }
+  
+  .action-section {
+    gap: 10px;
+  }
+  
+  .primary-action-btn,
+  .secondary-action-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  
+  .primary-action-btn i {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .main-assessment-card {
+    margin: 0 -12px;
+  }
+  
+  .card-header {
+    padding: 14px 10px 10px 10px;
+  }
+  
+  .card-body {
+    padding: 14px 10px;
+  }
+  
+  .assessment-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+  
+  .assessment-info h3 {
+    font-size: 15px;
+  }
+  
+  .assessment-description p {
+    font-size: 12px;
+  }
+  
+  .progress-section {
+    padding: 10px;
+  }
+  
+  .dimensions-preview h4 {
+    font-size: 13px;
+  }
+  
+  .dimension-item {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  
+  .primary-action-btn,
+  .secondary-action-btn {
+    padding: 8px 12px;
+    font-size: 12px;
   }
 }
 

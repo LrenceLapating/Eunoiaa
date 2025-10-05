@@ -19,53 +19,6 @@ const REVERSE_SCORED_ITEMS = {
   ryff_42: [1, 3, 5, 6, 8, 9, 11, 12, 13, 15, 16, 17, 19, 23, 26, 27, 29, 32, 34, 36, 39, 41]
 };
 
-// Item-to-dimension mapping for 42-item version
-const ITEM_DIMENSION_MAP_42 = {
-  1: 'autonomy', 2: 'autonomy', 3: 'autonomy', 4: 'autonomy', 5: 'autonomy', 6: 'autonomy', 7: 'autonomy',
-  8: 'environmental_mastery', 9: 'environmental_mastery', 10: 'environmental_mastery', 11: 'environmental_mastery', 12: 'environmental_mastery', 13: 'environmental_mastery', 14: 'environmental_mastery',
-  15: 'personal_growth', 16: 'personal_growth', 17: 'personal_growth', 18: 'personal_growth', 19: 'personal_growth', 20: 'personal_growth', 21: 'personal_growth',
-  22: 'positive_relations', 23: 'positive_relations', 24: 'positive_relations', 25: 'positive_relations', 26: 'positive_relations', 27: 'positive_relations', 28: 'positive_relations',
-  29: 'purpose_in_life', 30: 'purpose_in_life', 31: 'purpose_in_life', 32: 'purpose_in_life', 33: 'purpose_in_life', 34: 'purpose_in_life', 35: 'purpose_in_life',
-  36: 'self_acceptance', 37: 'self_acceptance', 38: 'self_acceptance', 39: 'self_acceptance', 40: 'self_acceptance', 41: 'self_acceptance', 42: 'self_acceptance'
-};
-
-// Item-to-dimension mapping for 84-item version
-const ITEM_DIMENSION_MAP_84 = {
-  // Autonomy (14 items)
-  1: 'autonomy', 2: 'autonomy', 3: 'autonomy', 4: 'autonomy', 5: 'autonomy', 6: 'autonomy', 7: 'autonomy',
-  8: 'autonomy', 9: 'autonomy', 10: 'autonomy', 11: 'autonomy', 12: 'autonomy', 13: 'autonomy', 14: 'autonomy',
-  
-  // Environmental Mastery (14 items)
-  15: 'environmental_mastery', 16: 'environmental_mastery', 17: 'environmental_mastery', 18: 'environmental_mastery',
-  19: 'environmental_mastery', 20: 'environmental_mastery', 21: 'environmental_mastery', 22: 'environmental_mastery',
-  23: 'environmental_mastery', 24: 'environmental_mastery', 25: 'environmental_mastery', 26: 'environmental_mastery',
-  27: 'environmental_mastery', 28: 'environmental_mastery',
-  
-  // Personal Growth (14 items)
-  29: 'personal_growth', 30: 'personal_growth', 31: 'personal_growth', 32: 'personal_growth',
-  33: 'personal_growth', 34: 'personal_growth', 35: 'personal_growth', 36: 'personal_growth',
-  37: 'personal_growth', 38: 'personal_growth', 39: 'personal_growth', 40: 'personal_growth',
-  41: 'personal_growth', 42: 'personal_growth',
-  
-  // Positive Relations (14 items)
-  43: 'positive_relations', 44: 'positive_relations', 45: 'positive_relations', 46: 'positive_relations',
-  47: 'positive_relations', 48: 'positive_relations', 49: 'positive_relations', 50: 'positive_relations',
-  51: 'positive_relations', 52: 'positive_relations', 53: 'positive_relations', 54: 'positive_relations',
-  55: 'positive_relations', 56: 'positive_relations',
-  
-  // Purpose in Life (14 items)
-  57: 'purpose_in_life', 58: 'purpose_in_life', 59: 'purpose_in_life', 60: 'purpose_in_life',
-  61: 'purpose_in_life', 62: 'purpose_in_life', 63: 'purpose_in_life', 64: 'purpose_in_life',
-  65: 'purpose_in_life', 66: 'purpose_in_life', 67: 'purpose_in_life', 68: 'purpose_in_life',
-  69: 'purpose_in_life', 70: 'purpose_in_life',
-  
-  // Self-Acceptance (14 items)
-  71: 'self_acceptance', 72: 'self_acceptance', 73: 'self_acceptance', 74: 'self_acceptance',
-  75: 'self_acceptance', 76: 'self_acceptance', 77: 'self_acceptance', 78: 'self_acceptance',
-  79: 'self_acceptance', 80: 'self_acceptance', 81: 'self_acceptance', 82: 'self_acceptance',
-  83: 'self_acceptance', 84: 'self_acceptance'
-};
-
 /**
  * Reverse score an item (6-point scale: 1->6, 2->5, 3->4, 4->3, 5->2, 6->1)
  * @param {number} score - Original score (1-6)
@@ -88,7 +41,7 @@ function calculateRyffScores(responses, assessmentType = 'ryff_42') {
   
   const questions = assessmentType === 'ryff_84' ? ryff84Questions : ryff42Questions;
   
-  // Initialize dimension totals
+  // Initialize dimension totals using only the standard snake_case dimensions
   const dimensionTotals = {
     autonomy: 0,
     environmental_mastery: 0,
@@ -107,7 +60,13 @@ function calculateRyffScores(responses, assessmentType = 'ryff_42') {
       if (question.reverse) {
         score = reverseScore(response);
       }
-      dimensionTotals[question.dimension] += score;
+      
+      // Ensure the dimension exists in our totals object
+      if (dimensionTotals.hasOwnProperty(question.dimension)) {
+        dimensionTotals[question.dimension] += score;
+      } else {
+        console.warn(`Unknown dimension in questionnaire: ${question.dimension}`);
+      }
     }
   });
   
