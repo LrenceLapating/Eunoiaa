@@ -35,21 +35,33 @@ export default {
       const currentPath = this.$route.path;
       
       // Only initialize auth and potentially redirect if user is on landing page or login page
-      // For users already on authenticated routes (/student, /counselor), do nothing
+      // For users already on authenticated routes (/student, /counselor), do nothing to avoid iOS logout issue
       if (currentPath === '/' || currentPath === '/login') {
-        const authState = await authService.initialize();
+        // Check if we already have auth state to avoid unnecessary API calls
+        const currentAuthState = authService.getAuthState();
         
-        if (authState.userType === 'student') {
-          this.$router.push('/student');
-        } else if (authState.userType === 'counselor') {
-          this.$router.push('/counselor');
-        } else if (currentPath !== '/') {
-          this.$router.push('/');
+        if (currentAuthState.isAuthenticated) {
+          // User is already authenticated, redirect based on userType
+          if (currentAuthState.userType === 'student') {
+            this.$router.push('/student');
+          } else if (currentAuthState.userType === 'counselor') {
+            this.$router.push('/counselor');
+          }
+        } else {
+          // Only make API calls if we don't have auth state
+          const authState = await authService.initialize();
+          
+          if (authState.userType === 'student') {
+            this.$router.push('/student');
+          } else if (authState.userType === 'counselor') {
+            this.$router.push('/counselor');
+          } else if (currentPath !== '/') {
+            this.$router.push('/');
+          }
         }
-      } else {
-        // For users already on authenticated routes, just initialize auth state without redirecting
-        await authService.initialize();
       }
+      // For users already on authenticated routes, don't make any auth API calls
+      // This prevents the iOS logout issue where cookies aren't read properly in subsequent requests
     } catch (error) {
       console.error('Auth initialization error:', error);
       // Only redirect to home if user is on landing/login page

@@ -204,17 +204,24 @@ router.beforeEach(async (to, from, next) => {
         next();
       }
     } else {
-      // Need to check auth status from server
-      const authStatus = await authService.checkAuthStatus();
-      if (!authStatus.isAuthenticated) {
-        next('/login');
-      } else {
-        const requiredRole = to.matched.find(record => record.meta.role)?.meta.role;
-        if (requiredRole && authStatus.userType !== requiredRole) {
-          next('/');
+      // Need to check auth status from server only if we don't have local auth state
+      // This prevents iOS cookie reading issues on subsequent requests
+      try {
+        const authStatus = await authService.checkAuthStatus();
+        if (!authStatus.isAuthenticated) {
+          next('/login');
         } else {
-          next();
+          const requiredRole = to.matched.find(record => record.meta.role)?.meta.role;
+          if (requiredRole && authStatus.userType !== requiredRole) {
+            next('/');
+          } else {
+            next();
+          }
         }
+      } catch (error) {
+        console.error('Router auth check error:', error);
+        // On error, redirect to login to be safe
+        next('/login');
       }
     }
   } else {
