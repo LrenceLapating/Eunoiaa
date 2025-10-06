@@ -198,34 +198,147 @@ export default {
     redirectToGmail() {
       if (!this.canSend) return;
       
-      // Prepare email data for Gmail
+      // Prepare email data
       const recipientEmail = 'gparas@uic.edu.ph';
-      const subject = encodeURIComponent(this.emailData.subject);
-      const body = encodeURIComponent(
-        `From: ${this.studentName} (${this.studentEmail})\n\n` +
-        this.emailData.message
-      );
+      const rawSubject = this.emailData.subject;
+      const rawBody = `From: ${this.studentName} (${this.studentEmail})\n\n${this.emailData.message}`;
       
-      // Create Gmail compose URL
-      const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${subject}&body=${body}`;
+      // Detect if user is on mobile device
+      const isMobile = this.isMobileDevice();
       
+      if (isMobile) {
+        // Mobile-optimized approach
+        this.handleMobileGmailRedirect(recipientEmail, rawSubject, rawBody);
+      } else {
+        // Desktop approach
+        this.handleDesktopGmailRedirect(recipientEmail, rawSubject, rawBody);
+      }
+    },
+    
+    isMobileDevice() {
+      // Comprehensive mobile detection
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      
+      // Check for mobile user agents
+      const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i;
+      const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
+      
+      // Check for touch capability
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      // Check screen size
+      const isSmallScreen = window.innerWidth <= 768;
+      
+      return isMobileUA || (isTouchDevice && isSmallScreen);
+    },
+    
+    handleMobileGmailRedirect(recipientEmail, subject, body) {
       try {
-        // Open Gmail compose in a new tab
-        window.open(gmailComposeUrl, '_blank');
-        this.showNotification('Redirected to Gmail! Please send your message from there.', 'success', 'fas fa-external-link-alt');
-        this.clearForm();
+        // For mobile, try multiple approaches in order of preference
+        
+        // Method 1: Try Gmail app deep link (works on Android)
+        const gmailAppUrl = `googlegmail://co?to=${encodeURIComponent(recipientEmail)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        // Method 2: Gmail web with shorter URL (fallback)
+        const gmailWebUrl = `https://mail.google.com/mail/u/0/#compose?to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        // Method 3: Standard mailto (universal fallback)
+        const mailtoUrl = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        // Try Gmail app first (Android)
+        if (navigator.userAgent.toLowerCase().includes('android')) {
+          const appLink = document.createElement('a');
+          appLink.href = gmailAppUrl;
+          appLink.target = '_blank';
+          document.body.appendChild(appLink);
+          
+          // Set a timeout to fallback if app doesn't open
+          const fallbackTimer = setTimeout(() => {
+            document.body.removeChild(appLink);
+            this.tryGmailWeb(gmailWebUrl, mailtoUrl);
+          }, 1500);
+          
+          // Try to open the app
+          appLink.click();
+          
+          // If we're still here after a short delay, the app likely opened
+          setTimeout(() => {
+            clearTimeout(fallbackTimer);
+            if (document.body.contains(appLink)) {
+              document.body.removeChild(appLink);
+              this.showNotification('Opened Gmail app! Please send your message from there.', 'success', 'fas fa-mobile-alt');
+              this.clearForm();
+            }
+          }, 500);
+          
+        } else {
+          // For iOS and other mobile platforms, go directly to web/mailto
+          this.tryGmailWeb(gmailWebUrl, mailtoUrl);
+        }
+        
       } catch (error) {
-        console.error('Error opening Gmail:', error);
-        // Fallback to mailto if Gmail URL fails
-        const mailtoLink = `mailto:${recipientEmail}?subject=${subject}&body=${body}`;
+        console.error('Mobile Gmail redirect error:', error);
+        this.fallbackToMailto(recipientEmail, subject, body);
+      }
+    },
+    
+    handleDesktopGmailRedirect(recipientEmail, subject, body) {
+      try {
+        // Desktop Gmail web interface (original method, but improved)
+        const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        // Open Gmail compose in a new tab
+        const gmailWindow = window.open(gmailComposeUrl, '_blank');
+        
+        if (gmailWindow) {
+          this.showNotification('Redirected to Gmail! Please send your message from there.', 'success', 'fas fa-external-link-alt');
+          this.clearForm();
+        } else {
+          // Popup blocked, try alternative
+          throw new Error('Popup blocked');
+        }
+        
+      } catch (error) {
+        console.error('Desktop Gmail redirect error:', error);
+        this.fallbackToMailto(recipientEmail, subject, body);
+      }
+    },
+    
+    tryGmailWeb(gmailWebUrl, mailtoUrl) {
+      try {
+        const gmailWindow = window.open(gmailWebUrl, '_blank');
+        
+        if (gmailWindow) {
+          this.showNotification('Redirected to Gmail! Please send your message from there.', 'success', 'fas fa-external-link-alt');
+          this.clearForm();
+        } else {
+          // Popup blocked, use mailto
+          this.fallbackToMailto(recipientEmail, subject, body);
+        }
+      } catch (error) {
+        console.error('Gmail web redirect error:', error);
+        this.fallbackToMailto(recipientEmail, subject, body);
+      }
+    },
+    
+    fallbackToMailto(recipientEmail, subject, body) {
+      try {
+        const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        // Create and click mailto link
         const link = document.createElement('a');
         link.href = mailtoLink;
         link.target = '_blank';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
         this.showNotification('Opened default email client. Please send your message from there.', 'success', 'fas fa-envelope');
         this.clearForm();
+        
+      } catch (error) {
+        console.error('Mailto fallback error:', error);
+        this.showNotification('Unable to open email client. Please copy the message and send it manually.', 'error', 'fas fa-exclamation-triangle');
       }
     },
     
