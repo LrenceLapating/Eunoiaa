@@ -205,32 +205,8 @@ app.use((req, res, next) => {
       'X-XSS-Protection': '1; mode=block'
     });
     
-    // Define authentication-dependent endpoints that need special iOS handling
-    const authDependentPaths = [
-      '/api/auth/',
-      '/api/accounts/',
-      '/api/demographic-trends/',
-      '/api/counselor-assessments/',
-      '/api/student-assessments/',
-      '/api/counselor-interventions/',
-      '/api/student-interventions/',
-      '/api/ai-interventions/',
-      '/api/risk-alerts/',
-      '/api/yearly-trends/',
-      '/api/academic-settings/',
-      '/api/assessment-tracker/',
-      '/api/counselor-management/',
-      '/api/bulk-assessments/',
-      '/api/individual-assessments/',
-      '/api/data-cleanup/',
-      '/api/student/'
-    ];
-    
-    // Check if current path is authentication-dependent
-    const isAuthDependent = authDependentPaths.some(path => req.path.startsWith(path));
-    
-    // iOS-specific headers (exclude auth-dependent endpoints to prevent cookie interference)
-    if (isIOS && !isAuthDependent) {
+    // iOS-specific headers
+    if (isIOS) {
       res.set({
         'Cache-Control': 'no-cache, no-store, must-revalidate, private, max-age=0',
         'Vary': 'User-Agent, Accept-Encoding',
@@ -241,7 +217,7 @@ app.use((req, res, next) => {
     
     // Debug logging for iOS requests
     if (isIOS) {
-      console.log(`🍎 iOS Request: ${req.method} ${req.path} - Auth-dependent: ${isAuthDependent} - ${userAgent.substring(0, 50)}...`);
+      console.log(`🍎 iOS Request: ${req.method} ${req.path} - ${userAgent.substring(0, 50)}...`);
     }
   }
   

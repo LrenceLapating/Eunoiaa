@@ -72,25 +72,12 @@ router.post('/student/login', async (req, res) => {
     );
 
     // Set session cookie (HTTP-only for security)
-    // Enhanced iOS Safari compatibility
-    const cookieOptions = {
+    res.cookie('sessionToken', sessionData.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      path: '/', // Explicitly set path for better compatibility
-      domain: undefined, // Let browser determine domain automatically
-    };
-
-    // iOS Safari compatible SameSite settings
-    if (process.env.NODE_ENV === 'production') {
-      cookieOptions.sameSite = 'none';
-      cookieOptions.secure = true;
-    } else {
-      cookieOptions.sameSite = 'lax';
-    }
-
-    console.log('🍪 Setting cookie with options:', JSON.stringify(cookieOptions, null, 2));
-    res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
 
     res.json({
       message: 'Login successful',
@@ -230,25 +217,12 @@ router.post('/counselor/login', async (req, res) => {
     );
 
     // Set session cookie
-    // Enhanced iOS Safari compatibility
-    const cookieOptions = {
+    res.cookie('sessionToken', sessionData.sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      path: '/', // Explicitly set path for better compatibility
-      domain: undefined, // Let browser determine domain automatically
-    };
-
-    // iOS Safari compatible SameSite settings
-    if (process.env.NODE_ENV === 'production') {
-      cookieOptions.sameSite = 'none';
-      cookieOptions.secure = true;
-    } else {
-      cookieOptions.sameSite = 'lax';
-    }
-
-    console.log('🍪 Setting counselor cookie with options:', JSON.stringify(cookieOptions, null, 2));
-    res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
 
     res.json({
       message: 'Login successful',
