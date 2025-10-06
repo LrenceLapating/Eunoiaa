@@ -156,9 +156,9 @@
               <h3>No Assessment Yet</h3>
               <p>You don't have any assessments assigned at the moment. Your counselor will send you assessments when they're ready.</p>
               <div class="no-assessment-actions">
-                <button class="contact-counselor-btn">
+                <button class="contact-counselor-btn" @click="currentView = 'contact-guidance'">
                   <i class="fas fa-envelope"></i>
-                  Contact Counselor
+                  Contact Guidance
                 </button>
               </div>
             </div>
@@ -601,11 +601,6 @@
 
             <!-- History Section -->
             <div v-if="selectedInterventionType === 'history'" class="assessment-section">
-              <div class="assessment-type-header">
-                <h3><i class="fas fa-history"></i> Assessment History</h3>
-                <p>View your past assessment results and interventions</p>
-              </div>
-
               <!-- Loading State -->
               <div v-if="loadingHistory" class="loading-state">
                 <div class="loading-spinner">

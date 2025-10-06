@@ -313,39 +313,39 @@
                     <div class="step-number">1</div>
                     <div class="step-content">
                         <h4>Assessment Initiation</h4>
-                        <p>Counselors or HR personnel initiate assessments for individuals or groups, selecting the appropriate Ryff Scale version (42 and 84 items).</p>
+                        <p>Counselors initiate assessments for individuals, college or sections selecting the appropriate Ryff Scale version (42 and 84 items).</p>
                        
                     </div>
                 </div>
                 <div class="step fade-in">
                     <div class="step-number">2</div>
                     <div class="step-content">
-                        <h4>Adaptive Questionnaire</h4>
-                        <p>Participants complete the digital assessment with progress tracking and adaptive features that minimize survey fatigue while maintaining validity.</p>
+                        <h4>Interactive Assessment</h4>
+                        <p>Participants complete a digital Ryff Scale assessment with interactive features including animated feedback, progress tracking, and streamlined navigation using a 6-point Likert scale.</p>
                   
                     </div>
                 </div>
                 <div class="step fade-in">
                     <div class="step-number">3</div>
                     <div class="step-content">
-                        <h4>Automated Analysis</h4>
-                        <p>EUNOIA processes responses using advanced algorithms and Compositional Data Analysis (CoDA) to generate nuanced well-being profiles.</p>
+                        <h4>Automated Scoring</h4>
+                        <p>EUNOIA automatically calculates Ryff Scale scores across all six dimensions using validated scoring tertile thresholds to generate comprehensive well-being profiles and risk assessments.</p>
                       
                     </div>
                 </div>
                 <div class="step fade-in">
                     <div class="step-number">4</div>
                     <div class="step-content">
-                        <h4>Professional Review</h4>
-                        <p>Counselors review AI-generated insights and recommendations before they're shared with participants, ensuring professional oversight.</p>
+                        <h4>Results & Insights</h4>
+                        <p>The system generates detailed reports with dimensional scores, risk assessments, and personalized insights for counselors to review and interpret.</p>
                        
                     </div>
                 </div>
                 <div class="step fade-in">
                     <div class="step-number">5</div>
                     <div class="step-content">
-                        <h4>Personalized Feedback</h4>
-                        <p>Participants receive tailored feedback on their psychological well-being across all six Ryff dimensions with actionable recommendations.</p>
+                        <h4>Dashboard & Tracking</h4>
+                        <p>Counselors access comprehensive dashboards to monitor individual progress, track trends, and manage interventions through the system's analytics tools.</p>
                        
                     </div>
                 </div>
@@ -370,9 +370,15 @@
                             <div class="stat-number">0.86-0.93</div>
                             <div class="stat-label">Internal Consistency (Cronbach's α)</div>
                         </div>
+                        <span class="plus-sign">+</span>
                         <div class="research-stat">
                             <div class="stat-number">6</div>
                             <div class="stat-label">Well-being Dimensions</div>
+                        </div>
+                        <span class="plus-sign">+</span>
+                        <div class="research-stat">
+                            <div class="stat-number">0.81-0.88</div>
+                            <div class="stat-label">Test-retest</div>
                         </div>
                     </div>
                 </div>
@@ -451,81 +457,7 @@
         </div>
     </section>
 
-    <!-- Training Section -->
-    <section id="training" class="training-section">
-        <div class="container">
-            <div class="section-title">
-                <h3>Training & Professional Development</h3>
-                <p>Enhance your institution's capacity to support psychological well-being</p>
-            </div>
-            <div class="training-content">
-                <div class="training-tabs">
-                    <div class="training-tab active" data-training="counselors">
-                        <i class="fas fa-user-md"></i>
-                        <span>For Counselors</span>
-                    </div>
 
-                </div>
-                
-                <div class="training-panels">
-                    <div class="training-panel active" id="counselors-panel">
-                        <div class="training-panel-content">
-                            <h4>Counselor Training Program</h4>
-                            <p>Our comprehensive training program equips counselors with the skills to effectively use EUNOIA for psychological well-being assessment and intervention planning.</p>
-                            
-                            <div class="training-modules">
-                                <div class="training-module">
-                                    <div class="module-icon">
-                                        <i class="fas fa-chart-pie"></i>
-                                    </div>
-                                    <div class="module-content">
-                                        <h5>Compositional Data Analysis</h5>
-                                        <p>Learn to interpret CoDA-based results and understand the nuanced relationships between Ryff dimensions.</p>
-                                        <div class="module-meta">
-                                            <span><i class="fas fa-clock"></i> 4 hours</span>
-                                            <span><i class="fas fa-certificate"></i> Certificate</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="training-module">
-                                    <div class="module-icon">
-                                        <i class="fas fa-user-shield"></i>
-                                    </div>
-                                    <div class="module-content">
-                                        <h5>Risk Detection & Intervention</h5>
-                                        <p>Develop skills to identify at-risk individuals and create effective intervention strategies based on assessment data.</p>
-                                        <div class="module-meta">
-                                            <span><i class="fas fa-clock"></i> 6 hours</span>
-                                            <span><i class="fas fa-certificate"></i> Certificate</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="training-module">
-                                    <div class="module-icon">
-                                        <i class="fas fa-laptop-code"></i>
-                                    </div>
-                                    <div class="module-content">
-                                        <h5>Dashboard Mastery</h5>
-                                        <p>Master the EUNOIA dashboard to analyze individual and group trends, generate reports, and track interventions.</p>
-                                        <div class="module-meta">
-                                            <span><i class="fas fa-clock"></i> 3 hours</span>
-                                            <span><i class="fas fa-certificate"></i> Certificate</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <a @click="navigateToLogin" class="cta-button">Register for Training</a>
-                        </div>
-                    </div>
-                    
-
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- About Section -->
     <section class="about" id="about">
