@@ -188,6 +188,42 @@ app.use(cookieParser());
 // Trust proxy for accurate IP addresses
 app.set('trust proxy', 1);
 
+// iOS Safari cache prevention middleware
+app.use((req, res, next) => {
+  const userAgent = req.get('User-Agent') || '';
+  const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+  
+  // Add cache-control headers for all API requests
+  if (req.path.startsWith('/api/')) {
+    // Prevent caching for API requests, especially on iOS
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block'
+    });
+    
+    // iOS-specific headers
+    if (isIOS) {
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate, private, max-age=0',
+        'Vary': 'User-Agent, Accept-Encoding',
+        'X-iOS-Request': 'true',
+        'X-Timestamp': Date.now().toString()
+      });
+    }
+    
+    // Debug logging for iOS requests
+    if (isIOS) {
+      console.log(`🍎 iOS Request: ${req.method} ${req.path} - ${userAgent.substring(0, 50)}...`);
+    }
+  }
+  
+  next();
+});
+
 // Routes
 app.use('/api/accounts', accountRoutes);
 app.use('/api/auth', authRoutes);
