@@ -28,11 +28,21 @@ class AuthService {
       const data = await response.json();
 
       if (response.ok) {
+        // Set authentication state immediately
         this.currentUser = data.student;
         this.userType = 'student';
         this.isAuthenticated = true;
         
-        // Emit login event
+        // iOS Safari fix: Add small delay to ensure cookie is properly set
+        const userAgent = navigator.userAgent || '';
+        const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/CriOS|FxiOS/.test(userAgent);
+        
+        if (isIOSSafari) {
+          // Wait 100ms for iOS Safari to properly set the cookie
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Emit login event after state is set and cookie is ready
         this.emitAuthEvent('student-login', data.student);
         
         return {
@@ -50,7 +60,7 @@ class AuthService {
       console.error('Student login error:', error);
       return {
         success: false,
-        error: 'Network error. Please check if the server is running.'
+        error: 'Network error occurred'
       };
     }
   }
@@ -65,18 +75,28 @@ class AuthService {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'include', // Important for cookies
         body: JSON.stringify({ email, password })
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        // Set authentication state immediately
         this.currentUser = data.counselor;
         this.userType = 'counselor';
         this.isAuthenticated = true;
         
-        // Emit login event
+        // iOS Safari fix: Add small delay to ensure cookie is properly set
+        const userAgent = navigator.userAgent || '';
+        const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/CriOS|FxiOS/.test(userAgent);
+        
+        if (isIOSSafari) {
+          // Wait 100ms for iOS Safari to properly set the cookie
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Emit login event after state is set and cookie is ready
         this.emitAuthEvent('counselor-login', data.counselor);
         
         return {
@@ -94,7 +114,7 @@ class AuthService {
       console.error('Counselor login error:', error);
       return {
         success: false,
-        error: 'Network error. Please check if the server is running.'
+        error: 'Network error occurred'
       };
     }
   }
