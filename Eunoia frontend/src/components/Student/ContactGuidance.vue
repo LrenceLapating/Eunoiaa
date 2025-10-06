@@ -203,182 +203,65 @@ export default {
       const rawSubject = this.emailData.subject;
       const rawBody = `From: ${this.studentName} (${this.studentEmail})\n\n${this.emailData.message}`;
       
-      // Detect if user is on mobile device
-      const isMobile = this.isMobileDevice();
-      
-      if (isMobile) {
-        // Mobile-optimized approach
-        this.handleMobileGmailRedirect(recipientEmail, rawSubject, rawBody);
-      } else {
-        // Desktop approach
-        this.handleDesktopGmailRedirect(recipientEmail, rawSubject, rawBody);
-      }
+      // Use unified approach for all devices - prioritize reliability over app detection
+      this.handleUniversalGmailRedirect(recipientEmail, rawSubject, rawBody);
     },
     
-    isMobileDevice() {
-      // Comprehensive mobile detection
-      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      
-      // Check for mobile user agents
-      const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i;
-      const isMobileUA = mobileRegex.test(userAgent.toLowerCase());
-      
-      // Check for touch capability
-      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      
-      // Check screen size
-      const isSmallScreen = window.innerWidth <= 768;
-      
-      return isMobileUA || (isTouchDevice && isSmallScreen);
-    },
-    
-    handleMobileGmailRedirect(recipientEmail, subject, body) {
+    handleUniversalGmailRedirect(recipientEmail, subject, body) {
       try {
-        // Mobile-optimized Gmail URLs with better parameter handling
+        // Method 1: Standard Gmail web compose (works on all devices)
+        const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
-        // Method 1: Mobile Gmail web interface with proper parameters
-        const mobileGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}&ui=2&ik=&search=inbox&th=`;
+        // Method 2: Gmail mobile-friendly URL (fallback)
+        const gmailMobileUrl = `https://mail.google.com/mail/u/0/#compose?to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
-        // Method 2: Alternative mobile Gmail format
-        const altMobileGmailUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}&tf=1`;
-        
-        // Method 3: Gmail app deep link (Android)
-        const gmailAppUrl = `googlegmail://co?to=${encodeURIComponent(recipientEmail)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        // Method 4: Standard mailto (universal fallback)
+        // Method 3: Standard mailto (universal fallback)
         const mailtoUrl = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
-        // Detect specific mobile platform
-        const userAgent = navigator.userAgent.toLowerCase();
-        const isAndroid = userAgent.includes('android');
-        const isIOS = userAgent.includes('iphone') || userAgent.includes('ipad');
-        
-        if (isAndroid) {
-          // Android: Try Gmail app first, then mobile web
-          this.tryAndroidGmail(gmailAppUrl, mobileGmailUrl, altMobileGmailUrl, mailtoUrl);
-        } else if (isIOS) {
-          // iOS: Use mobile web Gmail (iOS doesn't support Gmail app deep links reliably)
-          this.tryIOSGmail(mobileGmailUrl, altMobileGmailUrl, mailtoUrl);
-        } else {
-          // Other mobile platforms: Use mobile web
-          this.tryMobileWebGmail(mobileGmailUrl, altMobileGmailUrl, mailtoUrl);
-        }
+        // Try primary Gmail web URL
+        this.tryGmailRedirect(gmailWebUrl, gmailMobileUrl, mailtoUrl, recipientEmail, subject, body);
         
       } catch (error) {
-        console.error('Mobile Gmail redirect error:', error);
+        console.error('Gmail redirect error:', error);
         this.fallbackToMailto(recipientEmail, subject, body);
       }
     },
     
-    tryAndroidGmail(gmailAppUrl, mobileGmailUrl, altMobileGmailUrl, mailtoUrl) {
+    tryGmailRedirect(primaryUrl, secondaryUrl, mailtoUrl, recipientEmail, subject, body) {
       try {
-        // Try Gmail app first
-        const appLink = document.createElement('a');
-        appLink.href = gmailAppUrl;
-        appLink.target = '_blank';
-        document.body.appendChild(appLink);
-        
-        let appOpened = false;
-        
-        // Set a timeout to fallback if app doesn't open
-        const fallbackTimer = setTimeout(() => {
-          if (!appOpened && document.body.contains(appLink)) {
-            document.body.removeChild(appLink);
-            // App didn't open, try mobile web Gmail
-            this.tryMobileWebGmail(mobileGmailUrl, altMobileGmailUrl, mailtoUrl);
-          }
-        }, 2000);
-        
-        // Try to open the app
-        appLink.click();
-        
-        // Check if app opened successfully
-        setTimeout(() => {
-          if (document.body.contains(appLink)) {
-            appOpened = true;
-            clearTimeout(fallbackTimer);
-            document.body.removeChild(appLink);
-            this.showNotification('Opened Gmail app with template! Please send your message.', 'success', 'fas fa-mobile-alt');
-            this.clearForm();
-          }
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Android Gmail app error:', error);
-        this.tryMobileWebGmail(mobileGmailUrl, altMobileGmailUrl, mailtoUrl);
-      }
-    },
-    
-    tryIOSGmail(mobileGmailUrl, altMobileGmailUrl, mailtoUrl) {
-      // iOS: Direct to mobile web Gmail
-      this.tryMobileWebGmail(mobileGmailUrl, altMobileGmailUrl, mailtoUrl);
-    },
-    
-    tryMobileWebGmail(mobileGmailUrl, altMobileGmailUrl, mailtoUrl) {
-      try {
-        // Try primary mobile Gmail URL
-        const gmailWindow = window.open(mobileGmailUrl, '_blank');
+        // Try to open Gmail web interface
+        const gmailWindow = window.open(primaryUrl, '_blank');
         
         if (gmailWindow) {
-          this.showNotification('Redirected to Gmail with template! Please send your message.', 'success', 'fas fa-external-link-alt');
+          // Success - show notification and clear form
+          this.showNotification('Redirected to Gmail! Please send your message from there.', 'success', 'fas fa-external-link-alt');
           this.clearForm();
         } else {
-          // Primary URL failed, try alternative
-          setTimeout(() => {
-            const altGmailWindow = window.open(altMobileGmailUrl, '_blank');
-            if (altGmailWindow) {
-              this.showNotification('Redirected to Gmail with template! Please send your message.', 'success', 'fas fa-external-link-alt');
-              this.clearForm();
-            } else {
-              // Both Gmail URLs failed, use mailto
-              this.fallbackToMailto(recipientEmail, subject, body);
-            }
-          }, 500);
+          // Popup blocked or failed, try secondary method
+          this.trySecondaryGmail(secondaryUrl, recipientEmail, subject, body);
         }
       } catch (error) {
-        console.error('Mobile web Gmail error:', error);
-        this.fallbackToMailto(recipientEmail, subject, body);
+        console.error('Primary Gmail redirect error:', error);
+        this.trySecondaryGmail(secondaryUrl, recipientEmail, subject, body);
       }
     },
     
-    handleDesktopGmailRedirect(recipientEmail, subject, body) {
+    trySecondaryGmail(secondaryUrl, recipientEmail, subject, body) {
       try {
-        // Desktop Gmail web interface (original method, but improved)
-        const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        // Open Gmail compose in a new tab
-        const gmailWindow = window.open(gmailComposeUrl, '_blank');
+        const gmailWindow = window.open(secondaryUrl, '_blank');
         
         if (gmailWindow) {
           this.showNotification('Redirected to Gmail! Please send your message from there.', 'success', 'fas fa-external-link-alt');
           this.clearForm();
         } else {
-          // Popup blocked, try alternative
-          throw new Error('Popup blocked');
+          // Both Gmail methods failed, use mailto
+          this.fallbackToMailto(recipientEmail, subject, body);
         }
-        
       } catch (error) {
-        console.error('Desktop Gmail redirect error:', error);
+        console.error('Secondary Gmail redirect error:', error);
         this.fallbackToMailto(recipientEmail, subject, body);
       }
     },
-    
-    tryGmailWeb(gmailWebUrl, mailtoUrl) {
-       try {
-         const gmailWindow = window.open(gmailWebUrl, '_blank');
-         
-         if (gmailWindow) {
-           this.showNotification('Redirected to Gmail with template! Please send your message.', 'success', 'fas fa-external-link-alt');
-           this.clearForm();
-         } else {
-           // Popup blocked, use mailto
-           this.fallbackToMailto(recipientEmail, subject, body);
-         }
-       } catch (error) {
-         console.error('Gmail web redirect error:', error);
-         this.fallbackToMailto(recipientEmail, subject, body);
-       }
-     },
     
     fallbackToMailto(recipientEmail, subject, body) {
       try {
