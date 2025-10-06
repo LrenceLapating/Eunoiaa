@@ -205,8 +205,8 @@ app.use((req, res, next) => {
       'X-XSS-Protection': '1; mode=block'
     });
     
-    // iOS-specific headers
-    if (isIOS) {
+    // iOS-specific headers (exclude auth endpoints to prevent cookie interference)
+    if (isIOS && !req.path.startsWith('/api/auth/')) {
       res.set({
         'Cache-Control': 'no-cache, no-store, must-revalidate, private, max-age=0',
         'Vary': 'User-Agent, Accept-Encoding',

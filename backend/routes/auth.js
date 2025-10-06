@@ -78,6 +78,7 @@ router.post('/student/login', async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: '/', // Explicitly set path for better compatibility
+      domain: undefined, // Let browser determine domain automatically
     };
 
     // iOS Safari compatible SameSite settings
@@ -88,6 +89,7 @@ router.post('/student/login', async (req, res) => {
       cookieOptions.sameSite = 'lax';
     }
 
+    console.log('🍪 Setting cookie with options:', JSON.stringify(cookieOptions, null, 2));
     res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
 
     res.json({
@@ -234,6 +236,7 @@ router.post('/counselor/login', async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       path: '/', // Explicitly set path for better compatibility
+      domain: undefined, // Let browser determine domain automatically
     };
 
     // iOS Safari compatible SameSite settings
@@ -244,6 +247,7 @@ router.post('/counselor/login', async (req, res) => {
       cookieOptions.sameSite = 'lax';
     }
 
+    console.log('🍪 Setting counselor cookie with options:', JSON.stringify(cookieOptions, null, 2));
     res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
 
     res.json({

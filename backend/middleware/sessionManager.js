@@ -306,6 +306,8 @@ const verifySession = async (req, res, next) => {
 
     if (!sessionToken) {
       console.log('❌ No session token found in cookies or headers for:', req.path);
+      console.log('🍪 Available cookies:', Object.keys(req.cookies || {}));
+      console.log('📱 User-Agent:', req.get('User-Agent')?.substring(0, 100));
       return res.status(401).json({ error: 'No session token provided' });
     }
 
