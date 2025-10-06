@@ -71,26 +71,23 @@ router.post('/student/login', async (req, res) => {
       userAgent
     );
 
-    // Detect iOS Safari for cookie compatibility
-    const userAgentString = req.get('User-Agent') || '';
-    const isIOSSafari = /iPad|iPhone|iPod/.test(userAgentString) && /Safari/.test(userAgentString) && !/CriOS|FxiOS/.test(userAgentString);
+    // Set session cookie (HTTP-only for security)
+    // iOS-specific cookie handling fix
+    const isIOS = userAgent && (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod'));
     
-    // Set session cookie with iOS Safari compatibility
-    const cookieOptions = {
+    let cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     };
-    
-    // iOS Safari specific cookie settings
-    if (isIOSSafari) {
-      // For iOS Safari, use 'lax' sameSite to avoid cookie blocking issues
-      cookieOptions.sameSite = 'lax';
-    } else {
-      // For other browsers, use the original logic
-      cookieOptions.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+
+    // iOS Safari requires specific cookie settings for proper handling
+    if (isIOS) {
+      cookieOptions.secure = true; // Always secure for iOS
+      cookieOptions.sameSite = 'none'; // Required for iOS cross-origin
     }
-    
+
     res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
 
     res.json({
@@ -230,26 +227,23 @@ router.post('/counselor/login', async (req, res) => {
       userAgent
     );
 
-    // Detect iOS Safari for cookie compatibility
-    const userAgentString = req.get('User-Agent') || '';
-    const isIOSSafari = /iPad|iPhone|iPod/.test(userAgentString) && /Safari/.test(userAgentString) && !/CriOS|FxiOS/.test(userAgentString);
+    // Set session cookie
+    // iOS-specific cookie handling fix
+    const isIOS = userAgent && (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod'));
     
-    // Set session cookie with iOS Safari compatibility
-    const cookieOptions = {
+    let cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     };
-    
-    // iOS Safari specific cookie settings
-    if (isIOSSafari) {
-      // For iOS Safari, use 'lax' sameSite to avoid cookie blocking issues
-      cookieOptions.sameSite = 'lax';
-    } else {
-      // For other browsers, use the original logic
-      cookieOptions.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+
+    // iOS Safari requires specific cookie settings for proper handling
+    if (isIOS) {
+      cookieOptions.secure = true; // Always secure for iOS
+      cookieOptions.sameSite = 'none'; // Required for iOS cross-origin
     }
-    
+
     res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
 
     res.json({
@@ -432,24 +426,12 @@ router.post('/logout', async (req, res) => {
       await sessionManager.deactivateSession(sessionToken);
     }
 
-    // Detect iOS Safari for cookie compatibility
-    const userAgent = req.get('User-Agent') || '';
-    const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/CriOS|FxiOS/.test(userAgent);
-    
-    // Clear session cookie with iOS Safari compatibility
-    const clearCookieOptions = {
+    // Clear session cookie
+    res.clearCookie('sessionToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production'
-    };
-    
-    // iOS Safari specific cookie settings
-    if (isIOSSafari) {
-      clearCookieOptions.sameSite = 'lax';
-    } else {
-      clearCookieOptions.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
-    }
-    
-    res.clearCookie('sessionToken', clearCookieOptions);
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    });
     
     res.json({ message: 'Logout successful' });
   } catch (error) {

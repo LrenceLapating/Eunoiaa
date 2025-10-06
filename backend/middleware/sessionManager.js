@@ -294,18 +294,7 @@ const verifySession = async (req, res, next) => {
   try {
     const sessionManager = new SessionManager();
     
-    // Get client info for debugging
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.get('User-Agent') || '';
-    const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/CriOS|FxiOS/.test(userAgent);
-    
-    // iOS-specific debugging
-    if (isIOSSafari) {
-      console.log('🍎 iOS Safari detected - User-Agent:', userAgent);
-      console.log('🍪 iOS Safari cookies received:', req.headers.cookie || 'No cookies');
-    }
-
-    // Get session token from cookies or Authorization header
+    // Get session token from cookie or Authorization header
     let sessionToken = req.cookies?.sessionToken;
     
     if (!sessionToken) {
@@ -316,18 +305,8 @@ const verifySession = async (req, res, next) => {
     }
 
     if (!sessionToken) {
-      if (isIOSSafari) {
-        console.log('❌ iOS Safari - No session token found in cookies or headers for:', req.path);
-        console.log('🍪 iOS Safari - All cookies:', req.headers.cookie);
-        console.log('🔍 iOS Safari - Cookie header details:', JSON.stringify(req.headers.cookie));
-      } else {
-        console.log('❌ No session token found in cookies or headers for:', req.path);
-      }
+      console.log('❌ No session token found in cookies or headers for:', req.path);
       return res.status(401).json({ error: 'No session token provided' });
-    }
-
-    if (isIOSSafari) {
-      console.log('✅ iOS Safari - Session token found:', sessionToken.substring(0, 10) + '...');
     }
 
     console.log('🔍 Validating session token for:', req.path, 'Token:', sessionToken.substring(0, 10) + '...');
@@ -336,19 +315,11 @@ const verifySession = async (req, res, next) => {
     const session = await sessionManager.validateSession(sessionToken);
     
     if (!session) {
-      if (isIOSSafari) {
-        console.log('❌ iOS Safari - Session validation failed for token:', sessionToken.substring(0, 10) + '...');
-      } else {
-        console.log('❌ Session validation failed for token:', sessionToken.substring(0, 10) + '...');
-      }
+      console.log('❌ Session validation failed for token:', sessionToken.substring(0, 10) + '...');
       return res.status(401).json({ error: 'Invalid or expired session' });
     }
 
-    if (isIOSSafari) {
-      console.log('✅ iOS Safari - Session valid for user:', session.user_id, 'type:', session.user_type);
-    } else {
-      console.log('✅ Session valid for user:', session.user_id, 'type:', session.user_type);
-    }
+    console.log('✅ Session valid for user:', session.user_id, 'type:', session.user_type);
 
     // Refresh session if needed
     const refreshedSession = await sessionManager.refreshSessionIfNeeded(session);
@@ -359,6 +330,10 @@ const verifySession = async (req, res, next) => {
       id: session.user_id,
       type: session.user_type
     };
+
+    // Get client info
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
 
     // Log activity (only for important actions to prevent spam)
     const importantActions = ['login', 'logout', 'password_change', 'assessment_submit'];

@@ -204,15 +204,6 @@ router.beforeEach(async (to, from, next) => {
         next();
       }
     } else {
-      // iOS Safari fix: Add small delay before checking auth status to avoid race conditions
-      const userAgent = navigator.userAgent || '';
-      const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/CriOS|FxiOS/.test(userAgent);
-      
-      if (isIOSSafari) {
-        // Wait 150ms for iOS Safari to ensure cookies are properly available
-        await new Promise(resolve => setTimeout(resolve, 150));
-      }
-      
       // Need to check auth status from server
       const authStatus = await authService.checkAuthStatus();
       if (!authStatus.isAuthenticated) {
