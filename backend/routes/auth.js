@@ -72,20 +72,20 @@ router.post('/student/login', async (req, res) => {
     );
 
     // Set session cookie (HTTP-only for security)
-    // iOS-specific cookie handling fix
-    const isIOS = userAgent && (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod'));
-    
-    let cookieOptions = {
+    // Enhanced iOS Safari compatibility
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/', // Explicitly set path for better compatibility
     };
 
-    // iOS Safari requires specific cookie settings for proper handling
-    if (isIOS) {
-      cookieOptions.secure = true; // Always secure for iOS
-      cookieOptions.sameSite = 'none'; // Required for iOS cross-origin
+    // iOS Safari compatible SameSite settings
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.sameSite = 'none';
+      cookieOptions.secure = true;
+    } else {
+      cookieOptions.sameSite = 'lax';
     }
 
     res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
@@ -228,20 +228,20 @@ router.post('/counselor/login', async (req, res) => {
     );
 
     // Set session cookie
-    // iOS-specific cookie handling fix
-    const isIOS = userAgent && (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod'));
-    
-    let cookieOptions = {
+    // Enhanced iOS Safari compatibility
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/', // Explicitly set path for better compatibility
     };
 
-    // iOS Safari requires specific cookie settings for proper handling
-    if (isIOS) {
-      cookieOptions.secure = true; // Always secure for iOS
-      cookieOptions.sameSite = 'none'; // Required for iOS cross-origin
+    // iOS Safari compatible SameSite settings
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.sameSite = 'none';
+      cookieOptions.secure = true;
+    } else {
+      cookieOptions.sameSite = 'lax';
     }
 
     res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
