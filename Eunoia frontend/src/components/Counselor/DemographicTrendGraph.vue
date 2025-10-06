@@ -7,7 +7,7 @@
         </div>
         <div>
           <h3>Demographic Risk Analysis</h3>
-          <p>Mental health risk levels and at-risk dimensions by gender across 6 psychological dimensions</p>
+          <p>At-risk student comparison by gender across psychological dimensions</p>
         </div>
       </div>
       
@@ -30,11 +30,6 @@
           <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
           {{ refreshing ? 'Refreshing...' : 'Refresh' }}
         </button>
-      </div>
-      
-      <!-- Info Text -->
-      <div class="info-text">
-        <p>Comparing at-risk student counts between male and female students across 6 psychological well-being dimensions</p>
       </div>
     </div>
 
@@ -784,39 +779,44 @@ export default {
 .section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .section-title {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
 }
 
 .section-icon.demographic-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 10px;
+  border-radius: 12px;
   color: white;
   font-size: 18px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
 }
 
 .section-title h3 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1a2e35;
   margin: 0;
+  line-height: 1.2;
 }
 
 .section-title p {
   font-size: 14px;
-  color: #546e7a;
+  color: #64748b;
   margin: 4px 0 0 0;
+  line-height: 1.4;
 }
 
 .year-labels {
@@ -961,12 +961,13 @@ export default {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-top: 4px;
 }
 
 .year-filter {
-  padding: 8px 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
   background: white;
   font-size: 14px;
   font-weight: 500;
@@ -974,12 +975,17 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 180px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .year-filter:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.year-filter:hover {
+  border-color: #cbd5e1;
 }
 
 .gender-filter {
@@ -1224,11 +1230,11 @@ export default {
 
 /* Refresh Button Styles */
 .refresh-btn {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -1236,24 +1242,25 @@ export default {
   align-items: center;
   gap: 8px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #45a049, #3d8b40);
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
 }
 
 .refresh-btn:disabled {
-  background: #cccccc;
+  background: #e2e8f0;
+  color: #94a3b8;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
 .refresh-btn i {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 /* Responsive Design */

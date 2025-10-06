@@ -71,13 +71,27 @@ router.post('/student/login', async (req, res) => {
       userAgent
     );
 
-    // Set session cookie (HTTP-only for security)
-    res.cookie('sessionToken', sessionData.sessionToken, {
+    // Detect iOS Safari for cookie compatibility
+    const userAgentString = req.get('User-Agent') || '';
+    const isIOSSafari = /iPad|iPhone|iPod/.test(userAgentString) && /Safari/.test(userAgentString) && !/CriOS|FxiOS/.test(userAgentString);
+    
+    // Set session cookie with iOS Safari compatibility
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    });
+    };
+    
+    // iOS Safari specific cookie settings
+    if (isIOSSafari) {
+      // For iOS Safari, use 'lax' sameSite to avoid cookie blocking issues
+      cookieOptions.sameSite = 'lax';
+    } else {
+      // For other browsers, use the original logic
+      cookieOptions.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+    }
+    
+    res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
 
     res.json({
       message: 'Login successful',
@@ -216,13 +230,27 @@ router.post('/counselor/login', async (req, res) => {
       userAgent
     );
 
-    // Set session cookie
-    res.cookie('sessionToken', sessionData.sessionToken, {
+    // Detect iOS Safari for cookie compatibility
+    const userAgentString = req.get('User-Agent') || '';
+    const isIOSSafari = /iPad|iPhone|iPod/.test(userAgentString) && /Safari/.test(userAgentString) && !/CriOS|FxiOS/.test(userAgentString);
+    
+    // Set session cookie with iOS Safari compatibility
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    });
+    };
+    
+    // iOS Safari specific cookie settings
+    if (isIOSSafari) {
+      // For iOS Safari, use 'lax' sameSite to avoid cookie blocking issues
+      cookieOptions.sameSite = 'lax';
+    } else {
+      // For other browsers, use the original logic
+      cookieOptions.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+    }
+    
+    res.cookie('sessionToken', sessionData.sessionToken, cookieOptions);
 
     res.json({
       message: 'Login successful',
@@ -404,12 +432,24 @@ router.post('/logout', async (req, res) => {
       await sessionManager.deactivateSession(sessionToken);
     }
 
-    // Clear session cookie
-    res.clearCookie('sessionToken', {
+    // Detect iOS Safari for cookie compatibility
+    const userAgent = req.get('User-Agent') || '';
+    const isIOSSafari = /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/CriOS|FxiOS/.test(userAgent);
+    
+    // Clear session cookie with iOS Safari compatibility
+    const clearCookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-    });
+      secure: process.env.NODE_ENV === 'production'
+    };
+    
+    // iOS Safari specific cookie settings
+    if (isIOSSafari) {
+      clearCookieOptions.sameSite = 'lax';
+    } else {
+      clearCookieOptions.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+    }
+    
+    res.clearCookie('sessionToken', clearCookieOptions);
     
     res.json({ message: 'Logout successful' });
   } catch (error) {
