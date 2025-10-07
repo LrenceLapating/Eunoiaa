@@ -40,11 +40,11 @@
       <div class="question-card">
         <div class="question-header">
           <span class="question-number">Q{{ currentQuestionIndex + 1 }}</span>
-          <!-- Dimension info hidden as requested -->
-          <!-- <div class="dimension-info">
-            <span class="dimension-name">{{ currentQuestionDimension.toUpperCase() }}</span>
-            <span class="dimension-question-number">{{ currentQuestion.id }}</span>
-          </div> -->
+          <!-- Show dimension info for testing -->
+          <div class="dimension-info">
+            <span class="dimension-name">{{ currentQuestion.dimensionName || currentQuestionDimension.toUpperCase() }}</span>
+            <span class="dimension-question-number">{{ currentQuestion.dimensionName }} {{ currentQuestion.originalQuestionNumber || currentQuestion.id }}</span>
+          </div>
         </div>
         
         <div class="question-text">
@@ -212,6 +212,8 @@
 <script>
 import { ryff42ItemQuestionnaire } from '@/assets/ryff42ItemQuestionnaire'
 import { ryff84ItemQuestionnaire } from '@/assets/ryff84ItemQuestionnaire'
+import { ryff84ItemQuestionnaireOrdered } from '@/assets/ryff84ItemQuestionnaireOrdered'
+import { ryff42ItemQuestionnaireOrdered } from '@/assets/ryff42ItemQuestionnaireOrdered'
 import authService from '@/services/authService'
 import { apiUrl } from '@/utils/apiUtils.js'
 import AnimatedEmoji from './AnimatedEmoji.vue'
@@ -248,9 +250,16 @@ export default {
   },
   computed: {
     questionnaire() {
+      // For testing: Use ordered questionnaire for both 42-item and 84-item assessments
+      if (this.assessmentType === '84') {
+        return ryff84ItemQuestionnaireOrdered
+      } else {
+        return ryff42ItemQuestionnaireOrdered
+      }
+      
       const baseQuestionnaire = this.assessmentType === '84' ? ryff84ItemQuestionnaire : ryff42ItemQuestionnaire
       
-      // Create a copy and shuffle the items for each student
+      // Create a copy and shuffle the items for each student (only for 42-item)
       const shuffledQuestionnaire = {
         ...baseQuestionnaire,
         items: this.shuffleArray([...baseQuestionnaire.items])

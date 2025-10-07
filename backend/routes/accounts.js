@@ -88,52 +88,45 @@ router.get('/colleges', async (req, res) => {
 });
 
 // GET /api/accounts/colleges/:collegeName/sections - Get sections data for a specific college (active students only)
-// GET /api/accounts/colleges/:collegeName/assessment-filters - Get dynamic year levels and sections based on bulk assessments
+// GET /api/accounts/colleges/:collegeName/assessment-filters - Get dynamic year levels and sections based on current student enrollments
 router.get('/colleges/:collegeName/assessment-filters', async (req, res) => {
   try {
     const { collegeName } = req.params;
     const { assessmentType, assessmentName, course } = req.query; // 'ryff_42' or 'ryff_84' or 'all', specific assessment name, and course filter
     
-    // Get bulk assessments for this college and assessment type with their target year levels and sections
-    let assessmentQuery = supabase
-      .from('bulk_assessments')
-      .select('id, assessment_name, target_year_levels, target_sections')
-      .contains('target_colleges', [collegeName])
-      .neq('status', 'archived');
+    // Get currently active students for this college
+    let studentsQuery = supabase
+      .from('students')
+      .select('course, year_level, section')
+      .eq('college', collegeName)
+      .eq('status', 'active')
+      .not('course', 'is', null)
+      .not('year_level', 'is', null)
+      .not('section', 'is', null);
     
-    // Filter by assessment type if specified
-    if (assessmentType && assessmentType !== 'all') {
-      assessmentQuery = assessmentQuery.eq('assessment_type', assessmentType);
+    // If course filter is applied, filter by that course
+    if (course && course !== 'All Courses') {
+      studentsQuery = studentsQuery.eq('course', course);
     }
     
-    // Filter by specific assessment name if specified
-    if (assessmentName) {
-      assessmentQuery = assessmentQuery.eq('assessment_name', assessmentName);
-    }
+    const { data: activeStudents, error: studentsError } = await studentsQuery;
     
-    const { data: bulkAssessments, error: assessmentError } = await assessmentQuery;
-    
-    if (assessmentError) throw assessmentError;
+    if (studentsError) throw studentsError;
     
     // Debug logging
-    console.log('🔍 Assessment Filters Debug:');
+    console.log('🔍 Assessment Filters Debug (Current Students):');
     console.log(`   College: ${collegeName}`);
     console.log(`   Assessment Type: ${assessmentType}`);
     console.log(`   Assessment Name: ${assessmentName}`);
-    console.log(`   Found ${bulkAssessments ? bulkAssessments.length : 0} assessments`);
-    if (bulkAssessments) {
-      bulkAssessments.forEach((assessment, index) => {
-        console.log(`     ${index + 1}. "${assessment.assessment_name}"`);
-        console.log(`        Year Levels: ${JSON.stringify(assessment.target_year_levels)}`);
-        console.log(`        Sections: ${JSON.stringify(assessment.target_sections)}`);
-      });
-    }
+    console.log(`   Course Filter: ${course || 'None'}`);
+    console.log(`   Found ${activeStudents ? activeStudents.length : 0} active students`);
     
-    // If no assessments found, return empty arrays
-    if (!bulkAssessments || bulkAssessments.length === 0) {
+    // If no active students found, return empty arrays
+    if (!activeStudents || activeStudents.length === 0) {
       return res.json({
         success: true,
         data: {
+          courses: [],
           yearLevels: [],
           sections: [],
           totalAssessments: 0
@@ -141,104 +134,62 @@ router.get('/colleges/:collegeName/assessment-filters', async (req, res) => {
       });
     }
     
-    // Get available courses - FIXED to match year/section logic
-    // Only show courses from students who received assessments (like year levels and sections)
+    // Extract unique courses, year levels, and sections from active students
     const coursesSet = new Set();
-    
-    // Get students who received assessments through assessment_assignments
-    const bulkAssessmentIds = bulkAssessments.map(ba => ba.id);
-    
-    const { data: assignedStudents, error: assignedStudentsError } = await supabase
-      .from('assessment_assignments')
-      .select(`
-        student_id,
-        students!inner(course)
-      `)
-      .in('bulk_assessment_id', bulkAssessmentIds)
-      .not('students.course', 'is', null);
-
-    if (assignedStudentsError) {
-      console.error('Error fetching assigned students for courses:', assignedStudentsError);
-      throw assignedStudentsError;
-    }
-
-    // Extract unique courses from students who received assessments
-    assignedStudents.forEach(assignment => {
-      const course = assignment.students?.course;
-      if (course && course.trim() !== '') {
-        coursesSet.add(course);
-      }
-    });
-    
-    const availableCourses = Array.from(coursesSet).sort();
-    
-    console.log('🔍 COURSE DEBUG: Available courses for college =', availableCourses);
-
-    // Extract unique year levels and sections from all bulk assessments
     const yearLevelsSet = new Set();
     const sectionsSet = new Set();
     
-    // If course filter is applied, filter assessments by students in that course
-    let filteredAssessments = bulkAssessments;
-    if (course && course !== 'All Courses') {
-      // Get students in the selected course
-      const { data: courseStudents, error: courseStudentsError } = await supabase
-        .from('students')
-        .select('id, year_level, section')
-        .eq('college', collegeName)
-        .eq('course', course);
-
-      if (courseStudentsError) {
-        console.error('Error fetching course students:', courseStudentsError);
-        throw courseStudentsError;
+    activeStudents.forEach(student => {
+      // Add course
+      if (student.course && student.course.trim() !== '') {
+        coursesSet.add(student.course);
       }
-
-      // Get year levels and sections from students in this course
-      courseStudents.forEach(student => {
-        if (student.year_level !== null && student.year_level !== undefined) {
-          yearLevelsSet.add(student.year_level);
-        }
-        if (student.section && student.section.trim() !== '') {
-          sectionsSet.add(student.section);
-        }
-      });
-    } else {
-      // No course filter, use all assessments
-      bulkAssessments.forEach(assessment => {
-        // Add target year levels from this assessment
-        if (assessment.target_year_levels && Array.isArray(assessment.target_year_levels)) {
-          assessment.target_year_levels.forEach(year => {
-            if (year !== null && year !== undefined) {
-              yearLevelsSet.add(year);
-            }
-          });
-        }
-        
-        // Add target sections from this assessment
-        if (assessment.target_sections && Array.isArray(assessment.target_sections)) {
-          assessment.target_sections.forEach(section => {
-            if (section && section.trim() !== '') {
-              sectionsSet.add(section);
-            }
-          });
-        }
-      });
-    }
+      
+      // Add year level
+      if (student.year_level !== null && student.year_level !== undefined) {
+        yearLevelsSet.add(student.year_level);
+      }
+      
+      // Add section
+      if (student.section && student.section.trim() !== '') {
+        sectionsSet.add(student.section);
+      }
+    });
     
     // Convert to sorted arrays
+    const availableCourses = Array.from(coursesSet).sort();
     const availableYearLevels = Array.from(yearLevelsSet).sort((a, b) => a - b);
     const availableSections = Array.from(sectionsSet).sort();
     
+    // Get assessment count for reference (optional - for compatibility)
+    let assessmentCount = 0;
+    if (assessmentType || assessmentName) {
+      let assessmentQuery = supabase
+        .from('bulk_assessments')
+        .select('id', { count: 'exact' })
+        .contains('target_colleges', [collegeName])
+        .neq('status', 'archived');
+      
+      if (assessmentType && assessmentType !== 'all') {
+        assessmentQuery = assessmentQuery.eq('assessment_type', assessmentType);
+      }
+      
+      if (assessmentName) {
+        assessmentQuery = assessmentQuery.eq('assessment_name', assessmentName);
+      }
+      
+      const { count } = await assessmentQuery;
+      assessmentCount = count || 0;
+    }
+    
     // Debug logging for final results
-    console.log('📊 Final Results:');
+    console.log('📊 Final Results (Current Students):');
     console.log(`   Courses: ${JSON.stringify(availableCourses)}`);
     console.log(`   Year Levels: ${JSON.stringify(availableYearLevels)}`);
     console.log(`   Sections: ${JSON.stringify(availableSections)}`);
-    console.log(`   Total Assessments: ${bulkAssessments.length}`);
+    console.log(`   Assessment Count: ${assessmentCount}`);
     console.log(`   Course Filter Applied: ${course || 'None'}`);
     console.log('');
-    
-    console.log('🔍 COURSE DEBUG: About to send response with availableCourses =', availableCourses);
     
     const responseData = {
       success: true,
@@ -246,11 +197,9 @@ router.get('/colleges/:collegeName/assessment-filters', async (req, res) => {
         courses: availableCourses,
         yearLevels: availableYearLevels,
         sections: availableSections,
-        totalAssessments: bulkAssessments.length
+        totalAssessments: assessmentCount
       }
     };
-    
-    console.log('🔍 COURSE DEBUG: Full response data =', JSON.stringify(responseData, null, 2));
     
     res.json(responseData);
   } catch (error) {

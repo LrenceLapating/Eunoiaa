@@ -1,0 +1,164 @@
+12:46:04 E SpringBoard(FrontBoardServices)[34] <Error>: [(FBSceneManager):com.apple.UIKit.remote-keyboard] updated client settings were not derived from the scene's previous client settings
+12:46:04 E backboardd(QuartzCore)[68] <Error>: display 3 get_wireless_surface_options returned error e00002d5
+12:46:04 E rtcreportingd[347] <Error>: gap in hierarchy: <private> level 1
+12:46:05 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:05 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:05 E remoted(Network)[51] <Error>: [C26521 IPv6#513336bf.54754 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:05 E remoted(Network)[51] <Error>: [C26521 IPv6#513336bf.54754 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:05 E remoted(Network)[51] <Error>: [C26522 IPv6#513336bf.54754 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:05 E remoted(Network)[51] <Error>: [C26522 IPv6#513336bf.54754 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:05 E remoted(Network)[51] <Error>: [C26522 IPv6#513336bf.54754 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:05 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:05 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:05 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:05 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:05 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:05 E SpringBoard(SpringBoard)[34] <Error>: attention client lost event tag is not a number: (null)
+12:46:06 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:06 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:06 E remoted(Network)[51] <Error>: [C26524 IPv6#513336bf.54764 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:06 E remoted(Network)[51] <Error>: [C26524 IPv6#513336bf.54764 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:06 E remoted(Network)[51] <Error>: [C26523 IPv6#513336bf.54764 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:06 E remoted(Network)[51] <Error>: [C26523 IPv6#513336bf.54764 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:06 E remoted(Network)[51] <Error>: [C26523 IPv6#513336bf.54764 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:06 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:06 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:06 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:06 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:06 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:07 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:07 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:07 E remoted(Network)[51] <Error>: [C26526 IPv6#513336bf.54774 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:07 E remoted(Network)[51] <Error>: [C26526 IPv6#513336bf.54774 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:07 E remoted(Network)[51] <Error>: [C26525 IPv6#513336bf.54774 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:07 E remoted(Network)[51] <Error>: [C26525 IPv6#513336bf.54774 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:07 E remoted(Network)[51] <Error>: [C26525 IPv6#513336bf.54774 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:07 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:07 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:07 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:07 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:07 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:07 E powerexperienced[130] <Error>: Failed to get current nfc status
+12:46:07 E rtcreportingd[347] <Error>: gap in hierarchy: <private> level 1
+12:46:08 E thermalmonitord[64] <Error>: <Error> could not find `cpu-avg-limiter-input-w2r property
+12:46:08 E thermalmonitord[64] <Error>: <Error> Failed to read `cpu-avg-limiter-input-w2r
+12:46:08 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:08 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:08 E remoted(Network)[51] <Error>: [C26527 IPv6#513336bf.54786 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:08 E remoted(Network)[51] <Error>: [C26528 IPv6#513336bf.54786 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:08 E remoted(Network)[51] <Error>: [C26528 IPv6#513336bf.54786 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:08 E remoted(Network)[51] <Error>: [C26528 IPv6#513336bf.54786 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:08 E remoted(Network)[51] <Error>: [C26527 IPv6#513336bf.54786 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:08 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:08 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:08 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:08 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:08 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:08 E wifid(WiFiPolicy)[50] <Error>: WiFiLQAMgrLinkRecommendationNotify: channel score: chq=3, tx-lat=3, rx-lat=5, tx-loss=5, rx-loss=5, txPer=0.0%, p95-lat=1, RT=0x0, link-recommendation=0x0
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi:  (HighBand) rxCrsGlitch=44 rxBphyCrsGlitch=0 rxStart=2968 rxBadPLCP=24 rxBphyBadPLCP=0 rxBadFCS=316 rxFifo0Ovfl=0 rxFifo1Ovfl=0 rx_nobuf=0 rxAnyErr=76 rxResponseTimeout=3 rxNoDelim=28 rxFrmTooLong=0 rxFrmTooShort=149
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: (HighBand) txRTSFrm=17 txRTSFail=0 rxCTSUcast=16 rxRTSUcast=0 txCTSFrm=0 txAMPDU=16 rxBACK=16 txPhyError=0 txAllFrm=59 txMPDU=149 txUcast=24 rxACKUcast=6 OfdmDesense=0 dB
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: (HighBand) rxBeaconMbss=49 rxBeaconObss=105 rxDataUcastMbss=16 rxMgmtUcastMbss=0 rxCNTRLUcast=40 txACKFrm=16 txBACK=0 ctxFifoFull=0 ctxFifo2Full=0 rxDataMcast=3 rxMgmtMcast=704
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: RX AMPDU (HighBand) rxAmpdu=16 txBACK(Ucode)=0 rxMpduInAmpdu=16 rxholes=0 rxdup=0 rxstuck=0 rxoow=0 rxoos=0 rxaddbareq=0 txaddbaresp=0 rxbar=0 txdelba=0 rxdelba=0 rxQueued=0 rxRetryNoBA=0
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: WME RX MPDUs (rxPER 0 %) in tids 0:24, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi:  (HighBand) rxToss=0 rxLastTossRsn=0 rxNoFrag=0 rxNoCmplId=0 rxNoHaddr=0 rxMulti=0 rxUndec=0
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> BE<8 0 0 0 0 0 0 0 0 0 0> (4998ms)
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> BK<0 0 0 0 0 0 0 0 0 0 0> (4998ms)
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> VI<0 0 0 0 0 0 0 0 0 0 0> (4998ms)
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> VO<0 0 0 0 0 0 0 0 0 0 0> (4998ms)
+12:46:09 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: L3 Control VO TX(00:00:00:00:00:00) Success=0 NoACK=0 Expired=0 OtherErr=0
+12:46:09 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:09 E remoted(Network)[51] <Error>: [C26529 IPv6#513336bf.54790 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:09 E remoted(Network)[51] <Error>: [C26529 IPv6#513336bf.54790 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:09 E remoted(Network)[51] <Error>: [C26530 IPv6#513336bf.54790 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:09 E remoted(Network)[51] <Error>: [C26530 IPv6#513336bf.54790 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:09 E remoted(Network)[51] <Error>: [C26530 IPv6#513336bf.54790 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:09 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:09 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:09 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:09 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:09 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:10 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:10 E remoted(Network)[51] <Error>: [C26531 IPv6#513336bf.54792 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:10 E remoted(Network)[51] <Error>: [C26531 IPv6#513336bf.54792 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:10 E remoted(Network)[51] <Error>: [C26532 IPv6#513336bf.54792 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:10 E remoted(Network)[51] <Error>: [C26532 IPv6#513336bf.54792 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:10 E remoted(Network)[51] <Error>: [C26532 IPv6#513336bf.54792 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:10 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:10 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:10 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:10 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:10 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:11 E rtcreportingd[347] <Error>: gap in hierarchy: <private> level 1
+12:46:11 E remoted(Network)[51] <Error>: [C26533 IPv6#513336bf.48478 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:11 E remoted(Network)[51] <Error>: [C26533 IPv6#513336bf.48478 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:11 E remoted(Network)[51] <Error>: [C26534 IPv6#513336bf.48478 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:11 E remoted(Network)[51] <Error>: [C26534 IPv6#513336bf.48478 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:11 E remoted(Network)[51] <Error>: [C26534 IPv6#513336bf.48478 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:11 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:11 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:11 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:11 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:11 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:11 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:12 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:12 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:12 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:12 E remoted(Network)[51] <Error>: [C26535 IPv6#513336bf.48484 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:12 E remoted(Network)[51] <Error>: [C26535 IPv6#513336bf.48484 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:12 E remoted(Network)[51] <Error>: [C26536 IPv6#513336bf.48484 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:12 E remoted(Network)[51] <Error>: [C26536 IPv6#513336bf.48484 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:12 E remoted(Network)[51] <Error>: [C26536 IPv6#513336bf.48484 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:12 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:12 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:12 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:13 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:13 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:13 E thermalmonitord[64] <Error>: <Error> could not find `cpu-avg-limiter-input-w2r property
+12:46:13 E thermalmonitord[64] <Error>: <Error> Failed to read `cpu-avg-limiter-input-w2r
+12:46:13 E rtcreportingd[347] <Error>: gap in hierarchy: <private> level 1
+12:46:14 E remoted(Network)[51] <Error>: [C26538 IPv6#513336bf.48496 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:14 E remoted(Network)[51] <Error>: [C26538 IPv6#513336bf.48496 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:14 E remoted(Network)[51] <Error>: [C26537 IPv6#513336bf.48496 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:14 E remoted(Network)[51] <Error>: [C26537 IPv6#513336bf.48496 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:14 E remoted(Network)[51] <Error>: [C26537 IPv6#513336bf.48496 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:14 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:14 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:14 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:14 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:14 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:14 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:14 E powerexperienced[130] <Error>: Failed to get current nfc status
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi:  (HighBand) rxCrsGlitch=2 rxBphyCrsGlitch=0 rxStart=524 rxBadPLCP=3 rxBphyBadPLCP=0 rxBadFCS=31 rxFifo0Ovfl=0 rxFifo1Ovfl=0 rx_nobuf=0 rxAnyErr=29 rxResponseTimeout=14 rxNoDelim=4 rxFrmTooLong=0 rxFrmTooShort=13
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: (HighBand) txRTSFrm=8 txRTSFail=0 rxCTSUcast=2 rxRTSUcast=0 txCTSFrm=0 txAMPDU=2 rxBACK=2 txPhyError=0 txAllFrm=24 txMPDU=13 txUcast=13 rxACKUcast=3 OfdmDesense=0 dB
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: (HighBand) rxBeaconMbss=48 rxBeaconObss=14 rxDataUcastMbss=2 rxMgmtUcastMbss=0 rxCNTRLUcast=8 txACKFrm=2 txBACK=0 ctxFifoFull=0 ctxFifo2Full=0 rxDataMcast=4 rxMgmtMcast=150
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: RX AMPDU (HighBand) rxAmpdu=2 txBACK(Ucode)=0 rxMpduInAmpdu=2 rxholes=0 rxdup=0 rxstuck=0 rxoow=0 rxoos=0 rxaddbareq=0 txaddbaresp=0 rxbar=0 txdelba=0 rxdelba=0 rxQueued=0 rxRetryNoBA=0
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: WME RX MPDUs (rxPER 0 %) in tids 0:2, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi:  (HighBand) rxToss=0 rxLastTossRsn=0 rxNoFrag=0 rxNoCmplId=0 rxNoHaddr=0 rxMulti=0 rxUndec=0
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> BE<9 0 0 0 0 0 0 0 0 0 0> (5000ms)
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> BK<0 0 0 0 0 0 0 0 0 0 0> (5000ms)
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> VI<0 0 0 0 0 0 0 0 0 0 0> (5000ms)
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> VO<0 0 0 0 0 0 0 0 0 0 0> (5000ms)
+12:46:14 E wifid(WiFiPolicy)[50] <Error>: LQM-WiFi: L3 Control VO TX(00:00:00:00:00:00) Success=0 NoACK=0 Expired=0 OtherErr=0
+12:46:14 E rtcreportingd[347] <Error>: gap in hierarchy: <private> level 1
+12:46:15 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:15 E remoted(Network)[51] <Error>: [C26539 IPv6#513336bf.48508 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:15 E remoted(Network)[51] <Error>: [C26539 IPv6#513336bf.48508 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:15 E remoted(Network)[51] <Error>: [C26540 IPv6#513336bf.48508 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:15 E remoted(Network)[51] <Error>: [C26540 IPv6#513336bf.48508 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:15 E remoted(Network)[51] <Error>: [C26540 IPv6#513336bf.48508 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:15 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:15 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:15 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:15 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:15 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatusErrorDomain Code=-67808 "RSA signature verification failed, no match" UserInfo={numberOfErrorsDeep=0, NSDescription=RSA signature verification failed, no match}
+12:46:15 E remoted(Network)[51] <Error>: nw_protocol_socket_reset_linger <private> setsockopt SO_LINGER failed [22: Invalid argument]
+12:46:16 E remoted(Network)[51] <Error>: nw_path_necp_check_for_updates Failed to copy updated result (22)
+12:46:16 E remoted(Network)[51] <Error>: [C26542 IPv6#513336bf.48512 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:16 E remoted(Network)[51] <Error>: [C26542 IPv6#513336bf.48512 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:16 E remoted(Network)[51] <Error>: [C26541 IPv6#513336bf.48512 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:16 E remoted(Network)[51] <Error>: [C26541 IPv6#513336bf.48512 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:16 E remoted(Network)[51] <Error>: [C26541 IPv6#513336bf.48512 tcp, interface: utun4, local: fd04:c955:f4bc::1.57385, definite, attribution: developer, server, prohibit joining] is already cancelled, ignoring cancel
+12:46:16 E remoted(Network)[51] <Error>: nw_socket_handle_socket_event <private> Socket SO_ERROR [54: Connection reset by peer]
+12:46:16 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep <private> setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:16 E remoted(Network)[51] <Error>: nw_protocol_socket_set_no_wake_from_sleep setsockopt SO_NOWAKEFROMSLEEP failed [22: Invalid argument]
+12:46:16 E trustd(Security)[1528] <Error>: SecKeyVerifySignature failed: Error Domain=NSOSStatus
