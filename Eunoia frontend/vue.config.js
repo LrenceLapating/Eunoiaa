@@ -71,31 +71,9 @@ module.exports = defineConfig({
   
   // Chain webpack for additional optimizations
   chainWebpack: config => {
-    // Image optimization
-    config.module
-      .rule('images')
-      .test(/\.(gif|png|jpe?g|svg)$/i)
-      .use('image-webpack-loader')
-      .loader('image-webpack-loader')
-      .options({
-        mozjpeg: {
-          progressive: true,
-          quality: 80
-        },
-        optipng: {
-          enabled: false
-        },
-        pngquant: {
-          quality: [0.65, 0.90],
-          speed: 4
-        },
-        gifsicle: {
-          interlaced: false
-        },
-        webp: {
-          quality: 75
-        }
-      })
+    // Image optimization - Disabled for Vercel compatibility
+    // The image-webpack-loader can cause build issues on Vercel
+    // due to native dependencies not being available
     
     // Preload important resources (only if plugin exists)
     if (config.plugins.has('preload')) {
