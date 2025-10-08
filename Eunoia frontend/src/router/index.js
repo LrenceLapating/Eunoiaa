@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingPage from '../components/Main/LandingPage.vue'
 import Login from '../components/Main/Login.vue'
-import ResetPassword from '../components/Main/ResetPassword.vue'
 import StudentDashboard from '../components/Student/StudentDashboard.vue'
 import CounselorDashboard from '../components/Counselor/CounselorDashboard.vue'
 
@@ -35,11 +34,6 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login
-  },
-  {
-    path: '/reset-password',
-    name: 'ResetPassword',
-    component: ResetPassword
   },
   {
     path: '/student-dashboard',

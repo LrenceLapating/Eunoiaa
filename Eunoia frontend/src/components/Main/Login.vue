@@ -52,7 +52,7 @@
               <input type="checkbox" id="remember" v-model="rememberMe">
               <label for="remember">Remember me</label>
             </div>
-            <a href="#" class="forgot-password" @click.prevent="showForgotPasswordModal = true">Forgot password?</a>
+            <a href="#" class="forgot-password">Forgot password?</a>
           </div>
           
           <button type="submit" class="login-button" :disabled="isLoading">
@@ -111,24 +111,14 @@
         </div>
       </div>
     </div>
-    
-    <!-- Forgot Password Modal -->
-    <ForgotPasswordModal 
-      :isVisible="showForgotPasswordModal" 
-      @close="showForgotPasswordModal = false" 
-    />
   </div>
 </template>
 
 <script>
 import authService from '@/services/authService'
-import ForgotPasswordModal from './ForgotPasswordModal.vue'
 
 export default {
   name: 'LoginPage',
-  components: {
-    ForgotPasswordModal
-  },
   data() {
     return {
       email: '',
@@ -137,8 +127,7 @@ export default {
       showNotification: false,
       notificationMessage: '',
       showPassword: false,
-      isLoading: false,
-      showForgotPasswordModal: false
+      isLoading: false
     }
   },
   mounted() {
