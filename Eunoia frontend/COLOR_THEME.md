@@ -1,7 +1,7 @@
 # Eunoia System Color Theme Documentation
 
 ## Overview
-This document defines the default color theme and design system specifications for the entire Eunoia application. All components should follow these guidelines to maintain visual consistency and brand identity.
+This document define the default color theme and design system specifications for the entire Eunoia application. All components should follow these guidelines to maintain visual consistency and brand identity.
 
 ## Primary Color Palette
 
