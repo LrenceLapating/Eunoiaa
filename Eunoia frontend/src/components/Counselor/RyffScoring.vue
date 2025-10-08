@@ -136,7 +136,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(student, index) in filteredStudents" :key="student?.id || index" class="student-row">
+          <tr v-for="(student, index) in paginatedStudents" :key="student?.id || index" class="student-row">
             <td>
               <div class="student-info">
                 <span class="student-name">{{ student?.name || 'N/A' }}</span>
@@ -219,6 +219,43 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Student View Pagination Controls -->
+      <div class="pagination-container" v-if="studentTotalPages > 1">
+        <div class="pagination-info">
+          Showing {{ ((studentCurrentPage - 1) * studentItemsPerPage) + 1 }} to {{ Math.min(studentCurrentPage * studentItemsPerPage, filteredStudents.length) }} of {{ filteredStudents.length }} students
+        </div>
+        <div class="pagination-controls">
+          <button 
+            class="pagination-btn" 
+            @click="prevStudentPage" 
+            :disabled="studentCurrentPage === 1"
+          >
+            <i class="fas fa-chevron-left"></i> Previous
+          </button>
+          
+          <div class="page-numbers">
+            <button 
+              v-for="page in Math.min(studentTotalPages, 5)" 
+              :key="page"
+              class="page-btn"
+              :class="{ active: page === studentCurrentPage }"
+              @click="goToStudentPage(page)"
+            >
+              {{ page }}
+            </button>
+            <span v-if="studentTotalPages > 5" class="page-ellipsis">...</span>
+          </div>
+          
+          <button 
+            class="pagination-btn" 
+            @click="nextStudentPage" 
+            :disabled="studentCurrentPage === studentTotalPages"
+          >
+            Next <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- History Data Table -->
@@ -236,7 +273,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(student, index) in consolidatedStudents" :key="student?.id || index" class="student-row">
+          <tr v-for="(student, index) in paginatedHistoryStudents" :key="student?.id || index" class="student-row">
             <td>{{ student?.id_number || 'N/A' }}</td>
             <td>{{ student?.name || 'N/A' }}</td>
             <td>{{ student?.college || 'N/A' }}</td>
@@ -253,6 +290,43 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- History View Pagination Controls -->
+      <div class="pagination-container" v-if="historyTotalPages > 1">
+        <div class="pagination-info">
+          Showing {{ ((historyCurrentPage - 1) * historyItemsPerPage) + 1 }} to {{ Math.min(historyCurrentPage * historyItemsPerPage, consolidatedStudents.length) }} of {{ consolidatedStudents.length }} students
+        </div>
+        <div class="pagination-controls">
+          <button 
+            class="pagination-btn" 
+            @click="prevHistoryPage" 
+            :disabled="historyCurrentPage === 1"
+          >
+            <i class="fas fa-chevron-left"></i> Previous
+          </button>
+          
+          <div class="page-numbers">
+            <button 
+              v-for="page in Math.min(historyTotalPages, 5)" 
+              :key="page"
+              class="page-btn"
+              :class="{ active: page === historyCurrentPage }"
+              @click="goToHistoryPage(page)"
+            >
+              {{ page }}
+            </button>
+            <span v-if="historyTotalPages > 5" class="page-ellipsis">...</span>
+          </div>
+          
+          <button 
+            class="pagination-btn" 
+            @click="nextHistoryPage" 
+            :disabled="historyCurrentPage === historyTotalPages"
+          >
+            Next <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Student Details Modal -->
@@ -754,7 +828,15 @@ export default {
           atRisk: 216,    // 84-216 (At Risk) - 36*6 dimensions
           healthy: 354    // 354-504 (Healthy), 217-353 (Moderate) - 59*6 dimensions
         }
-      }
+      },
+
+      // Pagination for student view
+      studentCurrentPage: 1,
+      studentItemsPerPage: 10,
+
+      // Pagination for history view
+      historyCurrentPage: 1,
+      historyItemsPerPage: 10
     };
   },
   computed: {
@@ -854,6 +936,30 @@ export default {
       }
       
       return consolidated;
+    },
+
+    // Paginated students for student view
+    paginatedStudents() {
+      const start = (this.studentCurrentPage - 1) * this.studentItemsPerPage;
+      const end = start + this.studentItemsPerPage;
+      return this.filteredStudents.slice(start, end);
+    },
+
+    // Paginated students for history view
+    paginatedHistoryStudents() {
+      const start = (this.historyCurrentPage - 1) * this.historyItemsPerPage;
+      const end = start + this.historyItemsPerPage;
+      return this.consolidatedStudents.slice(start, end);
+    },
+
+    // Total pages for student view
+    studentTotalPages() {
+      return Math.ceil(this.filteredStudents.length / this.studentItemsPerPage);
+    },
+
+    // Total pages for history view
+    historyTotalPages() {
+      return Math.ceil(this.consolidatedStudents.length / this.historyItemsPerPage);
     }
   },
   watch: {
@@ -2468,10 +2574,50 @@ export default {
       
       // Show alert with dimension information
       alert(`${name}\n\n${description}`);
+    },
+
+    // Pagination methods for student view
+    goToStudentPage(page) {
+      if (page >= 1 && page <= this.studentTotalPages) {
+        this.studentCurrentPage = page;
+      }
+    },
+
+    nextStudentPage() {
+      if (this.studentCurrentPage < this.studentTotalPages) {
+        this.studentCurrentPage++;
+      }
+    },
+
+    prevStudentPage() {
+      if (this.studentCurrentPage > 1) {
+        this.studentCurrentPage--;
+      }
+    },
+
+    // Pagination methods for history view
+    goToHistoryPage(page) {
+      if (page >= 1 && page <= this.historyTotalPages) {
+        this.historyCurrentPage = page;
+      }
+    },
+
+    nextHistoryPage() {
+      if (this.historyCurrentPage < this.historyTotalPages) {
+        this.historyCurrentPage++;
+      }
+    },
+
+    prevHistoryPage() {
+      if (this.historyCurrentPage > 1) {
+        this.historyCurrentPage--;
+      }
     }
   },
   watch: {
     collegeFilter() {
+      this.studentCurrentPage = 1;
+      this.historyCurrentPage = 1;
       if (this.selectedDimension) {
         this.filterByDimensionAndCollege();
       } else {
@@ -2479,6 +2625,7 @@ export default {
       }
     },
     studentViewCollegeFilter() {
+      this.studentCurrentPage = 1;
       if (this.currentTab === 'student') {
         if (this.selectedDimension) {
           this.filterByDimensionAndCollege();
@@ -2488,21 +2635,28 @@ export default {
       }
     },
     historyViewCollegeFilter() {
+      this.historyCurrentPage = 1;
       if (this.currentTab === 'history') {
         // History view uses consolidatedStudents computed property which already handles filtering
         // No additional action needed as the computed property will automatically update
       }
     },
     sectionFilter() {
+      this.studentCurrentPage = 1;
+      this.historyCurrentPage = 1;
       this.filterStudents();
     },
     async assessmentTypeFilter() {
+      this.studentCurrentPage = 1;
+      this.historyCurrentPage = 1;
       // Refetch data from backend when assessment type filter changes
       await this.fetchAssessmentResults();
       await this.fetchHistoricalResults();
       this.filterStudents();
     },
     riskLevelFilter() {
+      this.studentCurrentPage = 1;
+      this.historyCurrentPage = 1;
       this.filterStudents();
     },
     selectedDimension() {
@@ -4207,6 +4361,120 @@ export default {
   text-align: center;
 }
 
+/* Pagination Styles */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+  padding: 15px 0;
+  border-top: 1px solid #e0e0e0;
+}
 
+.pagination-info {
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-btn {
+  background: #fff;
+  border: 1px solid #ddd;
+  color: #333;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #00B3B0;
+  color: #00B3B0;
+}
+
+.pagination-btn:disabled {
+  background: #f9f9f9;
+  color: #ccc;
+  cursor: not-allowed;
+  border-color: #e0e0e0;
+}
+
+.page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.page-btn {
+  background: #fff;
+  border: 1px solid #ddd;
+  color: #333;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  text-align: center;
+}
+
+.page-btn:hover {
+  background: #f5f5f5;
+  border-color: #00B3B0;
+  color: #00B3B0;
+}
+
+.page-btn.active {
+  background: #00B3B0;
+  border-color: #00B3B0;
+  color: white;
+}
+
+.page-ellipsis {
+  color: #666;
+  padding: 0 5px;
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+  .pagination-container {
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+  }
+  
+  .pagination-info {
+    text-align: center;
+  }
+  
+  .pagination-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .pagination-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .page-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    min-width: 35px;
+  }
+}
 
 </style>

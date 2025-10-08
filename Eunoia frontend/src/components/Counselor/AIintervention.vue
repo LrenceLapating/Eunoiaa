@@ -82,7 +82,6 @@
           <div class="card-content">
             <h3>At Risk Students</h3>
             <div class="stat-number">{{ atRiskStudents.length }}</div>
-            <p>Students with 1+ at-risk score in 6 dimensions</p>
             <div class="card-action">
               <span>View Details</span>
               <i class="fas fa-arrow-right"></i>
@@ -97,7 +96,6 @@
           <div class="card-content">
             <h3>Moderate Students</h3>
             <div class="stat-number">{{ moderateStudents.length }}</div>
-            <p>Students with moderate and healthy scores in 6 dimensions</p>
             <div class="card-action">
               <span>View Details</span>
               <i class="fas fa-arrow-right"></i>
@@ -112,7 +110,6 @@
           <div class="card-content">
             <h3>Healthy Students</h3>
             <div class="stat-number">{{ healthyStudents.length }}</div>
-            <p>Students with all healthy scores in 6 dimensions</p>
             <div class="card-action">
               <span>View Details</span>
               <i class="fas fa-arrow-right"></i>
@@ -181,7 +178,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(student, index) in filteredCurrentStudents" :key="student?.id || index" class="student-row">
+            <tr v-for="(student, index) in paginatedStudents" :key="student?.id || index" class="student-row">
               <td class="student-id-cell">{{ student?.id_number || 'N/A' }}</td>
               <td>
                 <div class="student-info">
@@ -201,9 +198,9 @@
                   <span class="moderate-count" v-if="currentView === 'moderate' && hasModerateScores(student)" title="Number of moderate dimensions">
                     {{ getModerateDimensionsCount(student) }}/6
                   </span>
-                  <!-- For healthy students, show all healthy -->
-                  <span class="healthy-count" v-if="currentView === 'healthy'" title="All dimensions are healthy">
-                    6/6
+                  <!-- For healthy students, show real healthy count -->
+                  <span class="healthy-count" v-if="currentView === 'healthy'" :title="`${getHealthyDimensionsCount(student)} healthy dimensions out of 6`">
+                    {{ getHealthyDimensionsCount(student) }}/6
                   </span>
                   
                   <div class="risk-scores" v-if="currentView === 'at-risk'">
@@ -290,6 +287,54 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div class="pagination-container" v-if="filteredCurrentStudents.length > 0">
+        <div class="pagination-info">
+          Showing {{ Math.min((currentPage - 1) * itemsPerPage + 1, filteredCurrentStudents.length) }} to {{ Math.min(currentPage * itemsPerPage, filteredCurrentStudents.length) }} of {{ filteredCurrentStudents.length }} students
+        </div>
+        <div class="pagination-controls">
+          <button 
+            class="pagination-btn" 
+            @click="prevPage" 
+            :disabled="currentPage === 1"
+            title="Previous page"
+          >
+            <i class="fas fa-chevron-left"></i>
+            Previous
+          </button>
+          
+          <div class="page-numbers">
+            <button 
+              v-for="page in Math.min(totalPages, 5)" 
+              :key="page"
+              class="page-btn"
+              :class="{ active: currentPage === page }"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+            <span v-if="totalPages > 5" class="page-ellipsis">...</span>
+            <button 
+              v-if="totalPages > 5 && currentPage < totalPages - 2"
+              class="page-btn"
+              @click="goToPage(totalPages)"
+            >
+              {{ totalPages }}
+            </button>
+          </div>
+          
+          <button 
+            class="pagination-btn" 
+            @click="nextPage" 
+            :disabled="currentPage === totalPages"
+            title="Next page"
+          >
+            Next
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -530,7 +575,11 @@ export default {
           q1: 36, // Below or equal to this is "At Risk" (14-36)
           q4: 59  // Above or equal to this is "Healthy" (60-84)
         }
-      }
+      },
+
+      // Pagination properties
+      currentPage: 1,
+      itemsPerPage: 10
     };
   },
   async mounted() {
@@ -571,6 +620,17 @@ export default {
       }
       
       return colleges.sort();
+    },
+
+    // Pagination computed properties
+    paginatedStudents() {
+      const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+      const endIndex = startIndex + this.itemsPerPage;
+      return this.filteredCurrentStudents.slice(startIndex, endIndex);
+    },
+
+    totalPages() {
+      return Math.ceil(this.filteredCurrentStudents.length / this.itemsPerPage);
     },
 
     // These are now data properties fetched from backend
@@ -910,6 +970,27 @@ export default {
       }
       
       this.filteredCurrentStudents = students;
+      // Reset to first page when filters change
+      this.currentPage = 1;
+    },
+
+    // Pagination methods
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
     },
     
     // Risk assessment methods
@@ -963,6 +1044,16 @@ export default {
       let count = 0;
       for (const subscale in student.subscales) {
         if (student.subscales[subscale] !== undefined && this.isModerate(student.subscales[subscale], student)) {
+          count++;
+        }
+      }
+      return count;
+    },
+    getHealthyDimensionsCount(student) {
+      if (!student || !student.subscales) return 0;
+      let count = 0;
+      for (const subscale in student.subscales) {
+        if (student.subscales[subscale] !== undefined && this.isHealthy(student.subscales[subscale], student)) {
           count++;
         }
       }
@@ -3696,6 +3787,114 @@ export default {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.cancel-all-button {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+  border: none;
+}
+
+/* Pagination Styles */
+.pagination-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.pagination-info {
+  color: #6c757d;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #495057;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.page-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #dee2e6;
+  background: white;
+  color: #495057;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.page-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.page-ellipsis {
+  padding: 0 8px;
+  color: #6c757d;
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+  .pagination-container {
+    padding: 15px;
+  }
+  
+  .pagination-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .pagination-btn {
+    padding: 10px 20px;
+  }
 }
 
 .cancel-all-button {

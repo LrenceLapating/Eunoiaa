@@ -46,7 +46,7 @@
               </tr>
             </thead>
             <transition-group name="row-fade-slide" tag="tbody">
-              <tr v-for="(college, idx) in colleges" :key="college.name">
+              <tr v-for="(college, idx) in paginatedColleges" :key="college.name">
                 <td>{{ college.name }}</td>
                 <td>{{ college.users }}</td>
                 <td>
@@ -55,6 +55,53 @@
               </tr>
             </transition-group>
           </table>
+          
+          <!-- College Pagination Controls -->
+          <div v-if="collegeTotalPages > 1" class="pagination-container">
+            <div class="pagination-info">
+              Showing {{ ((collegeCurrentPage - 1) * collegeItemsPerPage) + 1 }} to {{ Math.min(collegeCurrentPage * collegeItemsPerPage, colleges.length) }} of {{ colleges.length }} colleges
+            </div>
+            <div class="pagination-controls">
+              <button 
+                class="pagination-btn" 
+                :disabled="collegeCurrentPage === 1" 
+                @click="collegePrevPage"
+                title="Previous Page"
+              >
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              
+              <template v-for="page in Math.min(collegeTotalPages, 5)" :key="page">
+                <button 
+                  v-if="page <= collegeTotalPages"
+                  class="pagination-btn page-number" 
+                  :class="{ active: collegeCurrentPage === page }"
+                  @click="collegeGoToPage(page)"
+                >
+                  {{ page }}
+                </button>
+              </template>
+              
+              <span v-if="collegeTotalPages > 5" class="pagination-ellipsis">...</span>
+              
+              <button 
+                v-if="collegeTotalPages > 5 && collegeCurrentPage < collegeTotalPages - 2"
+                class="pagination-btn page-number" 
+                @click="collegeGoToPage(collegeTotalPages)"
+              >
+                {{ collegeTotalPages }}
+              </button>
+              
+              <button 
+                class="pagination-btn" 
+                :disabled="collegeCurrentPage === collegeTotalPages" 
+                @click="collegeNextPage"
+                title="Next Page"
+              >
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- User List View -->
@@ -266,6 +313,28 @@
             </div>
             <h3>Student Added Successfully!</h3>
             <p>{{ addStudentResultMessage }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Student Loading Modal -->
+    <div v-if="showDeleteLoadingModal" class="modal-overlay">
+      <div class="modal-content upload-loading-modal">
+        <div class="modal-body">
+          <div v-if="deleteLoadingState === 'loading'" class="loading-content">
+            <div class="spinner-container">
+              <i class="fas fa-spinner fa-spin loading-spinner"></i>
+            </div>
+            <h3>Deleting Student...</h3>
+            <p>Please wait while we process your request.</p>
+          </div>
+          <div v-else-if="deleteLoadingState === 'success'" class="success-content">
+            <div class="success-icon-container">
+              <i class="fas fa-check-circle success-icon"></i>
+            </div>
+            <h3>Student Deleted Successfully!</h3>
+            <p>{{ deleteResultMessage }}</p>
           </div>
         </div>
       </div>
@@ -548,6 +617,9 @@ export default {
       searchQuery: '',
       currentPage: 1,
       itemsPerPage: 50, // Limit items per page for better performance
+      // Add pagination for college table
+      collegeCurrentPage: 1,
+      collegeItemsPerPage: 10, // Smaller page size for college table
       searchTimeout: null, // For debouncing search
       notification: {
         show: false,
@@ -564,6 +636,9 @@ export default {
       showAddStudentLoadingModal: false,
       addStudentLoadingState: 'loading', // 'loading' or 'success'
       addStudentResultMessage: '',
+      showDeleteLoadingModal: false,
+      deleteLoadingState: 'loading', // 'loading' or 'success'
+      deleteResultMessage: '',
       deactivatePrevious: false,
       uploadedFile: null,
       uploadedFileName: '',
@@ -681,6 +756,17 @@ export default {
       return Math.ceil(this.filteredUsers.length / this.itemsPerPage);
     },
     
+    // Add pagination for college table
+    paginatedColleges() {
+      const start = (this.collegeCurrentPage - 1) * this.collegeItemsPerPage;
+      const end = start + this.collegeItemsPerPage;
+      return this.colleges.slice(start, end);
+    },
+    
+    collegeTotalPages() {
+      return Math.ceil(this.colleges.length / this.collegeItemsPerPage);
+    },
+    
     isLongCourseName() {
       if (!this.studentForm.course) return false;
       
@@ -758,6 +844,25 @@ export default {
     goToPage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
+      }
+    },
+    
+    // College pagination methods
+    collegeNextPage() {
+      if (this.collegeCurrentPage < this.collegeTotalPages) {
+        this.collegeCurrentPage++;
+      }
+    },
+    
+    collegePrevPage() {
+      if (this.collegeCurrentPage > 1) {
+        this.collegeCurrentPage--;
+      }
+    },
+    
+    collegeGoToPage(page) {
+      if (page >= 1 && page <= this.collegeTotalPages) {
+        this.collegeCurrentPage = page;
       }
     },
     
@@ -1422,6 +1527,11 @@ export default {
 
     async confirmDeleteStudent() {
       try {
+        // Show loading modal
+        this.showDeleteConfirmModal = false;
+        this.deleteLoadingState = 'loading';
+        this.showDeleteLoadingModal = true;
+
         const response = await fetch(apiUrl(`accounts/students/${this.studentToDelete.id}`), {
           method: 'DELETE'
         });
@@ -1435,16 +1545,26 @@ export default {
             await this.loadStudentsFromBackend(this.selectedCollege, this.searchQuery);
           }
 
+          // Show success state
+          this.deleteLoadingState = 'success';
+          this.deleteResultMessage = `${this.studentToDelete.name} has been successfully deleted.`;
+
+          // Auto-hide success modal after 2 seconds
+          setTimeout(() => {
+            this.showDeleteLoadingModal = false;
+            this.studentToDelete = null;
+          }, 2000);
+
           this.showNotification('Student deleted successfully!', 'success', 'fas fa-check-circle');
-          
-          // Close modal
-          this.showDeleteConfirmModal = false;
-          this.studentToDelete = null;
         } else {
+          // Hide loading modal and show error
+          this.showDeleteLoadingModal = false;
           this.showNotification(result.error || 'Failed to delete student', 'error', 'fas fa-exclamation-circle');
         }
       } catch (error) {
         console.error('Error deleting student:', error);
+        // Hide loading modal and show error
+        this.showDeleteLoadingModal = false;
         this.showNotification('Network error. Please check if the backend server is running.', 'error', 'fas fa-exclamation-circle');
       }
     },

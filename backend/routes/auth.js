@@ -368,6 +368,193 @@ router.post('/counselor/change-password', verifyCounselorSession, async (req, re
   }
 });
 
+// Forgot password endpoint - for both students and counselors
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email is required' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Please enter a valid email address' 
+      });
+    }
+
+    // Check if email exists in students table
+    const { data: students, error: studentError } = await supabase
+      .from('students')
+      .select('id, email, name')
+      .eq('email', email);
+
+    if (studentError) {
+      console.error('Student lookup error:', studentError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Database error occurred' 
+      });
+    }
+
+    // Check if email exists in counselors table
+    const { data: counselors, error: counselorError } = await supabase
+      .from('counselors')
+      .select('id, email, name')
+      .eq('email', email)
+      .eq('is_active', true);
+
+    if (counselorError) {
+      console.error('Counselor lookup error:', counselorError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Database error occurred' 
+      });
+    }
+
+    // Check if user exists in either table
+    const isStudent = students && students.length > 0;
+    const isCounselor = counselors && counselors.length > 0;
+
+    if (!isStudent && !isCounselor) {
+      // Don't reveal if email exists or not for security, but don't send email
+      console.log(`🚫 Password reset attempted for non-existent email: ${email}`);
+      return res.status(200).json({ 
+        success: true, 
+        message: 'If this email is registered, you will receive a password reset link shortly.' 
+      });
+    }
+
+    const user = isStudent ? students[0] : counselors[0];
+    const userType = isStudent ? 'student' : 'counselor';
+
+    // Determine redirect URL based on environment
+    const frontendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.FRONTEND_URL || 'https://eunoia-frontend.vercel.app'
+      : 'http://localhost:8080';
+
+    // Only send password reset email if user exists in our database
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${frontendUrl}/reset-password?userType=${userType}&email=${encodeURIComponent(email)}`
+    });
+
+    if (resetError) {
+      console.error('Password reset error:', resetError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to send password reset email. Please try again.' 
+      });
+    }
+
+    console.log(`📧 Password reset email sent to ${email} (${userType})`);
+
+    res.json({ 
+      success: true, 
+      message: 'If this email is registered, you will receive a password reset link shortly.' 
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// Reset password endpoint - handles the actual password change
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, newPassword, userType, accessToken } = req.body;
+
+    if (!email || !newPassword || !userType || !accessToken) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields' 
+      });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Password must be at least 8 characters long' 
+      });
+    }
+
+    // Validate user type
+    if (!['student', 'counselor'].includes(userType)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user type' 
+      });
+    }
+
+    // Verify the access token with Supabase
+    const { data: { user }, error: verifyError } = await supabase.auth.getUser(accessToken);
+
+    if (verifyError || !user || user.email !== email) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid or expired reset token' 
+      });
+    }
+
+    // Hash the new password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password in the appropriate table
+    const tableName = userType === 'student' ? 'students' : 'counselors';
+    const { error: updateError } = await supabase
+      .from(tableName)
+      .update({ 
+        password_hash: hashedPassword,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', email);
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to update password' 
+      });
+    }
+
+    // Update password in Supabase Auth as well
+    const { error: authUpdateError } = await supabase.auth.admin.updateUserById(
+      user.id,
+      { password: newPassword }
+    );
+
+    if (authUpdateError) {
+      console.warn('Supabase Auth password update warning:', authUpdateError);
+      // Don't fail the request if this fails, as the main password is updated
+    }
+
+    console.log(`🔐 Password successfully reset for ${email} (${userType})`);
+
+    res.json({ 
+      success: true, 
+      message: 'Password has been successfully reset. You can now login with your new password.' 
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
 // Logout endpoint
 router.post('/logout', async (req, res) => {
   try {
@@ -415,6 +602,42 @@ router.post('/logout', async (req, res) => {
   } catch (error) {
     console.error('Logout error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Validate reset token endpoint
+router.post('/validate-reset-token', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Access token is required' 
+      });
+    }
+    
+    // Verify token with Supabase
+    const { data: user, error } = await supabase.auth.getUser(accessToken);
+    
+    if (error || !user) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid or expired token' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Token is valid' 
+    });
+    
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error during token validation' 
+    });
   }
 });
 
