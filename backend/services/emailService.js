@@ -137,6 +137,70 @@ class EmailService {
   }
 
   /**
+   * Generate a random temporary password
+   * @returns {string} Random temporary password
+   */
+  generateRandomPassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
+  /**
+   * Send forgot password email with temporary password
+   * @param {Object} userData - User information
+   * @param {string} userData.email - User email
+   * @param {string} userData.name - User name
+   * @param {string} userData.userType - User type (student or counselor)
+   * @param {string} temporaryPassword - Generated temporary password
+   * @returns {Promise<Object>} Result of email sending
+   */
+  async sendForgotPasswordEmail(userData, temporaryPassword) {
+    try {
+      const { email, name, userType } = userData;
+
+      if (!email || !name || !userType || !temporaryPassword) {
+        throw new Error('Missing required data for forgot password email');
+      }
+
+      console.log('🔍 Sending reset password email to:', email);
+      console.log('🔑 Temporary password stored in user metadata:', temporaryPassword);
+
+      // Use Supabase Auth reset password function
+      // The temporary password is now stored in user metadata and will be accessible in the email template
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/login`
+      });
+
+      if (resetError) {
+        console.error('Supabase reset password error:', resetError);
+        return {
+          success: false,
+          error: `Failed to send reset password email: ${resetError.message}`
+        };
+      }
+
+      console.log(`✅ Forgot password email sent successfully to ${email} for ${userType} ${name}`);
+      
+      return {
+        success: true,
+        message: `Password reset email sent to ${email}`,
+        temporaryPassword: temporaryPassword
+      };
+
+    } catch (error) {
+      console.error('Forgot password email service error:', error);
+      return {
+        success: false,
+        error: `Forgot password email service failed: ${error.message}`
+      };
+    }
+  }
+
+  /**
    * Send contact guidance email from student to counselor
    * @param {Object} emailData - Email information
    * @param {string} emailData.to - Counselor email (gparas@uic.edu.ph)

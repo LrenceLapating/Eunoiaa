@@ -656,7 +656,9 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
       parsePromise = new Promise(async (resolve, reject) => {
         try {
           const workbook = new ExcelJS.Workbook();
-          await workbook.xlsx.readFile(filePath);
+          // Read file with proper encoding to handle special characters like ñ
+          const buffer = fs.readFileSync(filePath);
+          await workbook.xlsx.load(buffer);
           
           // Try to get the 'Student Template' worksheet first, then fall back to first worksheet
           let worksheet = workbook.getWorksheet('Student Template');
@@ -726,7 +728,7 @@ router.post('/upload-csv', upload.single('csvFile'), async (req, res) => {
     } else {
       // Parse CSV file
       parsePromise = new Promise((resolve, reject) => {
-        fs.createReadStream(filePath)
+        fs.createReadStream(filePath, { encoding: 'utf8' })
           .pipe(csv())
           .on('data', (row) => {
             rowNumber++;
@@ -1086,7 +1088,7 @@ router.get('/csv-template', async (req, res) => {
     const worksheet = workbook.addWorksheet('Student Template');
     
     // Define college options
-    const colleges = ['CABE', 'CAH', 'CCS', 'CEA', 'CHESFS', 'CMBS', 'CM', 'CN', 'CPC', 'CTE'];
+    const colleges = ['CABE', 'CAH', 'CCS', 'CEA', 'CHESFS', 'CM', 'CMBS', 'CN', 'CPC', 'CTE'];
     
     // Define course mapping with course codes for section generation
     const courseMapping = {
@@ -1122,12 +1124,12 @@ router.get('/csv-template', async (req, res) => {
         { name: 'BS Hotel, Restaurant & Institutional Management', code: 'BSHRIM' },
         { name: 'BS Tourism Management', code: 'BSTour' }
       ],
-      'CM': [
-        { name: 'Bachelor of Music in Music Education', code: 'BMME' }
-      ],
       'CMBS': [
         { name: 'BS Medical Technology / Medical Laboratory Science', code: 'BSMT' },
         { name: 'BS Biology', code: 'BSBio' }
+      ],
+      'CM': [
+        { name: 'Bachelor of Music in Music Education', code: 'BM' }
       ],
       'CN': [
         { name: 'BS Nursing', code: 'BSN' }
@@ -1197,7 +1199,7 @@ router.get('/csv-template', async (req, res) => {
         course: 'BS Information Technology',
         yearLevel: '4',
         section: 'BSIT-4A',
-        idNumber: '2020-12345',
+        idNumber: '220000001421',
         email: 'john.doe@student.edu',
         gender: 'Male',
         semester: '1st Semester'
@@ -1208,7 +1210,7 @@ router.get('/csv-template', async (req, res) => {
         course: 'BS Computer Science',
         yearLevel: '3',
         section: 'BSCS-3B',
-        idNumber: '2021-67890',
+        idNumber: '210000002534',
         email: 'jane.smith@student.edu',
         gender: 'Female',
         semester: '1st Semester'
@@ -1219,7 +1221,7 @@ router.get('/csv-template', async (req, res) => {
         course: 'BS Civil Engineering',
         yearLevel: '2',
         section: 'BSCE-2A',
-        idNumber: '2022-11111',
+        idNumber: '220000003687',
         email: 'mike.johnson@student.edu',
         gender: 'Male',
         semester: '1st Semester'
@@ -1230,7 +1232,7 @@ router.get('/csv-template', async (req, res) => {
         course: 'Bachelor of Science in Accountancy',
         yearLevel: '1',
         section: 'BSA-1A',
-        idNumber: '2023-22222',
+        idNumber: '230000004798',
         email: 'sarah.wilson@student.edu',
         gender: 'Female',
         semester: '1st Semester'
@@ -1241,7 +1243,7 @@ router.get('/csv-template', async (req, res) => {
         course: 'BS Nursing',
         yearLevel: '2',
         section: 'BSN-2B',
-        idNumber: '2022-33333',
+        idNumber: '220000005901',
         email: 'alex.brown@student.edu',
         gender: 'Male',
         semester: '1st Semester'
@@ -1393,6 +1395,9 @@ router.get('/csv-template', async (req, res) => {
       }
     }
     
+    // Format ID Number column (column F) as text to prevent decimal display
+    worksheet.getColumn('F').numFmt = '@';
+    
     // Add instructions worksheet
     const instructionsSheet = workbook.addWorksheet('Instructions');
     instructionsSheet.addRows([
@@ -1433,7 +1438,7 @@ router.get('/csv-template', async (req, res) => {
       ['CEA - College of Engineering and Architecture'],
       ['CHESFS - College of Home Economics, Sports and Food Science'],
       ['CM - College of Music'],
-      ['CMBS - College of Mathematics and Biological Sciences'],
+      ['CMBS - College of Medical and Biological Sciences'],
       ['CN - College of Nursing'],
       ['CPC - College of Pharmacy and Chemistry'],
       ['CTE - College of Teacher Education'],

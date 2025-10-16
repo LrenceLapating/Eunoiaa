@@ -45,11 +45,6 @@
 
       <!-- At-Risk Content -->
       <div v-else class="card-content">
-        <!-- Summary Section -->
-        <div class="section-summary" v-if="atRiskData.summary">
-          <span class="highlight-text">{{ atRiskData.summary.highestRiskCollege }}</span>
-          <span class="summary-label">highest risk</span>
-        </div>
 
         <!-- Chart Container -->
         <div class="chart-container" v-if="!loading && !error && isMounted && atRiskData.trends.length > 0">
@@ -912,19 +907,6 @@ export default {
 
 .retry-btn:hover {
   background: var(--primary-dark);
-}
-
-/* Section Summary */
-.section-summary {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: linear-gradient(145deg, #f8f9fa, #e9ecef);
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
 }
 
 .highlight-text {

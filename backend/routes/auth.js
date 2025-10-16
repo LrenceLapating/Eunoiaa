@@ -3,9 +3,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/database');
 const { SessionManager, verifyStudentSession, verifyCounselorSession } = require('../middleware/sessionManager');
+const EmailService = require('../services/emailService');
 
 const router = express.Router();
 const sessionManager = new SessionManager();
+const emailService = new EmailService();
 
 // Student login endpoint
 router.post('/student/login', async (req, res) => {
@@ -365,6 +367,191 @@ router.post('/counselor/change-password', verifyCounselorSession, async (req, re
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Forgot password endpoint
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email is required' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid email format' 
+      });
+    }
+
+    let user = null;
+    let userType = null;
+
+    // Check if email exists in students table
+    const { data: students, error: studentError } = await supabase
+      .from('students')
+      .select('id, name, email')
+      .eq('email', email)
+      .eq('status', 'active');
+
+    if (studentError) {
+      console.error('Database error checking students:', studentError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Database error' 
+      });
+    }
+
+    if (students && students.length > 0) {
+      user = students[0];
+      userType = 'student';
+    } else {
+      // Check if email exists in counselors table
+      const { data: counselors, error: counselorError } = await supabase
+        .from('counselors')
+        .select('id, name, email')
+        .eq('email', email)
+        .eq('is_active', true);
+
+      if (counselorError) {
+        console.error('Database error checking counselors:', counselorError);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Database error' 
+        });
+      }
+
+      if (counselors && counselors.length > 0) {
+        user = counselors[0];
+        userType = 'counselor';
+      }
+    }
+
+    // If no user found, return success message for security (don't reveal if email exists)
+    if (!user) {
+      return res.json({ 
+        success: true, 
+        message: 'If the email exists in our system, a password reset email has been sent.' 
+      });
+    }
+
+    // Generate random temporary password
+    const temporaryPassword = emailService.generateRandomPassword();
+
+    // Hash the temporary password
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
+
+    // Update user's password in database
+    const tableName = userType === 'student' ? 'students' : 'counselors';
+    const { error: updateError } = await supabase
+      .from(tableName)
+      .update({ password_hash: hashedPassword })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to update password' 
+      });
+    }
+
+    // Find or create user in Supabase Auth and update metadata
+    try {
+      // First, try to find the user by email in Supabase Auth
+      const { data: authUsers, error: listError } = await supabase.auth.admin.listUsers();
+      
+      let authUser = null;
+      if (!listError && authUsers?.users) {
+        authUser = authUsers.users.find(u => u.email === user.email);
+      }
+
+      if (!authUser) {
+        // Create user in Supabase Auth if they don't exist
+        console.log(`Creating Supabase Auth user for ${user.email}`);
+        const { data: newAuthUser, error: createError } = await supabase.auth.admin.createUser({
+          email: user.email,
+          password: temporaryPassword,
+          email_confirm: true,
+          user_metadata: {
+            temporary_password: temporaryPassword,
+            reset_timestamp: new Date().toISOString(),
+            user_type: userType,
+            name: user.name,
+            database_id: user.id
+          }
+        });
+
+        if (createError) {
+          console.error('Failed to create Supabase Auth user:', createError);
+        } else {
+          console.log('✅ Created Supabase Auth user with temporary password metadata');
+          authUser = newAuthUser.user;
+        }
+      } else {
+        // Update existing user's metadata
+        const { error: metadataError } = await supabase.auth.admin.updateUserById(
+          authUser.id,
+          {
+            user_metadata: {
+              temporary_password: temporaryPassword,
+              reset_timestamp: new Date().toISOString(),
+              user_type: userType,
+              name: user.name,
+              database_id: user.id
+            }
+          }
+        );
+
+        if (metadataError) {
+          console.error('Failed to update user metadata:', metadataError);
+        } else {
+          console.log('✅ Updated Supabase Auth user metadata with temporary password');
+        }
+      }
+    } catch (metadataUpdateError) {
+      console.error('Error managing Supabase Auth user:', metadataUpdateError);
+      // Continue with email sending even if metadata update fails
+    }
+
+    // Send forgot password email
+    const emailResult = await emailService.sendForgotPasswordEmail(
+      {
+        email: user.email,
+        name: user.name,
+        userType: userType
+      },
+      temporaryPassword
+    );
+
+    if (!emailResult.success) {
+      console.error('Email sending failed:', emailResult.error);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to send password reset email' 
+      });
+    }
+
+    console.log(`✅ Password reset successful for ${userType}: ${user.email}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Password reset email sent successfully. Please check your email for the temporary password.' 
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
   }
 });
 

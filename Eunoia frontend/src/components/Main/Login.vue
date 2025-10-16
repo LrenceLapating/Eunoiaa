@@ -52,7 +52,7 @@
               <input type="checkbox" id="remember" v-model="rememberMe">
               <label for="remember">Remember me</label>
             </div>
-            <a href="#" class="forgot-password">Forgot password?</a>
+            <a href="#" class="forgot-password" @click.prevent="showForgotPasswordModal = true">Forgot password?</a>
           </div>
           
           <button type="submit" class="login-button" :disabled="isLoading">
@@ -112,10 +112,51 @@
       </div>
     </div>
   </div>
+
+  <!-- Forgot Password Modal -->
+  <div v-if="showForgotPasswordModal" class="modal-overlay" @click="closeForgotPasswordModal">
+    <div class="modal-content" @click.stop>
+      <div class="modal-header">
+        <h3>Reset Password</h3>
+        <button class="close-button" @click="closeForgotPasswordModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Enter your email address and we'll send you a temporary password.</p>
+        <form @submit.prevent="handleForgotPassword">
+          <div class="form-group">
+            <label for="forgot-email">Email Address</label>
+            <input 
+              type="email" 
+              id="forgot-email" 
+              v-model="forgotPasswordEmail" 
+              placeholder="Enter your email address" 
+              required
+              :disabled="isSendingEmail"
+            >
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="cancel-button" @click="closeForgotPasswordModal" :disabled="isSendingEmail">
+              Cancel
+            </button>
+            <button type="submit" class="send-button" :disabled="isSendingEmail">
+              <span v-if="!isSendingEmail">Send</span>
+              <span v-else class="loading-content">
+                <i class="fas fa-spinner fa-spin"></i>
+                Sending...
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
 import authService from '@/services/authService'
+import { apiUrl } from '@/utils/apiUtils'
 
 export default {
   name: 'LoginPage',
@@ -127,7 +168,10 @@ export default {
       showNotification: false,
       notificationMessage: '',
       showPassword: false,
-      isLoading: false
+      isLoading: false,
+      showForgotPasswordModal: false,
+      forgotPasswordEmail: '',
+      isSendingEmail: false
     }
   },
   mounted() {
@@ -184,6 +228,45 @@ export default {
     },
     goToLanding() {
       this.$router.push('/');
+    },
+    closeForgotPasswordModal() {
+      this.showForgotPasswordModal = false;
+      this.forgotPasswordEmail = '';
+      this.isSendingEmail = false;
+    },
+    async handleForgotPassword() {
+      this.isSendingEmail = true;
+      this.showNotification = false;
+      
+      try {
+        const response = await fetch(apiUrl('auth/forgot-password'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: this.forgotPasswordEmail
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          this.notificationMessage = result.message || 'Password reset email sent successfully!';
+          this.showNotification = true;
+          this.closeForgotPasswordModal();
+        } else {
+          this.notificationMessage = result.error || 'Failed to send password reset email.';
+          this.showNotification = true;
+        }
+      } catch (error) {
+        console.error('Forgot password error:', error);
+        this.notificationMessage = 'Network error. Please try again.';
+        this.showNotification = true;
+      } finally {
+        this.isSendingEmail = false;
+      }
     }
   }
 }
@@ -755,5 +838,166 @@ export default {
 
 .close-notification:hover {
   color: var(--text);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  animation: modal-appear 0.3s ease-out;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  padding: 24px 24px 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 24px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background-color: #f5f5f5;
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 0 24px 24px 24px;
+}
+
+.modal-body p {
+  margin: 0 0 20px 0;
+  color: var(--text-light);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal-body .form-group {
+  margin-bottom: 20px;
+}
+
+.modal-body .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.modal-body .form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+.modal-body .form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.modal-body .form-group input:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.cancel-button, .send-button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  min-width: 80px;
+}
+
+.cancel-button {
+  background-color: #f8f9fa;
+  color: var(--text);
+  border: 1px solid #e1e5e9;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background-color: #e9ecef;
+}
+
+.send-button {
+  background-color: var(--primary);
+  color: white;
+}
+
+.send-button:hover:not(:disabled) {
+  background-color: #00a8a5;
+}
+
+.cancel-button:disabled, .send-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-content i {
+  font-size: 12px;
 }
 </style>

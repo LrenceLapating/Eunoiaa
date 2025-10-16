@@ -3817,7 +3817,7 @@ export default {
 }
 
 .score-value.score-high {
-  color: #28a745;
+  color: #ff6b6b;
 }
 
 .score-value.score-moderate {
@@ -3825,7 +3825,7 @@ export default {
 }
 
 .score-value.score-low {
-  color: #ff6b6b;
+  color: #62ff6a;
 }
 
 .status-badge {

@@ -550,7 +550,7 @@
                 >
               </div>
               <div class="form-group">
-                <label for="edit-student-gender">Gender *</label>
+                <label for="edit-student-gender">Sex *</label>
                 <select id="edit-student-gender" v-model="studentForm.gender" required>
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>

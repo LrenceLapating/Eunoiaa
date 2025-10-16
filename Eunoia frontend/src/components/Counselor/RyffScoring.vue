@@ -404,6 +404,43 @@
             </div>
           </div>
           
+          <!-- Scoring Legend -->
+          <div class="scoring-legend">
+            <h4><i class="fas fa-info-circle"></i> Scoring Guide</h4>
+            <div class="legend-grid">
+              <div class="legend-section">
+                <h5>Dimension Scores (per dimension)</h5>
+                <div class="threshold-item">
+                  <span class="threshold-range healthy">31-42</span>
+                  <span class="threshold-label">Healthy</span>
+                </div>
+                <div class="threshold-item">
+                  <span class="threshold-range moderate">19-30</span>
+                  <span class="threshold-label">Moderate</span>
+                </div>
+                <div class="threshold-item">
+                  <span class="threshold-range at-risk">7-18</span>
+                  <span class="threshold-label">At Risk</span>
+                </div>
+              </div>
+              <div class="legend-section">
+                <h5>Overall Score (sum of all dimensions)</h5>
+                <div class="threshold-item">
+                  <span class="threshold-range healthy">182-252</span>
+                  <span class="threshold-label">Healthy</span>
+                </div>
+                <div class="threshold-item">
+                  <span class="threshold-range moderate">112-181</span>
+                  <span class="threshold-label">Moderate</span>
+                </div>
+                <div class="threshold-item">
+                  <span class="threshold-range at-risk">42-111</span>
+                  <span class="threshold-label">At Risk</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="action-buttons">
             <button class="action-btn print-btn" @click="printStudentReport(selectedStudent)">
               <i class="fas fa-print"></i> Print Report
@@ -1609,7 +1646,7 @@ export default {
         if (!student || !student.subscales) return false;
 
         // Check college filter
-        const collegeMatch = this.collegeFilter === 'all' || student.college === this.collegeFilter;
+        const collegeMatch = this.currentCollegeFilter === 'all' || student.college === this.currentCollegeFilter;
         
         // Check dimension filter if applicable
         let dimensionMatch = true;
@@ -2351,7 +2388,7 @@ export default {
       console.log('Applying risk filtering with data:', this.riskFilterData);
       
       // Set filters based on risk filter data
-      this.collegeFilter = this.riskFilterData.college;
+      this.currentCollegeFilter = this.riskFilterData.college;
       
       // Set assessment type to primary type (most common)
       const primaryType = this.riskFilterData.primaryAssessmentType;
@@ -2386,7 +2423,7 @@ export default {
         const isAtRisk = riskStudentIds.includes(student.id);
         
         // Check college filter
-        const collegeMatch = this.collegeFilter === 'all' || student.college === this.collegeFilter;
+        const collegeMatch = this.currentCollegeFilter === 'all' || student.college === this.currentCollegeFilter;
         
         // Check assessment type filter
         const studentAssessmentType = student.assessment_type === 'ryff_84' ? '84-item' : '42-item';
@@ -4441,6 +4478,103 @@ export default {
   background: #00B3B0;
   border-color: #00B3B0;
   color: white;
+}
+
+/* Scoring Legend Styles */
+.scoring-legend {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.scoring-legend h4 {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scoring-legend h4 i {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.legend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.legend-section h5 {
+  margin: 0 0 12px 0;
+  color: #343a40;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 6px;
+}
+
+.threshold-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.threshold-range {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.threshold-range.healthy {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.threshold-range.moderate {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.threshold-range.at-risk {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.threshold-label {
+  font-size: 13px;
+  color: #495057;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .legend-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .threshold-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .threshold-range {
+    align-self: flex-start;
+  }
 }
 
 .page-ellipsis {
