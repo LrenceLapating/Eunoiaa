@@ -20,7 +20,6 @@
                 <ul>
                     <li><a href="#features">Features</a></li>
                     <li><a href="#how-it-works">How It Works</a></li>
-                    <li><a href="#training">Training</a></li>
                     <li><a href="#about">About</a></li>
                     <li><a href="#contact">Contact</a></li>
                 </ul>
@@ -31,7 +30,6 @@
                 <ul>
                     <li><a href="#features" @click="scrollToSection('features')">Features</a></li>
                     <li><a href="#how-it-works" @click="scrollToSection('how-it-works')">How It Works</a></li>
-                    <li><a href="#training" @click="scrollToSection('training')">Training</a></li>
                     <li><a href="#about" @click="scrollToSection('about')">About</a></li>
                     <li><a href="#contact" @click="scrollToSection('contact')">Contact</a></li>
                     <li><a @click="navigateToLogin(); closeMobileMenu()" class="mobile-login-btn">Login</a></li>
@@ -57,7 +55,7 @@
         </div>
         <div class="container hero-content">
             <div class="hero-text fade-in">
-                <h2>An AI-Powered System for <span class="text-primary">Psychological Well-Being</span> Assessment</h2>
+                <h2>An AI-Powered System for <span class="text-primary">Psychological Well-Being</span> Assessment of Ryff Scale</h2>
                 <p>EUNOIA streamlines psychological well-being evaluation using the validated Ryff Scale, providing real-time insights and personalized feedback for educational institutions.</p>
                 <div class="hero-buttons">
                     <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
@@ -129,8 +127,8 @@
                     <h4>42-Item Assessment</h4>
                     <p>Standard version with 7 items per dimension. Balances depth and completion time.</p>
                     <div class="assessment-meta">
-                        <div class="meta-item"><i class="fas fa-clock"></i> 15-20 min</div>
-                        <div class="meta-item"><i class="fas fa-chart-bar"></i> Detailed Results</div>
+                        <div class="meta-item"><i class="fas fa-clock"></i> 10-15 min</div>
+                        <div class="meta-item"><i class="fas fa-chart-bar"></i> Practical and Standard Assessment</div>
                     </div>
                     <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
                 </div>
@@ -142,7 +140,7 @@
                     <h4>84-Item Assessment</h4>
                     <p>Complete version with 14 items per dimension. Highest reliability and detail.</p>
                     <div class="assessment-meta">
-                        <div class="meta-item"><i class="fas fa-clock"></i> 30-40 min</div>
+                        <div class="meta-item"><i class="fas fa-clock"></i> 20-25 min</div>
                         <div class="meta-item"><i class="fas fa-chart-bar"></i> In-Depth Analysis</div>
                     </div>
                     <a @click="navigateToLogin" class="cta-button">Start Assessment</a>
@@ -230,7 +228,7 @@
                     </div>
                     <h4>For Students</h4>
                     <ul class="role-features">
-                        <li><i class="fas fa-check"></i> Adaptive questionnaires to reduce fatigue</li>
+                        <li><i class="fas fa-check"></i> Interactive questionnaires to reduce fatigue</li>
                         <li><i class="fas fa-check"></i> Personalized well-being insights</li>
                         <li><i class="fas fa-check"></i> Progress tracking over time</li>
                         <li><i class="fas fa-check"></i> Actionable recommendations</li>
@@ -265,34 +263,33 @@
             <div class="dashboard-preview">
                 <div class="dashboard-tabs">
                     <div class="dashboard-tab active" data-tab="individual">Individual</div>
-                    <div class="dashboard-tab" data-tab="group">Group</div>
+                    <div class="dashboard-tab" data-tab="group">Bulk</div>
                     <div class="dashboard-tab" data-tab="trends">Trends</div>
                 </div>
                 <div class="dashboard-content">
                     <div class="dashboard-panel active" id="individual-panel">
                         <div class="dashboard-image">
-                            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Individual Dashboard">
+                            <img src="@/assets/Individual.png" alt="Individual Dashboard">
                             <div class="overlay-text">
-                                <h4>Individual Assessment Dashboard</h4>
-                                <p>Detailed breakdown of each Ryff dimension with personalized recommendations</p>
+                                <h4>Individual Assessment</h4>
+                                
                             </div>
                         </div>
                     </div>
                     <div class="dashboard-panel" id="group-panel">
                         <div class="dashboard-image">
-                            <img src="https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Group Dashboard">
+                            <img src="@/assets/Bulk ass.png" alt="Group Dashboard">
                             <div class="overlay-text">
-                                <h4>Group Analysis Dashboard</h4>
-                                <p>Compare cohorts and identify trends across demographics using CoDA</p>
+                                <h4>Bulk Assessment</h4>                        
                             </div>
                         </div>
                     </div>
                     <div class="dashboard-panel" id="trends-panel">
                         <div class="dashboard-image">
-                            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Trends Dashboard">
+                            <img src="@/assets/Trendss.png" alt="Trends Dashboard">
                             <div class="overlay-text">
-                                <h4>Longitudinal Trends Dashboard</h4>
-                                <p>Track well-being changes over time with predictive analytics</p>
+                                <h4>Trends Dashboard</h4>
+
                             </div>
                         </div>
                     </div>
@@ -362,7 +359,7 @@
             </div>
             <div class="research-content">
                 <div class="research-text slide-in-left">
-                    <h4>The Ryff Scale</h4>
+                    <h4>The Ryff Scale 84 Items</h4>
                     <p>The Ryff Scales of Psychological Well-Being is a theoretically grounded instrument that specifically focuses on measuring multiple facets of psychological well-being. These facets include the six distinct dimensions of autonomy, environmental mastery, personal growth, positive relations with others, purpose in life, and self-acceptance.</p>
                     <p>EUNOIA transforms traditional assessment methods through automation, AI-powered interpretation, and user-centered design while maintaining the psychometric integrity of the original scale.</p>
                     <div class="research-stats">
@@ -490,7 +487,7 @@
                     </div>
                     <div class="member-info">
                         <h4>Lemuel Bayson</h4>
-                        <p>Lead Developer</p>
+                        <p>Project Manager, and Technical Writer</p>
                     </div>
                 </div>
                 <div class="team-member fade-in">
@@ -499,7 +496,7 @@
                     </div>
                     <div class="member-info">
                         <h4>Marc Laurence Lapating</h4>
-                        <p>Frontend Developer</p>
+                        <p>Lead Developer</p>
                     </div>
                 </div>
                 <div class="team-member fade-in">
@@ -508,7 +505,7 @@
                     </div>
                     <div class="member-info">
                         <h4>Josiephous Pierre Dosdos</h4>
-                        <p>Backend Developer</p>
+                        <p> System Analyst, and Backend Developer</p>
                     </div>
                 </div>
                 <div class="team-member fade-in">
@@ -517,7 +514,7 @@
                     </div>
                     <div class="member-info">
                         <h4>Reuben Rex Batoy</h4>
-                        <p>UI/UX Designer</p>
+                        <p>System Analyst, Database Designer, and QA Tester</p>
                     </div>
                 </div>
             </div>
@@ -559,7 +556,7 @@
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                         <h4>Our Location</h4>
-                        <p>Bangkerohan Father Selga St, Davao City<br>Philippines 8000</p>
+                        <p>Bankerohan Father Selga St, Davao City<br>Philippines 8000</p>
                     </div>
                     <div class="contact-card">
                         <div class="contact-icon">
@@ -573,7 +570,7 @@
                             <i class="fas fa-phone-alt"></i>
                         </div>
                         <h4>Call Us</h4>
-                        <p>09913046352</p>
+                        <p>+63913046352</p>
                     </div>
                 </div>
                 <div class="contact-form fade-in">
@@ -631,8 +628,8 @@
                     <h4>Contact</h4>
                     <ul>
                         <li><a href="mailto:info@eunoia-wellbeing.com">eunoia.uic2025@gmail.com</a></li>
-                        <li><a href="tel:+6382123456">09913046352</a></li>
-                        <li><a href="https://maps.google.com/?q=Father+Selga+St,+Davao+City">Bangkerohan Father Selga St, Davao City
+                        <li><a href="tel:+6382123456">+63913046352</a></li>
+                        <li><a href="https://maps.google.com/?q=Father+Selga+St,+Davao+City">Bankerohan Father Selga St, Davao City
 Philippines 8000</a></li>
                     </ul>
                 </div>

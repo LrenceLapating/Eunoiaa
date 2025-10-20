@@ -304,15 +304,12 @@ router.get('/', verifyCounselorSession, async (req, res) => {
 router.get('/sent', verifyCounselorSession, async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const { page = 1, limit = 20 } = req.query;
     
-    console.log(`Fetching sent interventions (all counselors)`);
+    console.log(`Fetching sent interventions (all counselors) - NO PAGINATION LIMIT`);
     
-    const offset = (page - 1) * limit;
-    
-    // Get all sent interventions (removed counselor_id filter to fix session mismatch)
-    // This ensures all sent interventions are visible regardless of counselor session
-    // Use direct assessment_type column to avoid data inconsistency issues with JOINs
+    // Get ALL sent interventions without pagination limit
+    // This ensures intervention status checking works for all students regardless of count
+    // Removed pagination to fix intervention status display issue for students beyond first 20
     const { data: interventions, error } = await supabase
       .from('counselor_interventions')
       .select(`
@@ -329,8 +326,7 @@ router.get('/sent', verifyCounselorSession, async (req, res) => {
         students!inner(name, id_number, college)
       `)
       .eq('status', 'sent')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching sent interventions:', error);
@@ -345,11 +341,7 @@ router.get('/sent', verifyCounselorSession, async (req, res) => {
     res.json({
       success: true,
       data: interventions,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: interventions.length
-      }
+      total: interventions.length
     });
     
   } catch (error) {

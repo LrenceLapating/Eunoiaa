@@ -40,10 +40,11 @@
       <div class="question-card">
         <div class="question-header">
           <span class="question-number">Q{{ currentQuestionIndex + 1 }}</span>
-          <!-- Show dimension info for testing -->
+          <!-- Show dimension info for testing - Question Number (1-84), Dimension Name, and ID -->
           <div class="dimension-info">
-            <span class="dimension-name">{{ currentQuestion.dimensionName || currentQuestionDimension.toUpperCase() }}</span>
-            <span class="dimension-question-number">{{ currentQuestion.dimensionName }} {{ currentQuestion.originalQuestionNumber || currentQuestion.id }}</span>
+            <span class="question-order">Question {{ currentQuestion.id }}</span>
+            <span class="dimension-name">{{ currentQuestionDimension }}</span>
+            <span class="question-id">ID: {{ currentQuestion.id }}</span>
           </div>
         </div>
         
@@ -250,9 +251,9 @@ export default {
   },
   computed: {
     questionnaire() {
-      // For testing: Use ordered questionnaire for both 42-item and 84-item assessments
+      // For testing: Use original sequential order for 84-item (Q1=ID1, Q2=ID2, etc.)
       if (this.assessmentType === '84') {
-        return ryff84ItemQuestionnaireOrdered
+        return ryff84ItemQuestionnaire
       } else {
         return ryff42ItemQuestionnaireOrdered
       }
@@ -857,12 +858,25 @@ export default {
   gap: 2px;
 }
 
+.question-order {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #28a745;
+  letter-spacing: 0.5px;
+}
+
 .dimension-name {
   font-size: 0.875rem;
   font-weight: 600;
   color: #0d6efd;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.question-id {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-weight: 500;
 }
 
 .dimension-question-number {

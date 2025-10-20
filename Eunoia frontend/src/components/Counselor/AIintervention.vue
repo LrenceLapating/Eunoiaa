@@ -57,6 +57,17 @@
             <i class="fas fa-clipboard-list"></i>
           </div>
           <h3>Select Assessment Type for AI Intervention</h3>
+          
+          <!-- AI Disclaimer -->
+          <div class="ai-disclaimer">
+            <div class="disclaimer-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="disclaimer-content">
+              <strong>Important Notice:</strong> This intervention is AI-generated. Guidance still needs to be checked and reviewed by qualified professionals before implementation.
+            </div>
+          </div>
+          
           <p>Please choose either 42-Item or 84-Item assessment type from the dropdown above to view student data and generate personalized interventions.</p>
           <div class="assessment-options">
             <div class="option-card" @click="selectAssessmentType('ryff_42')">
@@ -713,7 +724,8 @@ export default {
 
       try {
         // Build query parameters
-        const assessmentTypeParam = `&assessmentType=${this.assessmentTypeFilter}`;
+        const assessmentTypeParam = `assessmentType=${this.assessmentTypeFilter}`;
+        const limitParam = `limit=1000`; // Fetch up to 1000 to ensure all data is loaded
         
         // Create timeout promise
         const timeoutPromise = new Promise((_, reject) => {
@@ -721,7 +733,7 @@ export default {
         });
 
         // Fetch at-risk students
-        const atRiskPromise = fetch(apiUrl(`counselor-assessments/students/at-risk?${assessmentTypeParam}`), {
+        const atRiskPromise = fetch(apiUrl(`counselor-assessments/students/at-risk?${assessmentTypeParam}&${limitParam}`), {
           method: 'GET',
           credentials: 'include',
           signal: this.abortController.signal,
@@ -738,7 +750,7 @@ export default {
         }
         
         // Fetch moderate students
-        const moderatePromise = fetch(apiUrl(`counselor-assessments/students/moderate?${assessmentTypeParam}`), {
+        const moderatePromise = fetch(apiUrl(`counselor-assessments/students/moderate?${assessmentTypeParam}&${limitParam}`), {
           method: 'GET',
           credentials: 'include',
           signal: this.abortController.signal,
@@ -755,7 +767,7 @@ export default {
         }
         
         // Fetch healthy students
-        const healthyPromise = fetch(apiUrl(`counselor-assessments/students/healthy?${assessmentTypeParam}`), {
+        const healthyPromise = fetch(apiUrl(`counselor-assessments/students/healthy?${assessmentTypeParam}&${limitParam}`), {
           method: 'GET',
           credentials: 'include',
           signal: this.abortController.signal,
@@ -1430,7 +1442,24 @@ export default {
     hasInterventionSent(student) {
       // Check for assessment-type-specific sent status
       const sentKey = `${student?.id}_${this.assessmentTypeFilter}`;
-      return this.sentInterventions.has(sentKey);
+      
+      // Primary check: exact assessment type match
+      if (this.sentInterventions.has(sentKey)) {
+        return true;
+      }
+      
+      // Safe fallback: if assessmentTypeFilter is empty, check if ANY intervention exists for this student
+      // This handles the case where the page loads before assessment type is selected
+      if (!this.assessmentTypeFilter && student?.id) {
+        // Check for any sent intervention for this student (regardless of assessment type)
+        for (const key of this.sentInterventions) {
+          if (key.startsWith(`${student.id}_`)) {
+            return true;
+          }
+        }
+      }
+      
+      return false;
     },
     
     hasInterventionAvailable(student) {
@@ -3411,6 +3440,65 @@ export default {
   color: #636e72;
   margin-bottom: 32px;
   line-height: 1.6;
+}
+
+/* AI Disclaimer Styles */
+.ai-disclaimer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  border: 2px solid #f39c12;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 15px rgba(243, 156, 18, 0.2);
+  animation: pulse-warning 2s infinite;
+}
+
+.disclaimer-icon {
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.disclaimer-icon i {
+  font-size: 1.5rem;
+  color: #e67e22;
+  animation: bounce 1s infinite;
+}
+
+.disclaimer-content {
+  font-size: 1rem;
+  color: #8b4513;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.disclaimer-content strong {
+  color: #d35400;
+  font-weight: 700;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.2);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
 }
 
 .assessment-options {

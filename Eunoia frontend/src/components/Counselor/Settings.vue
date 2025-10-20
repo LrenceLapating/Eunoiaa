@@ -60,23 +60,7 @@
               </div>
             </div>
             
-            <div class="form-row">
-              <div class="form-group">
-                <label for="college">College</label>
-                <select id="college" v-model="accountSettings.college">
-                  <option value="">Select College</option>
-                  <option value="guidance">Guidance Office</option>
-                  <option value="psychology">Psychology College</option>
-                  <option value="admin">Administration</option>
-                  <option value="student-affairs">Student Affairs</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="position">Position</label>
-                <input type="text" id="position" v-model="accountSettings.position" 
-                       placeholder="Your position/title">
-              </div>
-            </div>
+
             
 
             <div class="form-actions">

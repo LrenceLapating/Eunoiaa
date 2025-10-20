@@ -65,7 +65,7 @@
         </form>
         
         <div class="login-footer">
-          <p>Don't have an account? <a href="#">Contact your administrator</a></p>
+       
         </div>
       </div>
     </div>
