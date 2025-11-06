@@ -184,18 +184,17 @@ router.post('/', requireCounselorAuth, async (req, res) => {
       }
     }
 
-    // Delete existing records with the same semester names to ensure global uniqueness
-    const semesterNames = semesters.map(semester => semester.name);
+    // Delete all existing records for this school year to replace with new configuration
     const { error: deleteError } = await supabase
       .from('academic_settings')
       .delete()
-      .in('semester_name', semesterNames);
+      .eq('school_year', schoolYear);
 
     if (deleteError) {
-      console.error('Error deleting existing semester records:', deleteError);
+      console.error('Error deleting existing records for school year:', deleteError);
       return res.status(500).json({
         success: false,
-        message: 'Failed to clear existing semester records: ' + deleteError.message
+        message: 'Failed to clear existing records for school year: ' + deleteError.message
       });
     }
 

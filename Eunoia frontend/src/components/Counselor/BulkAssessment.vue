@@ -206,14 +206,7 @@
             <div class="preview-message">{{ customMessage || 'No custom message' }}</div>
           </div>
           
-          <!-- Simple Assessment Confirmation -->
-          <div class="assessment-confirmation">
-            <div class="confirmation-message">
-              <i class="fas fa-check-circle confirmation-icon"></i>
-              <h3>Ready to Send Assessment</h3>
-              <p>The {{ selectedVersion }}-item Ryff Scales assessment is ready to be sent to the selected students.</p>
-            </div>
-          </div>
+          <!-- Confirmation banner removed per request -->
         </div>
         <div class="modal-footer">
           <button class="secondary-button" @click="showPreview = false">Close</button>
@@ -646,10 +639,12 @@ export default {
         const response = await fetch(apiUrl('accounts/colleges'));
         if (response.ok) {
           const data = await response.json();
-          this.colleges = data.colleges.map(college => ({
+          this.colleges = data.colleges
+            .map(college => ({
             name: college.name,
             selected: false
-          }));
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
         } else {
           console.error('Failed to load colleges from backend');
           // Fallback to empty array if backend fails

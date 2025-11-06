@@ -105,8 +105,8 @@
             </div>
           </div>
 
-          <!-- Assessment Type Selector -->
-          <div v-if="hasAssignedAssessments" class="assessment-type-selector">
+          <!-- Assessment Type Selector (hidden per requirement) -->
+          <div v-if="false" class="assessment-type-selector">
             <div class="selector-header">
               <h3>Choose Assessment Type</h3>
               <p>Select the type of assessment you want to view and complete</p>
@@ -150,17 +150,7 @@
           <!-- No Assessment State -->
           <div v-if="!hasAssignedAssessments" class="no-assessment-state">
             <div class="no-assessment-card">
-              <div class="no-assessment-icon">
-                <img src="@/assets/eunoia-logo.svg" alt="EUNOIA Logo" class="no-assessment-logo">
-              </div>
-              <h3>No Assessment Yet</h3>
-              <p>You don't have any assessments assigned at the moment. Your counselor will send you assessments when they're ready.</p>
-              <div class="no-assessment-actions">
-                <button class="contact-counselor-btn" @click="currentView = 'contact-guidance'">
-                  <i class="fas fa-envelope"></i>
-                  Contact Guidance
-                </button>
-              </div>
+              <p>No assessment currently.</p>
             </div>
           </div>
 
@@ -239,8 +229,8 @@
             
 
             
-            <!-- Tips Card -->
-            <div class="tips-card">
+            <!-- Tips Card (hidden per request) -->
+            <div v-if="false" class="tips-card">
               <div class="tips-header">
                 <h4>Assessment Tips</h4>
                 <i class="fas fa-lightbulb"></i>
@@ -1240,6 +1230,8 @@ export default {
           this.hasAssignedAssessments = result.data.length > 0;
           console.log('Assigned assessments loaded:', result.data.length, 'assessments found');
           console.log('Assessment details:', result.data);
+          // Auto-select available type so the assessment shows directly
+          this.autoSelectAssessmentType();
         } else {
           console.error('Failed to fetch assigned assessments:', result.message);
           this.hasAssignedAssessments = false;
@@ -1253,6 +1245,25 @@ export default {
     // Assessment Type Selection Methods
     selectAssessmentType(type) {
       this.selectedAssessmentType = type;
+    },
+    // Automatically select an available assessment type to display
+    autoSelectAssessmentType() {
+      // If current selection is available, keep it
+      if (this.hasAssessmentType(this.selectedAssessmentType)) return;
+      // Prefer the only available type
+      if (this.hasAssessmentType('ryff_84') && !this.hasAssessmentType('ryff_42')) {
+        this.selectedAssessmentType = 'ryff_84';
+        return;
+      }
+      if (this.hasAssessmentType('ryff_42') && !this.hasAssessmentType('ryff_84')) {
+        this.selectedAssessmentType = 'ryff_42';
+        return;
+      }
+      // If both are available or none matched, default to first assignment type
+      if (this.assignedAssessments.length > 0) {
+        const firstType = this.assignedAssessments[0]?.bulk_assessment?.assessment_type || 'ryff_42';
+        this.selectedAssessmentType = firstType;
+      }
     },
     
     hasAssessmentType(type) {
@@ -2279,7 +2290,7 @@ export default {
 /* Assessment Grid */
 .assessment-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr; /* single column to avoid right-side empty space */
   gap: 24px;
   align-items: start;
 }

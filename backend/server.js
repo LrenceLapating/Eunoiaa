@@ -134,6 +134,8 @@ const allowedOrigins = [
   // Add common Vercel deployment patterns
   'https://eunoia-frontend.vercel.app',
   'https://eunoia.vercel.app',
+  // Allow UIC production domain
+  'https://eunoia.uic.edu.ph',
   // Allow any Vercel preview deployments for this project (more flexible pattern)
   /^https:\/\/eunoiaafrontend.*\.vercel\.app$/,
   // Allow any deployment with the project owner pattern

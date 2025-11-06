@@ -370,6 +370,8 @@
                   v-model="studentForm.id_number" 
                   required 
                   placeholder="Enter student ID number"
+                  inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                  @input="filterIdNumber" @keypress="onlyDigits($event)"
                 >
               </div>
             </div>
@@ -788,6 +790,18 @@ export default {
     }
   },
   methods: {
+    // Ensure ID number consists of digits only (safe, local-only change)
+    onlyDigits(event) {
+      const key = event.key;
+      // Allow control keys like backspace, tab, enter, arrows
+      if (['Backspace', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'Delete'].includes(key)) return;
+      if (!/\d/.test(key)) {
+        event.preventDefault();
+      }
+    },
+    filterIdNumber() {
+      this.studentForm.id_number = (this.studentForm.id_number || '').replace(/\D+/g, '');
+    },
     getCourseName(user) {
       // Safety check for user object
       if (!user || !user.course) return 'N/A';

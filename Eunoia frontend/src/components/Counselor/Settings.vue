@@ -135,7 +135,7 @@
                       {{ year }}
                     </option>
                   </select>
-                  <button class="add-year-btn" @click="showAddYearModal = true" type="button">
+                  <button v-if="false" class="add-year-btn" @click="showAddYearModal = true" type="button">
                     <i class="fas fa-plus"></i>
                     Add School Year
                   </button>
@@ -271,6 +271,37 @@
         </div>
       </div>
     </div>
+
+    <!-- Unified Save Confirmation Modal -->
+    <div v-if="showSaveConfirmModal" class="modal-overlay" @click="closeSaveConfirmModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>
+            <i class="fas fa-info-circle"></i>
+            Review and Confirm Save
+          </h3>
+          <button class="modal-close" @click="closeSaveConfirmModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Please review the following before saving:</strong></p>
+          <ul class="conflict-list">
+            <li v-for="(msg, idx) in saveConfirmMessages" :key="'confirm-' + idx" class="conflict-item">
+              <i class="fas fa-exclamation-circle"></i>
+              {{ msg }}
+            </li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button v-if="pendingSavePayload" class="btn-secondary" @click="closeSaveConfirmModal">Cancel</button>
+          <button class="btn-primary" @click="confirmSaveAcademicSettings">
+            <i :class="pendingSavePayload ? 'fas fa-save' : 'fas fa-check'"></i>
+            {{ pendingSavePayload ? 'Proceed and Save' : 'Close' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -308,7 +339,7 @@ export default {
       
       academicSettings: {
         selectedSchoolYear: '',
-        schoolYears: ['2023-2024', '2024-2025', '2025-2026'],
+        schoolYears: [],
         semesters: [
           {
             name: '1st Semester',
@@ -330,7 +361,12 @@ export default {
       
       showAddYearModal: false,
       newSchoolYear: '',
-      semesterCounter: 3
+      semesterCounter: 3,
+      
+      // Unified save confirmation modal
+      showSaveConfirmModal: false,
+      saveConfirmMessages: [],
+      pendingSavePayload: null
     }
   },
   
@@ -350,6 +386,8 @@ export default {
             ...semester
             // Remove the name normalization that was causing "Summer" to become "3rd Semester"
           }));
+          // Ensure default placeholders (1st, 2nd, Summer) remain visible when not saved
+          this.academicSettings.semesters = this.mergeWithDefaultSemesters(this.academicSettings.semesters);
           this.semesterCounter = this.academicSettings.semesters.length;
         } else {
           // No semesters for this year, use defaults
@@ -400,11 +438,15 @@ export default {
            // Load existing academic settings from the structured response
            const settings = response.data.data;
            
-           this.academicSettings.schoolYears = settings.schoolYears || [];
-           this.academicSettings.selectedSchoolYear = settings.selectedSchoolYear || '';
-           
-           // Store grouped settings for the watcher
-           this.academicSettings.groupedSettings = response.data.groupedSettings || {};
+          // Store grouped settings for the watcher
+          this.academicSettings.groupedSettings = response.data.groupedSettings || {};
+
+          // Compute dynamic school year options: current + next, with auto-switching
+          const baseYears = settings.schoolYears || Object.keys(this.academicSettings.groupedSettings || {});
+          const selectedFromBackend = settings.selectedSchoolYear || '';
+          const computed = this.computeSchoolYearOptions(baseYears, selectedFromBackend, this.academicSettings.groupedSettings);
+          this.academicSettings.schoolYears = computed.list;
+          this.academicSettings.selectedSchoolYear = computed.selected;
            
            // Keep original semester names from database, don't normalize them
            if (settings.semesters && settings.semesters.length > 0) {
@@ -412,6 +454,8 @@ export default {
                ...semester
                // Preserve the original semester names from database (including "Summer")
              }));
+             // Ensure default placeholders (1st, 2nd, Summer) remain visible when not saved
+             this.academicSettings.semesters = this.mergeWithDefaultSemesters(this.academicSettings.semesters);
            } else {
              this.academicSettings.semesters = [];
            }
@@ -621,6 +665,82 @@ export default {
       return ordinals[num] || `${num}th`;
     },
     
+    // Ensure default semesters (1st, 2nd, Summer) remain visible with empty dates
+    mergeWithDefaultSemesters(semesters) {
+      const defaults = ['1st Semester', '2nd Semester', 'Summer'];
+      const byName = {};
+      (semesters || []).forEach(s => {
+        if (s && s.name && !byName[s.name]) {
+          byName[s.name] = {
+            name: s.name,
+            startDate: s.startDate || '',
+            endDate: s.endDate || ''
+          };
+        }
+      });
+      const merged = defaults.map(name => byName[name] ? byName[name] : {
+        name,
+        startDate: '',
+        endDate: ''
+      });
+      (semesters || []).forEach(s => {
+        if (s && s.name && !defaults.includes(s.name)) {
+          merged.push(byName[s.name]);
+        }
+      });
+      return merged;
+    },
+
+    // Helpers to compute dynamic school year options (current + next) with auto-switch
+    parseSchoolYear(yearStr) {
+      const m = /^(\d{4})-(\d{4})$/.exec(yearStr || '');
+      if (!m) return null;
+      return { start: parseInt(m[1], 10), end: parseInt(m[2], 10) };
+    },
+    formatSchoolYear(startYear) {
+      return `${startYear}-${startYear + 1}`;
+    },
+    getSemesterEnd(groupedSettings, schoolYear, name) {
+      const yearSettings = (groupedSettings || {})[schoolYear];
+      if (!yearSettings || !yearSettings.semesters) return null;
+      const found = yearSettings.semesters.find(s => s && s.name === name && s.endDate);
+      return found ? found.endDate : null;
+    },
+    computeSchoolYearOptions(baseYears, selectedYear, groupedSettings) {
+      const now = new Date();
+      const candidates = (baseYears || []).filter(y => /^(\d{4})-(\d{4})$/.test(y));
+      // Fallback to current calendar year if no candidates
+      if (candidates.length === 0) {
+        const cur = new Date().getFullYear();
+        const current = this.formatSchoolYear(cur);
+        const next = this.formatSchoolYear(cur + 1);
+        return { list: [current, next], selected: current };
+      }
+      // Choose baseline current: prefer backend-selected, else latest by start year
+      const sorted = candidates.slice().sort((a, b) => {
+        const pa = this.parseSchoolYear(a)?.start || 0;
+        const pb = this.parseSchoolYear(b)?.start || 0;
+        return pa - pb;
+      });
+      let current = (selectedYear && candidates.includes(selectedYear)) ? selectedYear : sorted[sorted.length - 1];
+      // Auto-transition conditions
+      const summerEnd = this.getSemesterEnd(groupedSettings, current, 'Summer');
+      const secondEnd = this.getSemesterEnd(groupedSettings, current, '2nd Semester');
+      let transition = false;
+      if (summerEnd) {
+        transition = new Date(summerEnd) < now;
+      } else if (secondEnd) {
+        transition = new Date(secondEnd) < now;
+      }
+      // Apply transition: move to next school year
+      const curStart = this.parseSchoolYear(current)?.start || new Date().getFullYear();
+      if (transition) {
+        current = this.formatSchoolYear(curStart + 1);
+      }
+      const next = this.formatSchoolYear(this.parseSchoolYear(current)?.start + 1);
+      return { list: [current, next], selected: current };
+    },
+    
     async saveAcademicSettings() {
       if (this.isLoading) return;
       
@@ -638,26 +758,97 @@ export default {
         return;
       }
       
+      // Check semester configurations and durations
+      let hasAtLeastOne = false;
+      let allConfigured = true;
+      const warnings = [];
+      for (const semester of this.academicSettings.semesters) {
+        if (semester.startDate && semester.endDate) {
+          hasAtLeastOne = true;
+          const days = this.calculateDuration(semester.startDate, semester.endDate);
+          const weeks = Math.ceil(days / 7);
+          
+          if (['1st Semester', '2nd Semester'].includes(semester.name)) {
+            if (weeks > 18) {
+              // Show blocking message in the center modal instead of top-right toast
+              this.saveConfirmMessages = [`${semester.name} duration cannot exceed 18 weeks (${weeks} weeks calculated)`];
+              this.pendingSavePayload = null; // block proceeding
+              this.showSaveConfirmModal = true;
+              this.isLoading = false;
+              return;
+            }
+            if (weeks < 18) {
+              warnings.push(`${semester.name} duration is less than 18 weeks (${weeks} weeks).`);
+            }
+          }
+        } else {
+          allConfigured = false;
+        }
+      }
+      
+      if (!hasAtLeastOne) {
+        this.showError('At least one semester must be fully configured with start and end dates');
+        return;
+      }
+      
+      if (!allConfigured) {
+        warnings.push('Not all semesters are fully configured. Incomplete semesters will not be saved.');
+      }
+      
       this.isLoading = true;
       this.showErrorMessage = false;
       
       try {
         // Prepare the payload for the API
-        const payload = {
-          schoolYear: this.academicSettings.selectedSchoolYear,
-          semesters: this.academicSettings.semesters.map(semester => ({
+        const completeSemesters = this.academicSettings.semesters
+          .filter(semester => semester.startDate && semester.endDate)
+          .map(semester => ({
             name: semester.name,
             startDate: semester.startDate,
             endDate: semester.endDate
-          }))
+          }));
+
+        const payload = {
+          schoolYear: this.academicSettings.selectedSchoolYear,
+          semesters: completeSemesters
         };
         
+        // Show unified confirmation modal if there are warnings
+        if (warnings.length > 0) {
+          this.saveConfirmMessages = warnings;
+          this.pendingSavePayload = payload;
+          this.showSaveConfirmModal = true;
+          this.isLoading = false;
+          return;
+        }
+
+        // No warnings: proceed to save immediately
+        await this.performSaveAcademicSettings(payload);
+      } catch (error) {
+        console.error('Error saving academic settings:', error);
+        if (error.response && error.response.data && error.response.data.message) {
+          this.showError(error.response.data.message);
+        } else {
+          this.showError('Failed to save academic settings');
+        }
+      } finally {
+        if (!this.showSaveConfirmModal) {
+          this.isLoading = false;
+        }
+      }
+    },
+
+    async performSaveAcademicSettings(payload) {
+      try {
         const response = await axios.post(apiUrl('academic-settings'), payload, {
-           withCredentials: true
-         });
+          withCredentials: true
+        });
         
         if (response.data.success) {
           this.showSuccess('Academic settings saved successfully!');
+          // Reload to restore default placeholders for any missing semesters
+          await this.loadAcademicSettings();
+          this.closeSaveConfirmModal();
         } else {
           this.showError(response.data.message || 'Failed to save academic settings');
         }
@@ -673,6 +864,21 @@ export default {
       }
     },
 
+    closeSaveConfirmModal() {
+      this.showSaveConfirmModal = false;
+      this.saveConfirmMessages = [];
+      this.pendingSavePayload = null;
+    },
+
+    async confirmSaveAcademicSettings() {
+      if (!this.pendingSavePayload) {
+        this.closeSaveConfirmModal();
+        return;
+      }
+      this.isLoading = true;
+      await this.performSaveAcademicSettings(this.pendingSavePayload);
+    },
+
     detectDateConflicts() {
       const conflicts = [];
       
@@ -680,43 +886,36 @@ export default {
       for (let i = 0; i < this.academicSettings.semesters.length; i++) {
         const semester = this.academicSettings.semesters[i];
         
-        // Check if dates are missing
-        if (!semester.startDate || !semester.endDate) {
-          conflicts.push({
-            id: `missing-${i}`,
-            message: `${semester.name}: Missing start or end date`
-          });
-          continue;
-        }
+        // Skip missing date check, as we'll handle incomplete configs separately
         
-        // Check if start date is after end date
-        const startDate = new Date(semester.startDate);
-        const endDate = new Date(semester.endDate);
-        
-        if (startDate >= endDate) {
-          conflicts.push({
-            id: `invalid-range-${i}`,
-            message: `${semester.name}: Start date (${this.formatDate(semester.startDate)}) must be before end date (${this.formatDate(semester.endDate)})`
-          });
+        if (semester.startDate && semester.endDate) {
+          // Check if start date is after end date
+          const startDate = new Date(semester.startDate);
+          const endDate = new Date(semester.endDate);
+          
+          if (startDate >= endDate) {
+            conflicts.push({
+              id: `invalid-range-${i}`,
+              message: `${semester.name}: Start date (${this.formatDate(semester.startDate)}) must be before end date (${this.formatDate(semester.endDate)})`
+            });
+          }
         }
       }
       
-      // Check for overlapping semesters (only if no basic validation errors)
-      if (conflicts.length === 0) {
-        for (let i = 0; i < this.academicSettings.semesters.length - 1; i++) {
-          const current = this.academicSettings.semesters[i];
-          const next = this.academicSettings.semesters[i + 1];
+      // Check for overlapping semesters (regardless of missing dates, but only for configured ones)
+      for (let i = 0; i < this.academicSettings.semesters.length - 1; i++) {
+        const current = this.academicSettings.semesters[i];
+        const next = this.academicSettings.semesters[i + 1];
+        
+        if (current.startDate && current.endDate && next.startDate && next.endDate) {
+          const currentEnd = new Date(current.endDate);
+          const nextStart = new Date(next.startDate);
           
-          if (current.startDate && current.endDate && next.startDate && next.endDate) {
-            const currentEnd = new Date(current.endDate);
-            const nextStart = new Date(next.startDate);
-            
-            if (currentEnd >= nextStart) {
-              conflicts.push({
-                id: `overlap-${i}`,
-                message: `${current.name} and ${next.name}: Overlapping dates (${current.name} ends ${this.formatDate(current.endDate)}, ${next.name} starts ${this.formatDate(next.startDate)})`
-              });
-            }
+          if (currentEnd >= nextStart) {
+            conflicts.push({
+              id: `overlap-${i}`,
+              message: `${current.name} and ${next.name}: Overlapping dates (${current.name} ends ${this.formatDate(current.endDate)}, ${next.name} starts ${this.formatDate(next.startDate)})`
+            });
           }
         }
       }
@@ -1386,7 +1585,7 @@ export default {
   top: 20px;
   right: 20px;
   background: var(--danger);
-  color: white;
+  color: rgb(68, 65, 65);
   padding: 15px 20px;
   border-radius: var(--border-radius);
   box-shadow: 0 6px 20px rgba(244, 67, 54, 0.3);
