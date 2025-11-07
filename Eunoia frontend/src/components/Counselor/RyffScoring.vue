@@ -813,7 +813,8 @@ export default {
       sectionFilter: 'all',
       assessmentTypeFilter: '42-item',
       riskLevelFilter: 'all',
-      sortField: 'submissionDate',
+      // Default to risk-priority sorting (handled in filter methods when sortField is null)
+      sortField: null,
       sortDirection: 'desc',
       showDetailsModal: false,
       showHistoryModal: false,
@@ -1595,14 +1596,23 @@ export default {
       
       // Apply sorting
       result.sort((a, b) => {
+        // Default risk-priority sorting when no explicit sort field is selected
+        if (!this.sortField) {
+          const aRisk = this.getAtRiskDimensionsCount(a);
+          const bRisk = this.getAtRiskDimensionsCount(b);
+          if (bRisk !== aRisk) return bRisk - aRisk; // More at-risk dimensions first
+
+          const aOverall = this.calculateOverallScore(a);
+          const bOverall = this.calculateOverallScore(b);
+          return aOverall - bOverall; // Lower overall score first
+        }
+
         let comparison = 0;
-        
         if (this.sortField === 'overallScore') {
           comparison = this.calculateOverallScore(a) - this.calculateOverallScore(b);
         } else if (this.sortField === 'submissionDate') {
           comparison = new Date(a.submissionDate) - new Date(b.submissionDate);
         }
-        
         return this.sortDirection === 'desc' ? -comparison : comparison;
       });
       
@@ -2446,14 +2456,23 @@ export default {
       
       // Apply sorting
       result.sort((a, b) => {
+        // Default risk-priority sorting when no explicit sort field is selected
+        if (!this.sortField) {
+          const aRisk = this.getAtRiskDimensionsCount(a);
+          const bRisk = this.getAtRiskDimensionsCount(b);
+          if (bRisk !== aRisk) return bRisk - aRisk; // More at-risk dimensions first
+
+          const aOverall = this.calculateOverallScore(a);
+          const bOverall = this.calculateOverallScore(b);
+          return aOverall - bOverall; // Lower overall score first
+        }
+
         let comparison = 0;
-        
         if (this.sortField === 'overallScore') {
           comparison = this.calculateOverallScore(a) - this.calculateOverallScore(b);
         } else if (this.sortField === 'submissionDate') {
           comparison = new Date(a.submissionDate) - new Date(b.submissionDate);
         }
-        
         return this.sortDirection === 'desc' ? -comparison : comparison;
       });
       
