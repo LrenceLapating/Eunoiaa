@@ -35,7 +35,9 @@ class AIService {
       }, {
         headers: {
           'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'HTTP-Referer': config.frontendUrl || 'https://eunoia-app.com',
+          'X-Title': 'Eunoia Mental Health Platform'
         }
       });
 
@@ -292,7 +294,9 @@ REMEMBER: NO MARKDOWN FORMATTING. Use plain text only. Keep Overall Strategy to 
         }, {
           headers: {
             'Authorization': `Bearer ${API_KEY}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'HTTP-Referer': config.frontendUrl || 'https://eunoia-app.com',
+            'X-Title': 'Eunoia Mental Health Platform'
           }
         });
         
@@ -807,7 +811,9 @@ REMEMBER: NO MARKDOWN FORMATTING. Use plain text only. Keep Overall Strategy to 
       }, {
         headers: {
           'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'HTTP-Referer': config.frontendUrl || 'https://eunoia-app.com',
+          'X-Title': 'Eunoia Mental Health Platform'
         }
       });
       
@@ -820,6 +826,9 @@ REMEMBER: NO MARKDOWN FORMATTING. Use plain text only. Keep Overall Strategy to 
       console.error('OpenRouter connection test failed:', error.message);
       if (error.response && error.response.status === 401) {
         return { success: false, error: 'Invalid API key for OpenRouter.' };
+      }
+      if (error.response && error.response.status === 402) {
+        return { success: false, error: 'Payment required - check OpenRouter credits or add required headers (HTTP-Referer, X-Title).' };
       }
       if (error.response && error.response.status === 429) {
         return { success: false, error: 'Rate limit exceeded for OpenRouter API.' };
