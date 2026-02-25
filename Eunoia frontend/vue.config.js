@@ -135,9 +135,10 @@ module.exports = defineConfig({
     },
     proxy: {
       '/api': {
-        target: process.env.VUE_APP_API_URL?.replace('/api', '') || 'http://localhost:3001',
+        target: process.env.VUE_APP_API_URL?.replace('/api', '') || 'http://localhost:3000',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        logLevel: 'debug'
       }
     }
   },

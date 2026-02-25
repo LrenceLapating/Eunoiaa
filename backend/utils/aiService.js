@@ -120,40 +120,47 @@ Individual Dimension Scores:
 
 Context: ${atRiskText} ${healthyText} ${moderateText}
 
+CRITICAL FORMATTING RULES:
+1. Overall Mental Health Strategy MUST be EXACTLY 2-3 sentences (no more!)
+2. DO NOT use markdown formatting (**, *, #, etc.) - use plain text only
+3. Each dimension intervention should be 3-4 sentences maximum
+4. Keep language natural and conversational
+5. Follow the exact format below
+
 Please provide your response in this EXACT format:
 
 TITLE: [Create a personalized, encouraging title for this intervention]
 
 INTERVENTION:
 Overall Mental Health Strategy:
-Write 2-3 sentences providing an overall assessment and strategy. Focus on their strengths and areas for growth based on their scores. Mention their overall score of ${Math.round(overallScore || 0)} out of ${overallMaxScore}.
+Write EXACTLY 2-3 sentences (no more!) providing an overall assessment and strategy. Focus on their strengths and areas for growth. Mention their overall score of ${Math.round(overallScore || 0)} out of ${overallMaxScore}. DO NOT use markdown formatting.
 
 Dimension Scores & Targeted Interventions:
-For each dimension below, write a natural intervention that MUST include the specific numerical score somewhere in the text. Vary how you mention the scores - don't always start with "Your score of...". Be creative and natural in integrating the scores into your assessment and recommendations.
+For each dimension below, write 3-4 sentences that naturally include the numerical score. DO NOT use markdown formatting (no **, *, etc.). Write in plain text only.
 
-Autonomy (${Math.round(subscales?.autonomy || 0)}/${dimensionMaxScore}): Write about their independence and self-determination. Naturally incorporate their score of ${Math.round(subscales?.autonomy || 0)} out of ${dimensionMaxScore} somewhere in your discussion.
+Autonomy (${Math.round(subscales?.autonomy || 0)}/${dimensionMaxScore}): Write 3-4 sentences about their independence and self-determination. Naturally incorporate their score somewhere in the text. Plain text only, no markdown.
 
-Personal Growth (${Math.round(subscales?.personal_growth || 0)}/${dimensionMaxScore}): Write about their openness to new experiences and personal development. Include their score of ${Math.round(subscales?.personal_growth || 0)} out of ${dimensionMaxScore} naturally within your assessment.
+Personal Growth (${Math.round(subscales?.personal_growth || 0)}/${dimensionMaxScore}): Write 3-4 sentences about their openness to new experiences. Include their score naturally. Plain text only, no markdown.
 
-Purpose in Life (${Math.round(subscales?.purpose_in_life || 0)}/${dimensionMaxScore}): Write about their sense of direction and meaning. Weave in their score of ${Math.round(subscales?.purpose_in_life || 0)} out of ${dimensionMaxScore} naturally in your discussion.
+Purpose in Life (${Math.round(subscales?.purpose_in_life || 0)}/${dimensionMaxScore}): Write 3-4 sentences about their sense of direction and meaning. Weave in their score naturally. Plain text only, no markdown.
 
-Self Acceptance (${Math.round(subscales?.self_acceptance || 0)}/${dimensionMaxScore}): Write about their self-regard and acceptance. Integrate their score of ${Math.round(subscales?.self_acceptance || 0)} out of ${dimensionMaxScore} naturally into your assessment.
+Self Acceptance (${Math.round(subscales?.self_acceptance || 0)}/${dimensionMaxScore}): Write 3-4 sentences about their self-regard and acceptance. Integrate their score naturally. Plain text only, no markdown.
 
-Positive Relations (${Math.round(subscales?.positive_relations || 0)}/${dimensionMaxScore}): Write about their social connections and relationships. Include their score of ${Math.round(subscales?.positive_relations || 0)} out of ${dimensionMaxScore} naturally in your discussion.
+Positive Relations (${Math.round(subscales?.positive_relations || 0)}/${dimensionMaxScore}): Write 3-4 sentences about their social connections. Include their score naturally. Plain text only, no markdown.
 
-Environmental Mastery (${Math.round(subscales?.environmental_mastery || 0)}/${dimensionMaxScore}): Write about their ability to manage their environment. Naturally mention their score of ${Math.round(subscales?.environmental_mastery || 0)} out of ${dimensionMaxScore} within your assessment.
+Environmental Mastery (${Math.round(subscales?.environmental_mastery || 0)}/${dimensionMaxScore}): Write 3-4 sentences about their ability to manage their environment. Mention their score naturally. Plain text only, no markdown.
 
 Recommended Action Plan:
-Provide specific, actionable recommendations for each dimension. Format each as "Dimension Name: [specific advice with examples]"
+Provide ONE specific, actionable recommendation for each dimension. Format as "Dimension Name: [one specific action]". Plain text only, no markdown.
 
-Autonomy: Provide specific advice based on their ${this.getScoreStatus(subscales?.autonomy || 0, assessmentType)} status
-Personal Growth: Provide specific advice based on their ${this.getScoreStatus(subscales?.personal_growth || 0, assessmentType)} status
-Purpose in Life: Provide specific advice based on their ${this.getScoreStatus(subscales?.purpose_in_life || 0, assessmentType)} status
-Self Acceptance: Provide specific advice based on their ${this.getScoreStatus(subscales?.self_acceptance || 0, assessmentType)} status
-Positive Relations: Provide specific advice based on their ${this.getScoreStatus(subscales?.positive_relations || 0, assessmentType)} status
-Environmental Mastery: Provide specific advice based on their ${this.getScoreStatus(subscales?.environmental_mastery || 0, assessmentType)} status
+Autonomy: One specific action based on their ${this.getScoreStatus(subscales?.autonomy || 0, assessmentType)} status
+Personal Growth: One specific action based on their ${this.getScoreStatus(subscales?.personal_growth || 0, assessmentType)} status
+Purpose in Life: One specific action based on their ${this.getScoreStatus(subscales?.purpose_in_life || 0, assessmentType)} status
+Self Acceptance: One specific action based on their ${this.getScoreStatus(subscales?.self_acceptance || 0, assessmentType)} status
+Positive Relations: One specific action based on their ${this.getScoreStatus(subscales?.positive_relations || 0, assessmentType)} status
+Environmental Mastery: One specific action based on their ${this.getScoreStatus(subscales?.environmental_mastery || 0, assessmentType)} status
 
-Important: Each dimension intervention must mention the specific numerical score. Write naturally and avoid templated language.`;
+REMEMBER: NO MARKDOWN FORMATTING. Use plain text only. Keep Overall Strategy to 2-3 sentences maximum.`;
     
     return prompt;
   }
@@ -488,9 +495,36 @@ Important: Each dimension intervention must mention the specific numerical score
 
     try {
       // Extract Overall Mental Health Strategy (2-3 sentences)
-      const strategyMatch = aiResponse.match(/Overall Mental Health Strategy:\s*([\s\S]*?)(?=\n\nDimension Scores|$)/i);
+      // Try multiple patterns to find the strategy section
+      let strategyMatch = aiResponse.match(/Overall Mental Health Strategy:\s*([\s\S]*?)(?=\n\n(?:Dimension Scores|Recommended Action Plan)|$)/i);
+      
+      // If not found, try alternative patterns
+      if (!strategyMatch) {
+        // Try finding content between INTERVENTION: and first dimension
+        strategyMatch = aiResponse.match(/INTERVENTION:\s*([\s\S]*?)(?=\n\n(?:Dimension Scores|Autonomy|Personal Growth)|$)/i);
+      }
+      
+      if (!strategyMatch) {
+        // Try finding content after "Overall" keyword
+        strategyMatch = aiResponse.match(/Overall[^:]*:\s*([\s\S]*?)(?=\n\n|$)/i);
+      }
+      
       if (strategyMatch) {
-        sections.strategy = strategyMatch[1].trim();
+        let strategy = strategyMatch[1].trim();
+        
+        // Clean up markdown formatting
+        strategy = this.cleanMarkdown(strategy);
+        
+        // Ensure it's only 2-3 sentences (limit to first 3 sentences)
+        const sentences = strategy.match(/[^.!?]+[.!?]+/g) || [strategy];
+        if (sentences.length > 3) {
+          strategy = sentences.slice(0, 3).join(' ').trim();
+        }
+        
+        sections.strategy = strategy;
+        console.log('Overall strategy extracted:', sections.strategy.substring(0, 100) + '...');
+      } else {
+        console.warn('No overall strategy section found in AI response');
       }
 
       // Extract Dimension Scores & Targeted Interventions
@@ -498,21 +532,27 @@ Important: Each dimension intervention must mention the specific numerical score
       if (dimensionsMatch) {
         const dimensionText = dimensionsMatch[1];
         console.log('Dimension text extracted:', dimensionText.substring(0, 200) + '...');
-        const dimensionLines = dimensionText.split('\n').filter(line => line.trim());
-        console.log(`Found ${dimensionLines.length} dimension lines to parse`);
         
-        dimensionLines.forEach((line, index) => {
-          // Support both 42-item and 84-item assessment patterns
-          const match = line.match(/^([^(]+)\(\d+\/(?:42|84)\):\s*(.+)$/i);
-          if (match) {
-            const dimensionName = match[1].trim().toLowerCase().replace(/\s+/g, '_');
-            const intervention = match[2].trim();
+        // Split by dimension headers - look for patterns like "Autonomy (22/42):" or "**Autonomy (22/42):**"
+        const dimensionPattern = /\*{0,2}(Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery)\s*\((\d+)\/(?:42|84)\)\s*:\*{0,2}\s*([\s\S]*?)(?=\n\*{0,2}(?:Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery)\s*\(|$)/gi;
+        
+        let match;
+        let dimensionCount = 0;
+        while ((match = dimensionPattern.exec(dimensionText)) !== null) {
+          const dimensionName = match[1].trim().toLowerCase().replace(/\s+/g, '_');
+          const score = match[2];
+          let intervention = match[3].trim();
+          
+          if (intervention) {
+            // Clean up markdown formatting from intervention text
+            intervention = this.cleanMarkdown(intervention);
+            
             sections.dimensions[dimensionName] = intervention;
-            console.log(`Successfully parsed dimension ${index + 1}: ${dimensionName}`);
-          } else {
-            console.warn(`Failed to parse dimension line ${index + 1}: "${line}"`);
+            dimensionCount++;
+            console.log(`Successfully parsed dimension ${dimensionCount}: ${dimensionName} (${score})`);
           }
-        });
+        }
+        
         console.log(`Total dimensions parsed: ${Object.keys(sections.dimensions).length}`);
       } else {
         console.warn('No dimension section found in AI response');
@@ -521,20 +561,27 @@ Important: Each dimension intervention must mention the specific numerical score
       // Extract Recommended Action Plan with dimension-based format and filtering
       const actionsMatch = aiResponse.match(/Recommended Action Plan:\s*([\s\S]*?)$/i);
       if (actionsMatch) {
-        const actionText = actionsMatch[1];
-        // Look for dimension-based action items (e.g., "Autonomy: strategy description")
-        const actionLines = actionText.split('\n').filter(line => {
-          const trimmed = line.trim();
-          // Match lines that start with dimension names followed by colon
-          return trimmed && /^(Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery):/i.test(trimmed);
-        });
+        const actionTextContent = actionsMatch[1];
+        
+        // Look for dimension-based action items with flexible formatting
+        // Matches: "Autonomy:", "**Autonomy:**", "Autonomy (score):", etc.
+        const actionPattern = /\*{0,2}(Autonomy|Personal Growth|Purpose in Life|Self Acceptance|Positive Relations|Environmental Mastery)\s*(?:\([^)]+\))?\s*:\*{0,2}\s*([^\n]+)/gi;
+        
+        const actionLines = [];
+        let match;
+        while ((match = actionPattern.exec(actionTextContent)) !== null) {
+          const dimensionName = match[1].trim();
+          const actionDescription = match[2].trim();
+          if (actionDescription) {
+            actionLines.push(`${dimensionName}: ${actionDescription}`);
+          }
+        }
         
         // DON'T filter actions - include ALL dimensions in action plan
         // Healthy dimensions get maintenance advice, others get improvement advice
         let filteredActions = actionLines;
         
         console.log(`Including all ${actionLines.length} dimensions in action plan (no filtering)`);
-        
         
         // Keep the full dimension-based format as requested by user
         sections.actions = filteredActions.map(line => {
@@ -563,6 +610,28 @@ Important: Each dimension intervention must mention the specific numerical score
     }
 
     return sections;
+  }
+
+  /**
+   * Clean markdown formatting from text
+   * @param {string} text - Text with markdown
+   * @returns {string} Clean text without markdown
+   */
+  cleanMarkdown(text) {
+    if (!text) return '';
+    
+    return text
+      // Remove bold/italic markers
+      .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+      // Remove inline code markers
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove headers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove horizontal rules
+      .replace(/^[-*_]{3,}$/gm, '')
+      // Clean up extra whitespace
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
 
